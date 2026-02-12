@@ -1,0 +1,32 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Secrets
+.env
+
+# User-generated config (created via falk init)
+config/
+
+# Local data (user-specific, runtime)
+# Note: data/ contains runtime databases, not example/test data
+# See examples/ for example files
+data/
+!data/.gitkeep
+!data/README.md
+*.duckdb
+exports/
+charts/
+site/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

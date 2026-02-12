@@ -1,0 +1,70 @@
+site_name: falk
+site_description: Governed AI access to your data warehouse, powered by semantic layers.
+site_url: https://yourusername.github.io/falk/
+repo_url: https://github.com/yourusername/falk
+repo_name: yourusername/falk
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - content.code.annotate
+  font:
+    text: Geist
+    code: JetBrains Mono
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - tables
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Why falk?: why-falk.md
+  - Getting Started:
+      - Quick Start: getting-started/quickstart.md
+      - Installation: getting-started/installation.md
+      - CLI Overview: cli.md
+  - Concepts:
+      - How It Works: concepts/how-it-works.md
+      - Metric Decomposition: concepts/metric-decomposition.md
+      - Context Engineering: concepts/context-engineering.md
+      - Agent Tools: concepts/tools.md
+  - Configuration:
+      - Overview: configuration/index.md
+      - Semantic Models: configuration/semantic-models.md
+      - Metric Relationships: configuration/metric-relationships.md
+      - Project Config: configuration/agent.md
+      - Agent Skills: configuration/skills.md
+      - LLM Providers: configuration/llm-providers.md
+  - Deployment:
+      - Slack Bot: deployment/slack.md
+      - Web UI: deployment/web-ui.md
+      - LangFuse: deployment/langfuse.md
+  - Advanced:
+      - Agent Skills: concepts/agent-skills.md
+      - Evaluation: concepts/evals.md
+      - Knowledge & Feedback: concepts/learning.md
+  - CLI Reference: cli-reference.md
+  - Contributing: contributing.md

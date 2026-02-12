@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling>=1.24.2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "falk"
+version = "0.1.0"
+description = "Turn your data warehouse into an AI teammate with natural language queries powered by semantic layers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "falk Contributors", email = "your-email@example.com"}
+]
+keywords = [
+    "data",
+    "ai",
+    "agent",
+    "semantic-layer",
+    "llm",
+    "analytics",
+    "duckdb",
+    "slack-bot",
+    "natural-language",
+    "pydantic-ai",
+    "metrics",
+    "business-intelligence"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+    "Topic :: Office/Business",
+]
+dependencies = [
+  "pydantic==2.12.5",
+  "duckdb>=1.1.3",
+  "PyYAML==6.0.2",
+  "boring-semantic-layer>=0.3.7",
+  # Pydantic AI agent + local web UI + all main model providers
+  "pydantic-ai-slim[openai,anthropic,google,groq,mistral,web]==1.52.0",
+  # FastAPI wrapper and .env support
+  "fastapi==0.128.0",
+  "uvicorn[standard]>=0.38.0,<0.39.0",
+  "python-dotenv==1.1.0",
+  # Slack bot (socket mode)
+  "slack-bolt>=1.18.0,<2.0.0",
+  # Excel export
+  "openpyxl>=3.1.0,<4.0.0",
+  # Google Sheets export
+  "google-api-python-client>=2.128.0,<3.0.0",
+  "google-auth>=2.30.0,<3.0.0",
+  # Chart generation (Plotly)
+  "plotly>=6.1.1",
+  "kaleido>=0.2.1,!=0.2.1.post1", # For PNG export
+  # LangFuse observability and evaluation
+  "langfuse>=2.50.0",
+  # Pydantic Evals — evaluation framework for agent testing
+  "pydantic-evals>=0.1.0",
+  # CLI framework
+  "typer>=0.12.0",
+  # Agent skills (bring your own skills)
+  "pydantic-ai-skills>=0.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/falk"
+Documentation = "https://yourusername.github.io/falk/"
+Repository = "https://github.com/yourusername/falk"
+Issues = "https://github.com/yourusername/falk/issues"
+Changelog = "https://github.com/yourusername/falk/releases"
+
+[project.optional-dependencies]
+# Optional: Documentation site (only needed for building docs)
+docs = [
+  "mkdocs-material>=9.5.0",
+  "mkdocs-minify-plugin>=0.7.0",
+]
+# Optional: Development tools
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=4.1.0",
+  "ruff>=0.1.0",
+  "pre-commit>=3.5.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/falk"]
+
+[project.scripts]
+falk = "falk.cli:app"
+
+[tool.uv]
+# If you want a lockfile, run: `uv lock`
+dev-dependencies = []
+
+

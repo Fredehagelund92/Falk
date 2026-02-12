@@ -1,0 +1,16 @@
+# Gotcha evaluation cases - tests that gotchas and synonyms work
+# These are copied into new projects as evals/gotchas.yaml
+# Run with: falk evals evals/gotchas.yaml
+
+- question: "What was our revenue yesterday?"
+  expected_tool: query_metric
+  expected_metric: revenue
+  expected_mentions:
+    - "delay"  # Agent should mention the reporting delay from gotchas
+  allow_tool_skip_if_contains: ["delay"]  # Pass if agent explains delay instead of querying
+
+- question: "Show me sales by region"
+  expected_tool: query_metric
+  expected_metric: revenue  # "sales" is a synonym for "revenue"
+
+

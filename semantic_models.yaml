@@ -1,0 +1,71 @@
+# Example semantic models for e-commerce data
+# Customize for your data - semantic_models.yaml in project root
+
+sales_metrics:
+  table: sales_fact
+  database: [main]
+  description: "E-commerce sales data with revenue, orders, and customer metrics"
+  
+  dimensions:
+    date:
+      expr: _.date
+      is_time_dimension: true
+      description: "Transaction date"
+    
+    product_category:
+      expr: _.product_category
+      description: "Product category (Electronics, Clothing, etc.)"
+      data_domain: core
+      synonyms: ["category", "product type"]
+    
+    region:
+      expr: _.region
+      description: "Sales region (US, EU, APAC, LATAM)"
+      data_domain: core
+      synonyms: ["territory", "area", "market"]
+      gotchas: "LATAM data only available from 2025-06 onwards"
+    
+    customer_segment:
+      expr: _.customer_segment
+      description: "Customer segment (Enterprise, SMB, Consumer)"
+      data_domain: core
+      synonyms: ["segment", "customer type"]
+  
+  measures:
+    revenue:
+      expr: _.revenue.sum()
+      description: "Total revenue in USD"
+      synonyms: ["sales", "income", "turnover"]
+      gotchas: "Revenue has a 48-hour reporting delay"
+      
+      # Metric relationships - helps answer "why" questions
+      related_metrics:
+        - orders
+        - average_order_value
+      formula: "orders × average_order_value"
+    
+    orders:
+      expr: _.orders.sum()
+      description: "Total number of orders"
+      synonyms: ["transactions", "purchases"]
+    
+    average_order_value:
+      expr: _.revenue.sum() / _.orders.sum()
+      description: "Average revenue per order"
+      synonyms: ["aov", "avg order size", "basket size"]
+    
+    customers:
+      expr: _.customers.sum()
+      description: "Total number of unique customers"
+      synonyms: ["users", "buyers"]
+    
+    # Example: Ratio metric with relationship
+    repeat_purchase_rate:
+      expr: _.repeat_customers.sum() / _.customers.sum()
+      description: "Percentage of customers who made multiple purchases"
+      synonyms: ["retention rate", "repeat rate"]
+      
+      related_metrics:
+        - repeat_customers
+        - customers
+      formula: "repeat_customers / customers"

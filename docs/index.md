@@ -1,0 +1,59 @@
+# falk
+
+> **Governed AI access to your data warehouse, powered by semantic layers.**
+
+Define metrics once in YAML. Query them naturally through Slack, CLI, or web.
+Same numbers everywhere. No SQL generation. No prompt engineering.
+
+## The idea
+
+Most AI data agents let models write raw SQL over your warehouse. That's powerful for exploration — but dangerous for production, where "revenue" needs to mean the same thing every time.
+
+**falk puts your semantic layer in charge.** The agent reads governed metric definitions instead of guessing from table schemas. Every query goes through the same calculations your BI tools use.
+
+```yaml
+# semantic_models.yaml — define once, query everywhere
+sales_metrics:
+  measures:
+    revenue:
+      expr: _.amount.sum()
+      description: "Total revenue (completed orders only)"
+      synonyms: ["sales", "income"]
+      related_metrics: [orders, average_order_value]
+```
+
+## What you get
+
+- **Governed access** — only approved metrics and dimensions, not raw tables
+- **Consistent numbers** — same calculation as your BI layer
+- **Business context** — synonyms, gotchas, and rules built into the schema
+- **Automatic root cause** — ask "why did revenue increase?" and get a real answer
+- **Multi-interface** — Slack, CLI, web UI, agent skills — same data everywhere
+
+## Quick start
+
+```bash
+git clone https://github.com/yourusername/falk.git
+cd falk && uv venv && uv sync
+
+falk init my-project
+cd my-project
+
+# Add your API key
+cp .env.example .env  # edit: OPENAI_API_KEY=sk-...
+
+# Start querying
+falk query revenue --group-by region
+falk decompose revenue --period month
+falk chat   # web UI on localhost:8000
+```
+
+## Learn more
+
+| | |
+|---|---|
+| [Why falk?](why-falk.md) | The philosophy behind semantic-layer AI |
+| [Quick Start](getting-started/quickstart.md) | Full setup walkthrough |
+| [Semantic Models](configuration/semantic-models.md) | Define your metrics |
+| [CLI Reference](cli-reference.md) | All commands |
+| [Metric Decomposition](concepts/metric-decomposition.md) | Automatic root cause analysis |

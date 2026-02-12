@@ -1,0 +1,23 @@
+# Basic evaluation cases for falk
+# These are copied into new projects as evals/basic.yaml
+# Run with: falk evals evals/basic.yaml
+
+- question: "What is our total revenue?"
+  expected_tool: query_metric
+  expected_metric: revenue
+
+- question: "Show me revenue by region"
+  expected_tool: query_metric
+  expected_metric: revenue
+  expected_group_by: [region]
+
+- question: "Top 5 customers by revenue"
+  expected_tool: query_metric
+  expected_metric: revenue
+  expected_order: desc
+  expected_limit: 5
+
+- question: "What metrics are available?"
+  expected_tool: list_metrics
+
+

@@ -1,0 +1,185 @@
+# Example semantic models for media business with multiple revenue models
+# This example shows how to handle subscription, advertising, and ecommerce models
+
+media_metrics:
+  table: media_revenue_fact
+  database: [main]
+  description: "Revenue data across multiple sites with different business models"
+  
+  dimensions:
+    date:
+      expr: _.date
+      is_time_dimension: true
+      description: "Transaction/event date"
+    
+    site:
+      expr: _.site_name
+      description: |
+        Media site name. Different sites have different business models:
+        - Site A: Subscription-based (Netflix-style)
+        - Site B: Advertising-based (YouTube-style)
+        - Site C: E-commerce (Amazon-style)
+      data_domain: core
+      synonyms: ["property", "brand", "channel"]
+    
+    business_model:
+      expr: _.business_model
+      description: "Revenue model type: subscription, advertising, or ecommerce"
+      data_domain: core
+    
+    content_category:
+      expr: _.content_category
+      description: "Type of content: News, Entertainment, Sports, etc."
+      data_domain: core
+      synonyms: ["category", "genre"]
+    
+    user_tier:
+      expr: _.user_tier
+      description: "User subscription tier: Free, Premium, Enterprise"
+      data_domain: core
+      synonyms: ["tier", "plan", "subscription level"]
+  
+  measures:
+    # Primary metric - varies by business model
+    revenue:
+      expr: _.revenue.sum()
+      description: |
+        Total revenue across all sites.
+        
+        Key drivers vary by site/business model:
+        - Subscription sites (Site A): active_subscribers × subscription_price
+        - Advertising sites (Site B): total_impressions × cpm
+        - E-commerce sites (Site C): transactions × average_order_value
+        
+        Use dimension filters to analyze each site separately.
+      synonyms: ["sales", "income"]
+      
+      # Related metrics - agent will check these for multi-model analysis
+      related_metrics:
+        - active_subscribers
+        - subscription_price
+        - total_impressions
+        - cpm
+        - transactions
+        - average_order_value
+    
+    # Subscription metrics (Site A)
+    active_subscribers:
+      expr: _.active_subscribers.sum()
+      description: "Number of active paid subscribers (subscription sites only)"
+      synonyms: ["subscribers", "paid users", "members"]
+    
+    subscription_price:
+      expr: _.subscription_revenue.sum() / _.active_subscribers.sum()
+      description: "Average subscription price per subscriber (subscription sites only)"
+      synonyms: ["arpu", "average revenue per user", "subscription fee"]
+    
+    churn_rate:
+      expr: _.churned_subscribers.sum() / _.total_subscribers.sum()
+      description: "Percentage of subscribers who cancelled (subscription sites only)"
+      synonyms: ["cancellation rate", "attrition"]
+    
+    # Advertising metrics (Site B)
+    total_impressions:
+      expr: _.impressions.sum()
+      description: "Total ad impressions served (advertising sites only)"
+      synonyms: ["impressions", "ad views", "pageviews"]
+    
+    cpm:
+      expr: (_.ad_revenue.sum() / _.impressions.sum()) * 1000
+      description: "Cost per mille - revenue per 1,000 impressions (advertising sites only)"
+      synonyms: ["cost per thousand", "ad rate"]
+    
+    ad_fill_rate:
+      expr: _.filled_impressions.sum() / _.total_impressions.sum()
+      description: "Percentage of impressions with ads shown (advertising sites only)"
+      synonyms: ["fill rate", "monetization rate"]
+    
+    # E-commerce metrics (Site C)
+    transactions:
+      expr: _.transactions.sum()
+      description: "Number of purchase transactions (ecommerce sites only)"
+      synonyms: ["orders", "purchases", "sales"]
+    
+    average_order_value:
+      expr: _.transaction_revenue.sum() / _.transactions.sum()
+      description: "Average value per transaction (ecommerce sites only)"
+      synonyms: ["aov", "basket size", "order size"]
+    
+    conversion_rate:
+      expr: _.transactions.sum() / _.visitors.sum()
+      description: "Percentage of visitors who made a purchase (ecommerce sites only)"
+      synonyms: ["purchase rate", "conversion"]
+      
+      related_metrics:
+        - transactions
+        - visitors
+      formula: "transactions / visitors"
+    
+    # Universal metrics (all sites)
+    total_users:
+      expr: _.unique_users.sum()
+      description: "Total unique users across all sites"
+      synonyms: ["users", "visitors", "audience"]
+    
+    engagement_rate:
+      expr: _.engaged_sessions.sum() / _.total_sessions.sum()
+      description: "Percentage of sessions with meaningful engagement"
+      synonyms: ["active rate", "interaction rate"]
+
+# Example of a simpler single-model business
+saas_metrics:
+  table: saas_revenue_fact
+  database: [main]
+  description: "SaaS subscription metrics"
+  
+  dimensions:
+    date:
+      expr: _.date
+      is_time_dimension: true
+    
+    customer_segment:
+      expr: _.customer_segment
+      description: "Customer segment: Enterprise, SMB, or Self-Serve"
+      data_domain: core
+    
+    plan_tier:
+      expr: _.plan_tier
+      description: "Subscription plan tier: Starter, Professional, Enterprise"
+      data_domain: core
+  
+  measures:
+    mrr:
+      expr: _.monthly_recurring_revenue.sum()
+      description: "Monthly Recurring Revenue"
+      synonyms: ["monthly revenue", "recurring revenue"]
+      
+      related_metrics:
+        - active_subscriptions
+        - arpu
+      formula: "active_subscriptions × arpu"
+    
+    active_subscriptions:
+      expr: _.active_subscriptions.sum()
+      description: "Number of active paying subscriptions"
+      synonyms: ["subscribers", "accounts"]
+    
+    arpu:
+      expr: _.monthly_recurring_revenue.sum() / _.active_subscriptions.sum()
+      description: "Average Revenue Per User"
+      synonyms: ["average revenue", "price per user"]
+    
+    churn_rate:
+      expr: _.churned_subscriptions.sum() / _.total_subscriptions.sum()
+      description: "Monthly churn rate"
+    
+    net_new_mrr:
+      expr: _.new_mrr.sum() - _.churned_mrr.sum()
+      description: "Net change in MRR (new minus churned)"
+      
+      related_metrics:
+        - new_mrr
+        - churned_mrr
+        - expansion_mrr
+      formula: "new_mrr - churned_mrr + expansion_mrr"
+
