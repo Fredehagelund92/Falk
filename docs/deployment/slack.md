@@ -14,7 +14,17 @@ Settings → **Socket Mode** → toggle **ON** → create an App-Level Token wit
 
 Copy the `xapp-...` token → `SLACK_APP_TOKEN`.
 
-### 3. Subscribe to events
+### 3. Create slash command
+
+Features → **Slash Commands** → **Create New Command**:
+
+| Field | Value |
+|-------|-------|
+| Command | `/falk` |
+| Request URL | `https://example.com` (Socket Mode uses websocket; URL not called) |
+| Short Description | Query your data |
+
+### 4. Subscribe to events
 
 Features → **Event Subscriptions** → toggle **ON** → add bot events:
 
@@ -24,12 +34,13 @@ Features → **Event Subscriptions** → toggle **ON** → add bot events:
 | `message.im` | Respond to direct messages |
 | `reaction_added` | Track 👍/👎 feedback |
 
-### 4. Set bot token scopes
+### 5. Set bot token scopes
 
 Features → **OAuth & Permissions** → add:
 
 - `app_mentions:read`
 - `chat:write`
+- `commands` — for /falk slash command
 - `files:write` — upload CSV, Excel, chart files
 - `im:history`
 - `im:read`
@@ -37,14 +48,14 @@ Features → **OAuth & Permissions** → add:
 
 Install the app and copy the Bot Token → `SLACK_BOT_TOKEN`.
 
-### 5. Configure `.env`
+### 6. Configure `.env`
 
 ```bash
 SLACK_BOT_TOKEN=xoxb-...   # OAuth & Permissions → Bot User OAuth Token
 SLACK_APP_TOKEN=xapp-...   # Basic Information → App-Level Tokens
 ```
 
-### 6. Run
+### 7. Run
 
 ```bash
 falk slack
@@ -52,6 +63,7 @@ falk slack
 
 ## Features
 
+- **Slash command** — `/falk What is our revenue?` works without @mentioning the bot
 - **Thread memory** — follow-up questions in the same thread preserve context
 - **File uploads** — CSV, Excel, and chart files are uploaded directly to the channel
 - **Feedback** — 👍/👎 reactions are sent to LangFuse as scores

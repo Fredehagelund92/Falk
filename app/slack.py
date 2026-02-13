@@ -22,8 +22,12 @@ import logging
 import os
 import re
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 from typing import Any
+
+# Query timeout (seconds) — show friendly message if exceeded
+QUERY_TIMEOUT = 120
 
 from dotenv import load_dotenv
 
@@ -40,6 +44,7 @@ from slack_bolt import App  # noqa: E402
 from slack_bolt.adapter.socket_mode import SocketModeHandler  # noqa: E402
 
 from falk import build_agent  # noqa: E402
+from falk.agent import DataAgent  # noqa: E402
 from falk.feedback import record_feedback  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
 
@@ -92,6 +97,73 @@ def _strip_mention(text: str) -> str:
     return re.sub(r"<@[A-Z0-9]+>", "", text).strip()
 
 
+def _markdown_to_mrkdwn(text: str) -> str:
+    """Convert common markdown to Slack mrkdwn for nicer formatting."""
+    if not text:
+        return text
+    lines = []
+    for line in text.split("\n"):
+        stripped = line.lstrip()
+        # - item or * item at line start → • item (Slack bullet)
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            indent = line[: len(line) - len(stripped)]
+            lines.append(indent + "• " + stripped[2:])
+        else:
+            lines.append(line)
+    result = "\n".join(lines)
+    # **bold** → *bold* (Slack uses single * for bold)
+    result = re.sub(r"\*\*(.+?)\*\*", r"*\1*", result)
+    # __bold__ → *bold*
+    result = re.sub(r"__(.+?)__", r"*\1*", result)
+    # Remove orphaned ** at end (e.g. truncated "Check the **" - breaks Slack)
+    result = re.sub(r"\*\*\s*$", "", result)
+    return result.strip()
+
+
+def _strip_file_paths(text: str) -> str:
+    """Remove full file paths from messages — files are uploaded to Slack."""
+    # [here](C:\path\to\file.csv) → "the file is attached above"
+    def _replace_link(match) -> str:
+        link_text, url = match.group(1), match.group(2)
+        if any(url.rstrip().lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls", ".png", ".jpg", ".jpeg", ".gif")):
+            return "in the attachment above"
+        return match.group(0)
+
+    text = re.sub(r"\[([^\]]*)\]\(([^)]+)\)", _replace_link, text)
+    # Bare paths → just filename
+    text = re.sub(
+        r"[A-Za-z]:\\[^\s]+\.(csv|xlsx|xls|png|jpg|jpeg|gif)\b",
+        lambda m: Path(m.group(0)).name,
+        text,
+    )
+    return text
+
+
+def _build_slack_blocks(text: str, max_chars: int = 2900) -> list[dict[str, Any]]:
+    """Build Slack blocks with mrkdwn type so formatting actually renders."""
+    formatted = _markdown_to_mrkdwn(text)
+    blocks = []
+    # Split by double newline to preserve paragraphs, then chunk if needed
+    chunks = formatted.split("\n\n")
+    current = ""
+    for chunk in chunks:
+        if len(current) + len(chunk) + 2 <= max_chars:
+            current += ("\n\n" if current else "") + chunk
+        else:
+            if current:
+                blocks.append({
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": current.strip()},
+                })
+            current = chunk
+    if current:
+        blocks.append({
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": current.strip()},
+        })
+    return blocks
+
+
 def _extract_tool_calls(messages: list) -> list[dict[str, Any]]:
     """Extract tool call info from Pydantic AI message history."""
     calls: list[dict[str, Any]] = []
@@ -142,8 +214,20 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
         say("Hey! Ask me a data question :wave:", thread_ts=thread_ts)
         return
 
-    # Acknowledge so the user knows we're working on it
-    say("_Thinking..._", thread_ts=thread_ts)
+    # Post "Thinking..." and get ts so we can replace it with the reply (cleaner threads)
+    thinking_ts: str | None = None
+    if channel:
+        try:
+            resp = client.chat_postMessage(
+                channel=channel,
+                text="_Thinking..._",
+                thread_ts=thread_ts,
+            )
+            thinking_ts = resp.get("ts") if resp else None
+        except Exception:
+            pass
+    if not thinking_ts:
+        say("_Thinking..._", thread_ts=thread_ts)
 
     # Retrieve conversation history for this thread (if any)
     history = _thread_history.get(thread_ts) if thread_ts else None
@@ -152,74 +236,115 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
     langfuse_trace_id: str | None = None
     langfuse_sync: bool = True
     try:
-        result = agent.run_sync(
-            text,
-            message_history=history or None,
-            user_id=user_id,
-            metadata={"interface": "slack"},
-        )
-        reply = result.output or "I couldn't generate a response — try rephrasing?"
-        tool_calls = _extract_tool_calls(result.all_messages())
-        # Create LangFuse trace when enabled
-        settings = load_settings()
-        langfuse_ext = settings.extensions.get("langfuse")
-        langfuse_sync = (
-            langfuse_ext.settings.get("sync", True)
-            if langfuse_ext and langfuse_ext.enabled
-            else True
-        )
-        if langfuse_ext and langfuse_ext.enabled:
-            from falk.langfuse_integration import trace_agent_run
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(
+                agent.run_sync,
+                text,
+                message_history=history or None,
+                deps=DataAgent(),
+                metadata={"interface": "slack", "user_id": user_id},
+            )
+            try:
+                result = future.result(timeout=QUERY_TIMEOUT)
+            except FuturesTimeoutError:
+                reply = (
+                    "That query took too long. Try narrowing the scope or breaking it "
+                    "into smaller questions."
+                )
+            else:
+                reply = result.output or "I couldn't generate a response — try rephrasing?"
+                tool_calls = _extract_tool_calls(result.all_messages())
+                # Create LangFuse trace when enabled
+                settings = load_settings()
+                langfuse_ext = settings.extensions.get("langfuse")
+                langfuse_sync = (
+                    langfuse_ext.settings.get("sync", True)
+                    if langfuse_ext and langfuse_ext.enabled
+                    else True
+                )
+                if langfuse_ext and langfuse_ext.enabled:
+                    from falk.langfuse_integration import trace_agent_run
 
-            trace = trace_agent_run(text, result, user_id=user_id, sync=langfuse_sync)
-            if trace and hasattr(trace, "id"):
-                langfuse_trace_id = trace.id
+                    trace = trace_agent_run(text, result, user_id=user_id, sync=langfuse_sync)
+                    if trace and hasattr(trace, "id"):
+                        langfuse_trace_id = trace.id
 
-        # Persist conversation for follow-ups
-        if thread_ts:
-            _store_history(thread_ts, result.all_messages())
+                # Persist conversation for follow-ups
+                if thread_ts:
+                    _store_history(thread_ts, result.all_messages())
+    except FuturesTimeoutError:
+        reply = (
+            "That query took too long. Try narrowing the scope or breaking it "
+            "into smaller questions."
+        )
     except Exception:
         logger.exception("Agent error")
         reply = "Something went wrong — please try again in a moment."
 
-    # Post reply and store context for feedback tracking
+    # Format reply and update the Thinking message (or post new if update fails)
+    reply_formatted = _markdown_to_mrkdwn(reply)
+    reply_formatted = _strip_file_paths(reply_formatted)
+    blocks = _build_slack_blocks(reply_formatted)
+
     try:
-        if channel:
-            # Add subtle feedback hint (only for substantive responses)
-            reply_with_hint = reply
-            if len(reply) > 100 and not reply.endswith("_"):
-                reply_with_hint = reply + "\n\n_React with :thumbsup: or :thumbsdown: to rate this response_"
-
-            response = client.chat_postMessage(
-                channel=channel,
-                text=reply_with_hint,
-                thread_ts=thread_ts,
-            )
+        if channel and thinking_ts:
+            # Replace Thinking message with the reply (cleaner — no extra message)
+            update_kwargs = {
+                "channel": channel,
+                "ts": thinking_ts,
+                "text": reply_formatted[:4000],
+            }
+            if blocks:
+                update_kwargs["blocks"] = blocks
+            try:
+                response = client.chat_update(**update_kwargs)
+                message_ts = response.get("ts") if response else thinking_ts
+            except Exception:
+                # Fallback: post as new message if update fails (e.g. message too old)
+                post_kwargs = {
+                    "channel": channel,
+                    "text": reply_formatted[:4000],
+                    "thread_ts": thread_ts,
+                }
+                if blocks:
+                    post_kwargs["blocks"] = blocks
+                response = client.chat_postMessage(**post_kwargs)
+                message_ts = response.get("ts") if response else None
+        elif channel:
+            post_kwargs = {
+                "channel": channel,
+                "text": reply_formatted[:4000],
+                "thread_ts": thread_ts,
+            }
+            if blocks:
+                post_kwargs["blocks"] = blocks
+            response = client.chat_postMessage(**post_kwargs)
             message_ts = response.get("ts") if response else None
+        else:
+            say(reply_formatted, thread_ts=thread_ts)
+            message_ts = None
 
-            # Upload any files the agent produced (CSV, Excel, charts)
+        # Upload any files the agent produced (CSV, Excel, charts)
+        if channel:
             _upload_pending_files(client, channel, thread_ts)
 
-            if message_ts:
-                _message_context[message_ts] = {
-                    "user_query": text,
-                    "agent_response": reply,
-                    "tool_calls": tool_calls,
-                    "user_id": user_id,
-                    "channel": channel,
-                    "thread_ts": thread_ts,
-                    "langfuse_trace_id": langfuse_trace_id,
-                    "langfuse_sync": langfuse_sync,
-                }
-                # Clean up old entries (keep last 1000)
-                if len(_message_context) > 1000:
-                    oldest = min(_message_context.keys())
-                    _message_context.pop(oldest, None)
-        else:
-            say(reply, thread_ts=thread_ts)
+        if message_ts and channel:
+            _message_context[message_ts] = {
+                "user_query": text,
+                "agent_response": reply,
+                "tool_calls": tool_calls,
+                "user_id": user_id,
+                "channel": channel,
+                "thread_ts": thread_ts,
+                "langfuse_trace_id": langfuse_trace_id,
+                "langfuse_sync": langfuse_sync,
+            }
+            if len(_message_context) > 1000:
+                oldest = min(_message_context.keys())
+                _message_context.pop(oldest, None)
     except Exception:
-        logger.warning("Failed to use client.chat_postMessage, falling back to say()")
-        say(reply, thread_ts=thread_ts)
+        logger.warning("Failed to post reply, falling back to say()")
+        say(reply_formatted, thread_ts=thread_ts)
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +372,22 @@ def handle_dm(event, say, client):
     user_id = event.get("user")
     channel = event.get("channel")
     _handle(text, say, client, user_id=user_id, channel=channel)
+
+
+@bolt.command("/falk")
+def handle_slash_command(ack, command, client):
+    """Handle /falk <question> — query without @mentioning the bot."""
+    ack()  # Must respond within 3 seconds
+    text = (command.get("text") or "").strip()
+    channel = command.get("channel_id")
+    user_id = command.get("user_id")
+    if not channel or not user_id:
+        return
+    # Use say that posts to channel; _handle needs client for chat_postMessage/update
+    def _say(msg, thread_ts=None):
+        client.chat_postMessage(channel=channel, text=msg, thread_ts=thread_ts)
+
+    _handle(text, _say, client, thread_ts=None, user_id=user_id, channel=channel)
 
 
 # ---------------------------------------------------------------------------

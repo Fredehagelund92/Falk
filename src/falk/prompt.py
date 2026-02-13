@@ -84,6 +84,12 @@ Some concepts map to multiple dimensions. When ambiguous:
 
 {rules_content}
 
+## Response Formatting
+
+Use clear formatting in responses:
+- *Bold* for key terms and emphasis (use asterisks)
+- • Bullet lists for options, steps, or multiple items
+
 ## First Message
 
 If the user says hello or asks a vague question, welcome them:

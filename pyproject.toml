@@ -90,7 +90,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/falk"]
+packages = ["src/falk", "app"]
 
 [project.scripts]
 falk = "falk.cli:app"

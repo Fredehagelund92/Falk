@@ -8,11 +8,16 @@ from pathlib import Path
 from typing import Any
 
 try:
+    import plotly.colors as pcol
     import plotly.graph_objects as go
     import plotly.io as pio
     PLOTLY_AVAILABLE = True
 except ImportError:
+    pcol = None
     PLOTLY_AVAILABLE = False
+
+# Plotly color scale for charts
+CHART_COLORSCALE = "blugrn"
 
 
 def generate_bar_chart(
@@ -57,7 +62,11 @@ def generate_bar_chart(
                 y=metric_values,
                 text=[f"{v:,.0f}" for v in metric_values],
                 textposition="outside",
-                marker_color="rgb(55, 83, 109)",
+                marker=dict(
+                    color=metric_values,
+                    colorscale=CHART_COLORSCALE,
+                    showscale=False,
+                ),
             )
         ]
     )
@@ -106,14 +115,17 @@ def generate_line_chart(
     time_values = [str(row.get(time_dimension, "")) for row in sorted_data]
     metric_values = [float(row.get(metric, 0) or 0) for row in sorted_data]
 
+    # Use blugrn scale — sample middle color for line
+    line_color = pcol.sample_colorscale(CHART_COLORSCALE, [0.5])[0]
+
     fig = go.Figure(
         data=[
             go.Scatter(
                 x=time_values,
                 y=metric_values,
                 mode="lines+markers",
-                line=dict(color="rgb(55, 83, 109)", width=2),
-                marker=dict(size=6),
+                line=dict(color=line_color, width=2),
+                marker=dict(size=6, color=line_color),
             )
         ]
     )
@@ -172,6 +184,10 @@ def generate_pie_chart(
     labels = [str(row.get(dimension, "")) for row in top_data]
     values = [float(row.get(metric, 0) or 0) for row in top_data]
 
+    # Sample discrete colors from blugrn scale for pie slices
+    n = len(labels)
+    sample_pts = [i / max(n - 1, 1) for i in range(n)]
+    slice_colors = pcol.sample_colorscale(CHART_COLORSCALE, sample_pts)
     fig = go.Figure(
         data=[
             go.Pie(
@@ -179,6 +195,7 @@ def generate_pie_chart(
                 values=values,
                 textinfo="label+percent",
                 textposition="outside",
+                marker=dict(colors=slice_colors),
             )
         ]
     )

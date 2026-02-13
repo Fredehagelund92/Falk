@@ -1477,7 +1477,7 @@ def slack() -> None:
     
     Requires environment variables:
     - SLACK_BOT_TOKEN
-    - SLACK_SIGNING_SECRET
+    - SLACK_APP_TOKEN
     
     Example:
         falk slack
@@ -1485,14 +1485,17 @@ def slack() -> None:
     import subprocess
     import os
     
+    from falk.settings import load_settings
+    load_settings()  # Load .env from project root
+    
     # Check required env vars
     if not os.getenv("SLACK_BOT_TOKEN"):
         typer.echo("❌ SLACK_BOT_TOKEN not set in environment", err=True)
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
     
-    if not os.getenv("SLACK_SIGNING_SECRET"):
-        typer.echo("❌ SLACK_SIGNING_SECRET not set in environment", err=True)
+    if not os.getenv("SLACK_APP_TOKEN"):
+        typer.echo("❌ SLACK_APP_TOKEN not set in environment", err=True)
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
     
@@ -1501,7 +1504,7 @@ def slack() -> None:
     typer.echo("")
     
     try:
-        subprocess.run(["python", "app/slack.py"], check=True)
+        subprocess.run([sys.executable, "-m", "app.slack"], check=True)
     except subprocess.CalledProcessError as e:
         typer.echo(f"❌ Failed to start Slack bot: {e}", err=True)
         raise typer.Exit(code=1)
