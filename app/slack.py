@@ -98,26 +98,9 @@ def _strip_mention(text: str) -> str:
 
 
 def _markdown_to_mrkdwn(text: str) -> str:
-    """Convert common markdown to Slack mrkdwn for nicer formatting."""
-    if not text:
-        return text
-    lines = []
-    for line in text.split("\n"):
-        stripped = line.lstrip()
-        # - item or * item at line start → • item (Slack bullet)
-        if stripped.startswith("- ") or stripped.startswith("* "):
-            indent = line[: len(line) - len(stripped)]
-            lines.append(indent + "• " + stripped[2:])
-        else:
-            lines.append(line)
-    result = "\n".join(lines)
-    # **bold** → *bold* (Slack uses single * for bold)
-    result = re.sub(r"\*\*(.+?)\*\*", r"*\1*", result)
-    # __bold__ → *bold*
-    result = re.sub(r"__(.+?)__", r"*\1*", result)
-    # Remove orphaned ** at end (e.g. truncated "Check the **" - breaks Slack)
-    result = re.sub(r"\*\*\s*$", "", result)
-    return result.strip()
+    """Convert Markdown to Slack mrkdwn via SlackMarkdownConverter."""
+    from falk.slack_markdown import markdown_to_mrkdwn
+    return markdown_to_mrkdwn(text)
 
 
 def _strip_file_paths(text: str) -> str:
@@ -139,28 +122,104 @@ def _strip_file_paths(text: str) -> str:
     return text
 
 
+def _parse_rich_text_elements(text: str) -> list[dict[str, Any]]:
+    """Parse text with mrkdwn formatting into rich_text elements with styles.
+    
+    Handles: *bold*, _italic_, ~strikethrough~, `code`
+    """
+    elements = []
+    pos = 0
+    
+    # Pattern: *bold* or _italic_ or ~strike~ or `code`
+    pattern = re.compile(r'(\*[^*\n]+?\*|_[^_\n]+?_|~[^~\n]+?~|`[^`\n]+?`)')
+    
+    for match in pattern.finditer(text):
+        # Add plain text before match
+        if match.start() > pos:
+            plain = text[pos:match.start()]
+            if plain:
+                elements.append({"type": "text", "text": plain})
+        
+        # Add styled text
+        matched = match.group(0)
+        if matched.startswith('*') and matched.endswith('*'):
+            elements.append({"type": "text", "text": matched[1:-1], "style": {"bold": True}})
+        elif matched.startswith('_') and matched.endswith('_'):
+            elements.append({"type": "text", "text": matched[1:-1], "style": {"italic": True}})
+        elif matched.startswith('~') and matched.endswith('~'):
+            elements.append({"type": "text", "text": matched[1:-1], "style": {"strike": True}})
+        elif matched.startswith('`') and matched.endswith('`'):
+            elements.append({"type": "text", "text": matched[1:-1], "style": {"code": True}})
+        
+        pos = match.end()
+    
+    # Add remaining plain text
+    if pos < len(text):
+        remaining = text[pos:]
+        if remaining:
+            elements.append({"type": "text", "text": remaining})
+    
+    return elements if elements else [{"type": "text", "text": text}]
+
+
 def _build_slack_blocks(text: str, max_chars: int = 2900) -> list[dict[str, Any]]:
-    """Build Slack blocks with mrkdwn type so formatting actually renders."""
+    """Build Slack blocks using rich_text for proper list rendering."""
     formatted = _markdown_to_mrkdwn(text)
     blocks = []
-    # Split by double newline to preserve paragraphs, then chunk if needed
-    chunks = formatted.split("\n\n")
-    current = ""
-    for chunk in chunks:
-        if len(current) + len(chunk) + 2 <= max_chars:
-            current += ("\n\n" if current else "") + chunk
+    
+    # Split into paragraphs
+    paragraphs = formatted.split("\n\n")
+    
+    for para in paragraphs:
+        lines = para.split("\n")
+        
+        # Check if this is a list block (lines starting with •)
+        if any(line.lstrip().startswith("• ") for line in lines):
+            # Group consecutive lines by indent level
+            list_groups = []  # [{indent: 0, items: [...]}, {indent: 1, items: [...]}, ...]
+            
+            for line in lines:
+                stripped = line.lstrip()
+                if stripped.startswith("• "):
+                    indent_level = (len(line) - len(stripped)) // 2  # 2 spaces per level
+                    text_content = stripped[2:]  # Remove "• "
+                    
+                    # If indent changed, start new group
+                    if not list_groups or list_groups[-1]["indent"] != indent_level:
+                        list_groups.append({"indent": indent_level, "items": []})
+                    
+                    # Parse inline formatting in list item text
+                    text_elements = _parse_rich_text_elements(text_content)
+                    
+                    # Add item to current group
+                    list_groups[-1]["items"].append({
+                        "type": "rich_text_section",
+                        "elements": text_elements
+                    })
+            
+            # Build single rich_text block with all list groups
+            if list_groups:
+                rich_text_lists = []
+                for group in list_groups:
+                    rich_text_lists.append({
+                        "type": "rich_text_list",
+                        "style": "bullet",
+                        "indent": group["indent"],
+                        "elements": group["items"]
+                    })
+                
+                blocks.append({
+                    "type": "rich_text",
+                    "elements": rich_text_lists
+                })
         else:
-            if current:
+            # Non-list paragraph: use section block with mrkdwn
+            if para.strip():
                 blocks.append({
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": current.strip()},
+                    "text": {"type": "mrkdwn", "text": para.strip()},
                 })
-            current = chunk
-    if current:
-        blocks.append({
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": current.strip()},
-        })
+    
     return blocks
 
 

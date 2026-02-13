@@ -88,7 +88,18 @@ Some concepts map to multiple dimensions. When ambiguous:
 
 Use clear formatting in responses:
 - *Bold* for key terms and emphasis (use asterisks)
-- • Bullet lists for options, steps, or multiple items
+- **Always use bullet lists for hierarchical or multi-level data**
+  - Top-level: `- Category` or `- Item`
+  - Nested/sub-items: `  - Region: value` (2 spaces before -)
+  - Example:
+    ```
+    - Electronics
+      - EU: $100
+      - US: $200
+    - Sports
+      - EU: $150
+    ```
+- Never use • or other bullet chars directly; use `-` and the converter handles it
 
 ## First Message
 

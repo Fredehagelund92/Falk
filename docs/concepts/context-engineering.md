@@ -22,55 +22,134 @@ With good context, your agent:
 - Proactively mentions data issues
 - Provides tailored insights
 
+## What Goes Where? (Quick Reference)
+
+| File | Purpose | Loaded When | Keep It |
+|------|---------|-------------|---------|
+| `falk_project.yaml` | Technical config, LLM settings, quick context | Startup | Short, high-level |
+| `RULES.md` | Agent behavior, tone, formatting rules | **Every message** | Concise, universal |
+| `knowledge/business.md` | Business terms, glossary, company context | As needed | Business-specific |
+| `knowledge/gotchas.md` | Data quality, known issues, caveats | As needed | Technical gotchas |
+| `semantic_models.yaml` | Metrics, dimensions, data structure | Startup | Pure data layer |
+| `.env` | API keys, secrets | Startup | Never commit |
+
+**Key principle:** Short stuff in YAML/RULES.md, detailed knowledge in `knowledge/`.
+
+---
+
 ## Project Structure
 
 When you run `falk init`, you get a structure:
 
 ```
 my-project/
-├── RULES.md                          # Always included (keep concise!)
+├── falk_project.yaml                # Technical config (LLM, extensions)
+├── RULES.md                          # Agent behavior (included with EVERY message)
 ├── knowledge/                        # Business knowledge (loaded as needed)
 │   ├── business.md                  # Business terms, company context
 │   └── gotchas.md                   # Data quality issues, caveats
-├── semantic_models.yaml             # Data layer (BSL)
-└── falk_project.yaml               # Technical config
+├── semantic_models.yaml             # Data layer (metrics, dimensions)
+└── .env                              # Secrets (not in git)
 ```
 
-## RULES.md - Always Included
+## File-by-File Guide
+
+### 📄 `falk_project.yaml` — Quick Config
+
+**Purpose:** High-level settings for quick edits
+
+**Put here:**
+- LLM provider and model (`provider: openai`, `model: gpt-4o`)
+- 2-3 sentence business context ("We're a SaaS company...")
+- 5-10 example questions
+- 3-5 critical rules ("Revenue delayed 24h")
+- Welcome message
+- Extension toggles (langfuse, slack, charts)
+
+**Don't put here:** Long business descriptions, detailed glossaries, data issues
+
+---
+
+### 📘 `RULES.md` — Agent Behavior (Always Included)
 
 `RULES.md` is sent with **every single message** to your agent.
 
-### What to Include
+**Put here:**
+- ✅ Tone of voice ("Be conversational, not robotic")
+- ✅ Response structure ("Answer first, show data, add comparisons")
+- ✅ Formatting rules ("Use nested bullets for hierarchical data")
+- ✅ Interaction patterns ("When to ask clarifying questions")
+- ✅ SQL code style ("Use CTEs, add LIMIT, explicit JOINs")
+- ✅ Edge case handling ("How to respond to large results")
 
-✅ **Agent behavior:**
-- Tone of voice
-- How to interact with users
-- SQL code style
-- Privacy/security rules
+**Don't put here:**
+- ❌ Detailed metric definitions → `knowledge/business.md`
+- ❌ Long business glossaries → `knowledge/business.md`
+- ❌ Data quality issues → `knowledge/gotchas.md`
+- ❌ SQL examples → `knowledge/` files
 
-✅ **Orchestration instructions:**
-```markdown
-## Orchestration
-For business context: Read `knowledge/business.md`
-For data quality notes: Read `knowledge/gotchas.md`
-```
+**Why keep it short?** It's included in EVERY message. Bloating it:
+- Increases token costs
+- Dilutes focus
+- Slows responses
 
-✅ **Core business rules:**
-- Data defaults (time ranges, limits)
-- What to always exclude (test data)
-- When to ask clarifying questions
+---
 
-### What NOT to Include
+### 📚 `knowledge/business.md` — Domain Knowledge
 
-❌ Detailed metric definitions → Put in `knowledge/business.md`
-❌ Long business glossaries → Put in `knowledge/business.md`
-❌ SQL examples → Put in knowledge files
-❌ Data quality issues → Put in `knowledge/gotchas.md`
+**Purpose:** What the business does and how it works
 
-**Why?** RULES.md is included in EVERY message. Keep it concise to:
-- Reduce token costs
-- Keep agent focused
-- Improve performance
+**Put here:**
+- ✅ Company overview (what you sell, business model)
+- ✅ Glossary with canonical definitions ("MRR = monthly recurring revenue")
+- ✅ Customer journey (Awareness → Trial → Paid)
+- ✅ Target segments (B2B enterprise, SMBs)
+- ✅ Key metrics (North Star metric, why it matters)
+- ✅ Seasonality patterns ("Q4 is 40% of revenue")
+
+**Loaded:** Only when relevant to the current query
+
+---
+
+### 📚 `knowledge/gotchas.md` — Data Quality & Caveats
+
+**Purpose:** Known issues, limitations, workarounds
+
+**Put here:**
+- ✅ Data freshness schedules ("Revenue synced daily at 6 AM")
+- ✅ Known bugs ("Missing UTM params Aug 1-15, 2024")
+- ✅ Table quirks ("`users.email` has 0.5% duplicates")
+- ✅ Approximations ("15% blocked by ad blockers")
+- ✅ Historical context ("New tracking started March 2024")
+
+**Why document issues?** Agent proactively mentions them and sets proper expectations.
+
+---
+
+### 🗄️ `semantic_models.yaml` — Data Layer
+
+**Purpose:** Metrics, dimensions, database structure
+
+**Put here:**
+- ✅ Metric formulas (`revenue = SUM(orders.amount)`)
+- ✅ Dimension definitions (tables, columns, joins)
+- ✅ Synonyms (`mrr` → `monthly_recurring_revenue`)
+- ✅ Time grains (day, week, month, quarter)
+
+**Don't put here:** Business context, behavior rules, quality notes
+
+See [Semantic Models](../configuration/semantic-models.md) for details.
+
+---
+
+### 🔐 `.env` — Secrets
+
+**Put here:**
+- API keys (`OPENAI_API_KEY`, `LANGFUSE_SECRET_KEY`)
+- Database credentials
+- Slack tokens
+
+**Never commit to git.** Use `.env.example` for documentation.
 
 ## Knowledge Directory - Loaded as Needed
 
