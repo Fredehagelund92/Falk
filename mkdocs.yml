@@ -1,8 +1,8 @@
 site_name: falk
 site_description: Governed AI access to your data warehouse, powered by semantic layers.
-site_url: https://yourusername.github.io/falk/
-repo_url: https://github.com/yourusername/falk
-repo_name: yourusername/falk
+site_url: https://fredehagelund92.github.io/falk/
+repo_url: https://github.com/fredehagelund92/falk
+repo_name: fredehagelund92/falk
 
 theme:
   name: material
