@@ -1,1421 +1,420 @@
-"""falk CLI - Primary interface for querying, exploring, and running falk.
+"""falk CLI - Project management, configuration, and servers.
 
-This CLI exposes falk's core capabilities:
-- Query metrics from the warehouse
-- Explore available metrics and dimensions
-- Lookup dimension values
-- Compare periods
-- Decompose metric changes (root cause analysis)
-- Export data
+This CLI focuses on project setup and management:
+- Initialize and sync projects
 - Run evaluations
-- Start servers (chat, slack)
+- Start servers (MCP, chat, slack)
+- Show configuration
 
-Designed for:
-- Agent skills (use --json for machine-readable output)
-- CI/CD pipelines
-- Developer workflows
-- Direct human use (pretty text by default)
+For data queries and agent interactions, use:
+- MCP server: `falk mcp` (connect from Cursor, Claude Desktop)
+- Web UI: `falk chat` (conversational interface)
+- Slack bot: `falk slack` (team collaboration)
 """
 from __future__ import annotations
 
-import csv
-import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Optional
 
 import typer
 
-from falk.agent import DataAgent
 from falk.evals.cases import discover_cases, load_cases
 from falk.evals.runner import run_evals
-from falk.tools.warehouse import lookup_dimension_values, run_warehouse_query
 
-app = typer.Typer(help="falk CLI - Query metrics, explore dimensions, run evals")
-
-
-# ---------------------------------------------------------------------------
-# Configuration & Validation
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def sync(
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Show detailed configuration",
-    ),
-) -> None:
-    """Validate and sync falk configuration.
-    
-    This command:
-    - Finds project root
-    - Loads and validates falk_project.yaml
-    - Loads and validates semantic_models.yaml (BSL)
-    - Checks extension connectivity (LangFuse, Slack, etc.)
-    - Reports configuration status
-    
-    Example:
-        falk sync
-        falk sync --verbose
-    """
-    from falk.settings import load_settings
-    from falk.agent import DataAgent
-    
-    typer.echo("🔄 Syncing falk configuration...\n")
-    
-    try:
-        # Load settings
-        settings = load_settings()
-        typer.echo(f"✓ Project root: {settings.project_root}")
-        
-        # Check semantic models
-        if settings.bsl_models_path.exists():
-            agent = DataAgent()
-            metrics = agent.list_metrics()
-            models = metrics.get("semantic_models", {})
-            total_metrics = sum(len(m) for m in models.values())
-            total_dims = len(agent.dimension_descriptions)
-            
-            typer.echo(f"✓ Semantic models: {len(models)} models, {total_metrics} metrics, {total_dims} dimensions")
-            
-            if verbose:
-                for model_name, measures in models.items():
-                    typer.echo(f"  - {model_name}: {len(measures)} metrics")
-        else:
-            typer.echo(f"⚠️  Semantic models not found: {settings.bsl_models_path}", err=True)
-        
-        # Check profile
-        conn = settings.connection
-        typer.echo(f"✓ Connection: {conn.get('type', '?')} ({conn.get('database', conn.get('project_id', '—'))})")
-        
-        # Check agent config
-        typer.echo(f"✓ Agent: {settings.agent.provider}/{settings.agent.model}")
-        if verbose:
-            typer.echo(f"  - Auto-run: {settings.advanced.auto_run}")
-            typer.echo(f"  - Examples: {len(settings.agent.examples)}")
-            typer.echo(f"  - Rules: {len(settings.agent.rules)}")
-        
-        # Check extensions
-        typer.echo("\n📦 Extensions:")
-        for name, ext in settings.extensions.items():
-            status = "enabled" if ext.enabled else "disabled"
-            icon = "✓" if ext.enabled else "○"
-            typer.echo(f"{icon} {name}: {status}")
-            
-            # Check connectivity for enabled extensions
-            if ext.enabled and name == "langfuse":
-                import os
-                if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
-                    typer.echo("  - API keys: configured")
-                else:
-                    typer.echo("  - ⚠️  API keys not found in environment", err=True)
-            
-            if ext.enabled and name == "slack":
-                import os
-                if os.getenv("SLACK_BOT_TOKEN") and os.getenv("SLACK_APP_TOKEN"):
-                    typer.echo("  - Tokens: configured")
-                else:
-                    typer.echo("  - ⚠️  Tokens not found in environment", err=True)
-        
-        # Check access control
-        if settings.access_policy_path:
-            typer.echo(f"\n🔒 Access policy: {settings.access_policy_path.name}")
-        
-        # Check skills (if enabled)
-        if settings.skills.enabled:
-            for d in settings.skills.directories:
-                skills_dir = settings.project_root / d
-                if skills_dir.exists():
-                    typer.echo(f"\n🔧 Skills: {d}")
-                else:
-                    typer.echo(f"\n🔧 Skills: {d} (directory not found - add SKILL.md files)")
-        
-        typer.echo("\n✅ Configuration valid!")
-        
-    except Exception as e:
-        typer.echo(f"\n❌ Configuration error: {e}", err=True)
-        import traceback
-        if verbose:
-            traceback.print_exc()
-        raise typer.Exit(code=1)
+app = typer.Typer(help="falk CLI - Manage projects, run evals, start servers")
 
 
 # ---------------------------------------------------------------------------
-# Project Initialization
+# Project Management
 # ---------------------------------------------------------------------------
 
 
 def _copy_scaffold(src: Path, dst: Path) -> None:
-    """Copy a file from the scaffold directory, creating parent dirs as needed."""
-    if src.exists():
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(src, dst)
+    """Copy a single scaffold file."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(src, dst)
 
 
 def _copy_scaffold_dir(src_dir: Path, dst_dir: Path) -> None:
-    """Copy a directory tree from scaffold."""
-    if not src_dir.exists():
-        return
-    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+    """Recursively copy scaffold directory contents."""
+    for item in src_dir.rglob("*"):
+        if item.is_file():
+            rel_path = item.relative_to(src_dir)
+            _copy_scaffold(item, dst_dir / rel_path)
 
 
 @app.command()
 def init(
-    project_name: Optional[str] = typer.Argument(
-        None,
-        help="Project directory name, or '.' to init in current directory (default: current dir)",
+    project_name: str = typer.Argument(..., help="Project name"),
+    warehouse: str = typer.Option(
+        "duckdb",
+        "--warehouse",
+        "-w",
+        help="Warehouse type (duckdb, snowflake, bigquery, postgres)",
     ),
-    template: str = typer.Option(
-        "ecommerce",
-        "--template",
-        "-t",
-        help="Project template: 'ecommerce', 'saas', 'minimal'",
+    sample_data: bool = typer.Option(
+        True,
+        "--sample-data/--no-sample-data",
+        help="Include sample data (DuckDB only)",
     ),
 ) -> None:
-    """Initialize a new falk project with complete structure.
+    """Initialize a new falk project.
     
     Creates a new directory with:
-    - RULES.md (agent behavior - included in every conversation)
-    - knowledge/ (business terms, data quality gotchas)
-      - business.md (glossary, company context)
-      - gotchas.md (known issues, caveats)
-    - semantic_models.yaml (BSL - metrics & dimensions)
-    - falk_project.yaml (LLM, extensions, access control)
-    - data/warehouse.duckdb (sample data)
-    - .env.example (environment variables)
-    - README.md (getting started guide)
+    - falk_project.yaml (configuration)
+    - semantic_models.yaml (metrics definitions)
+    - RULES.md (agent behavior rules)
+    - knowledge/ (business context)
+    - .env.example (environment variables template)
+    - Optional sample data (DuckDB)
     
-    Examples:
-        falk init                    # Init in current directory
-        falk init .                  # Init in current directory
-        falk init my-analytics-project   # Create new subdirectory
+    Example:
+        falk init my-project
+        falk init analytics --warehouse snowflake --no-sample-data
     """
-    cwd = Path.cwd()
-    if project_name is None or project_name == ".":
-        # Init in current directory
-        project_path = cwd
-        display_name = cwd.name
-        # Check if already a falk project
-        if (project_path / "semantic_models.yaml").exists() or (
-            project_path / "falk_project.yaml"
-        ).exists() or (project_path / "RULES.md").exists():
-            typer.echo(
-                "❌ Current directory already contains a falk project.",
-                err=True,
-            )
-            typer.echo(
-                "   Remove semantic_models.yaml, falk_project.yaml and RULES.md to re-initialize, or use 'falk init my-project' to create a new subdirectory.",
-                err=True,
-            )
-            raise typer.Exit(code=1)
-    else:
-        # Create new subdirectory
-        project_path = cwd / project_name
-        display_name = project_name
-        if project_path.exists():
-            typer.echo(f"❌ Directory '{project_name}' already exists", err=True)
-            raise typer.Exit(code=1)
+    # Import here to avoid circular dependency
+    import importlib.resources
     
-    typer.echo(f"📦 Creating new falk project: {display_name}")
-    typer.echo(f"   Template: {template}")
+    typer.echo(f"Initializing falk project: {project_name}\n")
     
-    # Create directory structure (may already exist when init in cwd)
-    project_path.mkdir(parents=True, exist_ok=True)
-    (project_path / "knowledge").mkdir()
-    (project_path / "data").mkdir()
-    (project_path / "evals").mkdir()
-    
-    # Scaffold directory ships with the falk package
-    scaffold_dir = Path(__file__).parent / "scaffold"
-    
-    if not scaffold_dir.exists():
-        typer.echo("❌ Scaffold directory not found in falk package", err=True)
+    # Create project directory
+    project_dir = Path.cwd() / project_name
+    if project_dir.exists():
+        typer.echo(f"[FAIL] Directory already exists: {project_dir}", err=True)
         raise typer.Exit(code=1)
     
-    # Copy RULES.md
-    _copy_scaffold(scaffold_dir / "RULES.md", project_path / "RULES.md")
-    typer.echo("   ✓ Created RULES.md")
+    project_dir.mkdir(parents=True)
+    typer.echo(f"[OK] Created project directory: {project_dir}")
     
-    # Copy knowledge templates
-    for src_file in [
-        "knowledge/business.md",
-        "knowledge/gotchas.md",
-    ]:
-        _copy_scaffold(scaffold_dir / src_file, project_path / src_file)
-    typer.echo("   ✓ Created knowledge/ directory with templates")
-
-    # Copy config files to project root
-    _copy_scaffold(
-        scaffold_dir / "semantic_models_ecommerce.yaml",
-        project_path / "semantic_models.yaml",
-    )
-    _copy_scaffold(
-        scaffold_dir / "falk_project.yaml",
-        project_path / "falk_project.yaml",
-    )
-    typer.echo("   ✓ Created semantic_models.yaml, falk_project.yaml")
-
-    # Copy eval templates
-    for src_file in [
-        "evals/basic.yaml",
-        "evals/gotchas.yaml",
-    ]:
-        _copy_scaffold(scaffold_dir / src_file, project_path / src_file)
-    typer.echo("   ✓ Created evals/ with basic test cases")
-
-    # Copy skills directory (pydantic-ai-skills)
-    skills_src = scaffold_dir / "skills"
-    if skills_src.exists():
-        _copy_scaffold_dir(skills_src, project_path / "skills")
-        typer.echo("   ✓ Created skills/ with example skill (enable in falk_project.yaml)")
-    
-    # Create .env.example
-    env_example = """# LLM API Keys (choose one)
-OPENAI_API_KEY=sk-...
-# ANTHROPIC_API_KEY=sk-ant-...
-# GOOGLE_API_KEY=...
-
-# Optional: LangFuse observability
-# LANGFUSE_PUBLIC_KEY=pk-...
-# LANGFUSE_SECRET_KEY=sk-...
-# LANGFUSE_HOST=https://cloud.langfuse.com
-"""
-    (project_path / ".env.example").write_text(env_example, encoding="utf-8")
-    typer.echo("   ✓ Created .env.example")
-    
-    # Create project README
-    project_readme = f"""# {display_name}
-
-A falk project for natural language data queries powered by your semantic layer.
-
-## 🚀 Quick Start
-
-1. **Set up environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your LLM API key (OPENAI_API_KEY or ANTHROPIC_API_KEY)
-   ```
-
-2. **Verify configuration:**
-   ```bash
-   falk sync
-   ```
-
-3. **Query your data:**
-   ```bash
-   falk query revenue --json
-   falk metrics list --json
-   falk query revenue --group-by region --limit 10
-   ```
-
-## 📁 Project Structure
-
-```
-{display_name}/
-├── RULES.md                          # Agent behavior (always included)
-├── knowledge/                        # Business terms, data quality gotchas
-│   ├── business.md                  # Business terms & company context
-│   └── gotchas.md                   # Known data issues, caveats
-├── semantic_models.yaml             # Metrics & dimensions (BSL)
-├── falk_project.yaml                # Config (LLM, connection, extensions)
-├── skills/                          # Agent skills (optional, enable in config)
-├── data/
-│   └── warehouse.duckdb             # Your data warehouse
-└── .env                              # API keys (create from .env.example)
-```
-
-## 🎯 Customization Guide
-
-### 1. Define Your Business Context
-
-**Start here!** Edit these files to teach falk about your business:
-
-- **`RULES.md`** - How agent should behave (tone, SQL style, orchestration)
-- **`knowledge/business.md`** - Business terms, company context
-- **`knowledge/gotchas.md`** - Data quality issues, caveats
-
-**Why?** These files are sent to the AI to provide context about YOUR business.
-
-### 2. Define Your Data Layer
-
-- **`semantic_models.yaml`** - Define metrics and dimensions using Boring Semantic Layer
-  - Metrics: revenue, orders, customers, etc.
-  - Dimensions: region, product, customer_segment, etc.
-  - SQL mappings to your database tables
-
-### 3. Configure Technical Settings
-
-- **`falk_project.yaml`** - LLM provider, connection (inline), extensions, access control
-- **`.env`** - API keys
-
-### 4. Document Data Quality
-
-- **`knowledge/gotchas.md`** - Known issues, data freshness, caveats
-  - Helps agent provide accurate answers
-  - Sets proper expectations for users
-
-## 💡 Context Engineering
-
-falk uses a **context-first** approach:
-
-**RULES.md** is included with EVERY message:
-- Keep it concise (tone, style, orchestration)
-- Use it to point to detailed domain files
-
-**knowledge/** directory for detailed knowledge:
-- Only loaded when relevant (token-efficient)
-- business.md: terms, company context
-- gotchas.md: data quality notes
-
-**Example orchestration in RULES.md:**
-```markdown
-## Orchestration - Domain Context
-For business context: Read `knowledge/business.md`
-For data quality notes: Read `knowledge/gotchas.md`
-```
-
-## 🔧 Usage Examples
-
-```bash
-# Validate and sync configuration
-falk sync --verbose
-
-# Query metrics
-falk query revenue
-falk query revenue --group-by region
-falk query orders --filter status=paid --limit 100
-
-# Explore available metrics
-falk metrics list
-falk metrics describe revenue
-
-# Explore dimensions
-falk dimensions list
-falk dimensions values region
-
-# JSON output (for agent skills / automation)
-falk query revenue --group-by region --json
-```
-
-## 📚 Documentation
-
-- Full documentation: https://github.com/yourusername/falk
-- Boring Semantic Layer: https://github.com/pleonex/boring-semantic-layer
-
-## 🤝 Contributing
-
-1. Edit `knowledge/` files to improve agent knowledge
-2. Update `semantic_models.yaml` to add metrics
-3. Document data issues in `knowledge/gotchas.md`
-4. Test with `falk sync` and example queries
-"""
-    (project_path / "README.md").write_text(project_readme, encoding="utf-8")
-    typer.echo("   ✓ Created README.md")
-    
-    # Create sample data
+    # Copy scaffold files
     try:
-        seed_script = scaffold_dir / "seed_data.py"
-        if seed_script.exists():
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("seed_data", seed_script)
-            mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-            spec.loader.exec_module(mod)  # type: ignore[union-attr]
-            mod.create_example_database(project_path / "data" / "warehouse.duckdb")
-            typer.echo("   ✓ Created sample database")
+        # Get scaffold path using importlib.resources (Python 3.11+)
+        scaffold_path = importlib.resources.files("falk").joinpath("scaffold")  # type: ignore
+        
+        # Core files
+        _copy_scaffold(scaffold_path / "falk_project.yaml", project_dir / "falk_project.yaml")
+        _copy_scaffold(scaffold_path / "semantic_models.yaml", project_dir / "semantic_models.yaml")
+        _copy_scaffold(scaffold_path / "RULES.md", project_dir / "RULES.md")
+        _copy_scaffold(scaffold_path / ".env.example", project_dir / ".env.example")
+        
+        # Knowledge directory (business context and gotchas)
+        knowledge_src = scaffold_path / "knowledge"
+        if knowledge_src.exists():
+            _copy_scaffold_dir(knowledge_src, project_dir / "knowledge")
+        
+        # Evals directory (test cases)
+        evals_src = scaffold_path / "evals"
+        if evals_src.exists():
+            _copy_scaffold_dir(evals_src, project_dir / "evals")
+        
+        typer.echo("[OK] Copied configuration files")
+        
+        # Update project name in falk_project.yaml
+        config_path = project_dir / "falk_project.yaml"
+        config_text = config_path.read_text(encoding="utf-8")
+        config_text = config_text.replace("name: my-falk-project", f"name: {project_name}")
+        config_path.write_text(config_text, encoding="utf-8")
+        
+        # Sample data (DuckDB only) - generate using seed script
+        if warehouse == "duckdb" and sample_data:
+            typer.echo("Generating sample data...")
+            try:
+                # Import and use the seed_data function
+                from importlib.resources import files
+                import sys
+                import importlib.util
+                
+                # Load seed_data.py from scaffold
+                seed_script = scaffold_path / "seed_data.py"
+                spec = importlib.util.spec_from_file_location("seed_data", seed_script)
+                if spec and spec.loader:
+                    seed_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(seed_module)
+                    
+                    # Create database with sample data
+                    db_path = project_dir / "data" / "warehouse.duckdb"
+                    seed_module.create_example_database(db_path)
+                    typer.echo("[OK] Generated sample data (DuckDB)")
+            except Exception as e:
+                typer.echo(f"[WARN] Could not generate sample data: {e}", err=True)
+                typer.echo("      You can create it later by running the seed script")
+        
+        # Update warehouse config in falk_project.yaml if not duckdb
+        if warehouse != "duckdb":
+            config_path = project_dir / "falk_project.yaml"
+            config_text = config_path.read_text()
+            # This is a simple replacement - for production you'd want to parse YAML properly
+            config_text = config_text.replace('type: duckdb', f'type: {warehouse}')
+            config_path.write_text(config_text)
+            typer.echo(f"[OK] Configured for {warehouse} warehouse")
+        
+        typer.echo(f"\n[PASS] Project initialized: {project_dir}")
+        typer.echo("\nNext steps:")
+        typer.echo(f"1. cd {project_name}")
+        typer.echo("2. cp .env.example .env")
+        typer.echo("3. Edit .env with your API keys")
+        typer.echo("4. falk test --fast  # Validate configuration")
+        typer.echo("5. falk mcp  # Start MCP server for queries")
+        typer.echo("   OR falk chat  # Start web UI")
+        
     except Exception as e:
-        typer.echo(f"   ⚠️  Could not create sample data: {e}", err=True)
-        typer.echo("   You can manually create it later.")
-    
-    # Success message
-    typer.echo()
-    typer.echo(f"✨ Project '{display_name}' created successfully!")
-    typer.echo()
-    typer.echo("📁 Structure created:")
-    typer.echo("  ✓ RULES.md - Agent behavior rules")
-    typer.echo("  ✓ knowledge/ - Business terms & data quality gotchas")
-    typer.echo("  ✓ semantic_models.yaml, falk_project.yaml - Configuration")
-    typer.echo("  ✓ data/ - Data warehouse")
-    typer.echo()
-    typer.echo("🚀 Next steps:")
-    if project_name is None or project_name == ".":
-        typer.echo("  1. cp .env.example .env")
-        typer.echo("  2. Edit .env and add your LLM API key")
-        typer.echo("  3. falk sync  # Validate configuration")
-        typer.echo("  4. falk metrics list  # See available metrics")
-    else:
-        typer.echo(f"  1. cd {project_name}")
-        typer.echo("  2. cp .env.example .env")
-        typer.echo("  3. Edit .env and add your LLM API key")
-        typer.echo("  4. falk sync  # Validate configuration")
-        typer.echo("  5. falk metrics list  # See available metrics")
-    typer.echo()
-    typer.echo("✏️  Customize your agent:")
-    typer.echo("  • Edit RULES.md to define agent behavior")
-    typer.echo("  • Edit knowledge/business.md with your business context")
-    typer.echo("  • Edit knowledge/gotchas.md with data quality notes")
-    typer.echo("  • Edit semantic_models.yaml to define metrics")
-    typer.echo()
-    typer.echo("📖 See README.md for detailed guide")
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _get_agent() -> DataAgent:
-    """Get a DataAgent instance."""
-    return DataAgent()
-
-
-def _format_rows_table(rows: list[dict[str, Any]], max_rows: int = 20) -> str:
-    """Format rows as a simple text table."""
-    if not rows:
-        return "No rows."
-    
-    lines: list[str] = []
-    for row in rows[:max_rows]:
-        parts = [f"{k}={v}" for k, v in row.items()]
-        lines.append("  " + ", ".join(parts))
-    if len(rows) > max_rows:
-        lines.append(f"  ... ({len(rows) - max_rows} more rows)")
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Core: Query
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def query(
-    metric: str = typer.Argument(..., help="Metric name to query."),
-    group_by: Optional[list[str]] = typer.Option(
-        None,
-        "--group-by",
-        "-g",
-        help="Group-by dimensions (repeatable). Example: -g region -g product",
-    ),
-    filter_dim: Optional[list[str]] = typer.Option(
-        None,
-        "--filter",
-        "-f",
-        help='Filter as "dim=value" (repeatable). Example: -f region=US -f status=active',
-    ),
-    time_grain: Optional[str] = typer.Option(
-        None,
-        "--time-grain",
-        "-t",
-        help='Time grain: "day", "week", "month", "quarter", "year".',
-    ),
-    order: Optional[str] = typer.Option(
-        None,
-        "--order",
-        help='Sort order: "asc" or "desc" (sorts by metric value).',
-    ),
-    limit: Optional[int] = typer.Option(
-        None,
-        "--limit",
-        "-n",
-        help="Max number of rows to return.",
-    ),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """Query a metric from the warehouse.
-    
-    Examples:
-        # Simple query
-        data-agent query revenue
-        
-        # Group by region
-        data-agent query revenue -g region
-        
-        # Filter to US only
-        data-agent query revenue -f region=US
-        
-        # Top 10 regions by revenue
-        data-agent query revenue -g region --order desc --limit 10
-        
-        # Daily revenue for last month
-        data-agent query revenue -t day --limit 30
-        
-        # JSON output for agent skills
-        data-agent query revenue -g region --json
-    """
-    core = _get_agent()
-    
-    # Build query object
-    query_obj: dict[str, Any] = {"metric": metric}
-    if group_by:
-        query_obj["dimensions"] = group_by
-    if time_grain:
-        query_obj["time_grain"] = time_grain
-    if order:
-        query_obj["order_by"] = order
-    if limit:
-        query_obj["limit"] = limit
-    
-    # Parse filters
-    if filter_dim:
-        filters: list[dict[str, Any]] = []
-        for f in filter_dim:
-            if "=" not in f:
-                typer.echo(f"❌ Invalid filter format '{f}'. Use 'dimension=value'", err=True)
-                raise typer.Exit(code=1)
-            dim, val = f.split("=", 1)
-            filters.append({"dimension": dim.strip(), "op": "=", "value": val.strip()})
-        query_obj["filters"] = filters
-    
-    # Execute
-    result = run_warehouse_query(
-        bsl_models=core.bsl_models,
-        query_object=query_obj,
-    )
-    
-    # JSON output
-    if json_out:
-        payload = {
-            "ok": result.ok,
-            "error": result.error,
-            "metric": metric,
-            "rows": result.data,
-            "count": len(result.data) if result.data else 0,
-        }
-        typer.echo(json.dumps(payload, default=str))
-        if not result.ok:
-            raise typer.Exit(code=1)
-        return
-    
-    # Human output
-    if not result.ok:
-        typer.echo(f"❌ Query failed: {result.error}")
+        typer.echo(f"\n[FAIL] Failed to initialize project: {e}", err=True)
+        # Clean up on failure
+        if project_dir.exists():
+            shutil.rmtree(project_dir)
         raise typer.Exit(code=1)
-    
-    rows = result.data or []
-    typer.echo(f"✅ {len(rows)} row(s) for metric '{metric}'" + (f" grouped by {', '.join(group_by)}" if group_by else ""))
-    if rows:
-        typer.echo("")
-        typer.echo(_format_rows_table(rows))
-
-
-# ---------------------------------------------------------------------------
-# Core: Lookup dimension values
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def lookup(
-    dimension: str = typer.Argument(..., help="Dimension name."),
-    search: Optional[str] = typer.Option(
-        None,
-        "--search",
-        "-s",
-        help="Search term (case-insensitive partial match).",
-    ),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """Look up actual values for a dimension (fuzzy search).
-    
-    Use this before filtering to find exact warehouse values.
-    
-    Examples:
-        # List all regions
-        data-agent lookup region
-        
-        # Search for partners matching "bet"
-        data-agent lookup partner --search bet
-        
-        # JSON output
-        data-agent lookup region --json
-    """
-    core = _get_agent()
-    
-    try:
-        values = lookup_dimension_values(
-            bsl_models=core.bsl_models,
-            dimension=dimension,
-            search=search,
-        )
-    except Exception as e:
-        typer.echo(f"❌ Lookup failed: {e}", err=True)
-        raise typer.Exit(code=1)
-    
-    if values is None:
-        typer.echo(f"❌ Dimension '{dimension}' not found.", err=True)
-        typer.echo("Use 'data-agent dimensions list' to see available dimensions.")
-        raise typer.Exit(code=1)
-    
-    if json_out:
-        typer.echo(json.dumps({"dimension": dimension, "values": values}, default=str))
-        return
-    
-    if not values:
-        msg = f"No values found for '{dimension}'"
-        if search:
-            msg += f" matching '{search}'"
-        typer.echo(f"⚠️  {msg}")
-        return
-    
-    header = f"Found {len(values)} value(s) for '{dimension}'"
-    if search:
-        header += f" matching '{search}'"
-    typer.echo(header + ":")
-    for v in values:
-        typer.echo(f"  • {v}")
-
-
-# ---------------------------------------------------------------------------
-# Core: Compare periods
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def compare(
-    metric: str = typer.Argument(..., help="Metric name to compare."),
-    period: str = typer.Option(
-        "month",
-        "--period",
-        "-p",
-        help='Period: "day" (today vs yesterday), "week", "month", "quarter".',
-    ),
-    group_by: Optional[list[str]] = typer.Option(
-        None,
-        "--group-by",
-        "-g",
-        help="Group-by dimensions (repeatable).",
-    ),
-    limit: Optional[int] = typer.Option(
-        None,
-        "--limit",
-        "-n",
-        help="Max rows (for top N comparisons).",
-    ),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """Compare a metric between current and previous period.
-    
-    Examples:
-        # This month vs last month
-        data-agent compare revenue --period month
-        
-        # Compare by region
-        data-agent compare revenue -p week -g region
-        
-        # Top 10 regions, current vs previous
-        data-agent compare revenue -p month -g region -n 10
-    """
-    from falk.tools.calculations import compute_deltas, period_date_ranges
-    
-    core = _get_agent()
-    
-    try:
-        (cur_start, cur_end), (prev_start, prev_end) = period_date_ranges(period)
-    except ValueError as e:
-        typer.echo(f"❌ {e}", err=True)
-        raise typer.Exit(code=1)
-    
-    def _run(start: str, end: str) -> Any:
-        q: dict[str, Any] = {
-            "metric": metric,
-            "filters": [
-                {"dimension": "date", "op": ">=", "value": start},
-                {"dimension": "date", "op": "<=", "value": end},
-            ],
-        }
-        if group_by:
-            q["dimensions"] = group_by
-        if limit:
-            q["order_by"] = "desc"
-            q["limit"] = limit
-        return run_warehouse_query(
-            bsl_models=core.bsl_models,
-            query_object=q,
-        )
-    
-    cur_result = _run(cur_start, cur_end)
-    prev_result = _run(prev_start, prev_end)
-    
-    if not cur_result.ok:
-        typer.echo(f"❌ Query failed (current): {cur_result.error}", err=True)
-        raise typer.Exit(code=1)
-    if not prev_result.ok:
-        typer.echo(f"❌ Query failed (previous): {prev_result.error}", err=True)
-        raise typer.Exit(code=1)
-    
-    cur_data = cur_result.data or []
-    prev_data = prev_result.data or []
-    
-    if not cur_data:
-        typer.echo(f"⚠️  No data for current {period} ({cur_start} to {cur_end})")
-        return
-    
-    keys = group_by or []
-    deltas = compute_deltas(cur_data, prev_data, metric, keys)
-    
-    if json_out:
-        typer.echo(json.dumps({"metric": metric, "period": period, "deltas": deltas}, default=str))
-        return
-    
-    # Human output
-    period_labels = {
-        "day": ("today", "yesterday"),
-        "week": ("this week", "last week"),
-        "month": ("this month", "last month"),
-        "quarter": ("this quarter", "last quarter"),
-    }
-    cur_label, prev_label = period_labels.get(period, ("current", "previous"))
-    
-    typer.echo(f"*{metric}* — {cur_label} vs {prev_label} ({cur_start} → {cur_end}):")
-    typer.echo("")
-    
-    for row in deltas[:15]:
-        group_parts = [f"{row[k]}" for k in keys if k in row]
-        prefix = " | ".join(group_parts) + " — " if group_parts else ""
-        
-        cur_val = row["current"]
-        prev_val = row["previous"]
-        delta = row["delta"]
-        pct = row.get("pct_change")
-        
-        arrow = "↑" if delta > 0 else "↓" if delta < 0 else "→"
-        delta_str = f"+{delta:,.0f}" if delta > 0 else f"{delta:,.0f}"
-        pct_str = f" ({arrow} {abs(pct):.1f}%)" if pct is not None else ""
-        
-        typer.echo(f"  • {prefix}{cur_val:,.0f} vs {prev_val:,.0f} → {delta_str}{pct_str}")
-    
-    if len(deltas) > 15:
-        typer.echo(f"  ... and {len(deltas) - 15} more")
-
-
-# ---------------------------------------------------------------------------
-# Core: Decompose (Root Cause Analysis)
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def decompose(
-    metric: str = typer.Argument(..., help="Metric name to decompose."),
-    period: str = typer.Option(
-        "month",
-        "--period",
-        "-p",
-        help='Period: "week", "month", or "quarter".',
-    ),
-    filter_dim: Optional[list[str]] = typer.Option(
-        None,
-        "--filter",
-        "-f",
-        help='Filter as "dim=value" (repeatable).',
-    ),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output as JSON (for agent skills).",
-    ),
-) -> None:
-    """Explain why a metric changed — automatic root cause analysis.
-    
-    This command answers "why?" questions by:
-    1. Comparing current vs previous period
-    2. Ranking dimensions by impact (which explains the most variance?)
-    3. Drilling into the top dimension to show specific contributors
-    
-    Examples:
-        falk decompose revenue
-        falk decompose orders --period week
-        falk decompose revenue --filter "region=North America"
-        falk decompose revenue --json  # For agent skills
-    """
-    from falk.tools.warehouse import decompose_metric_change
-    
-    # Parse filters
-    filters = {}
-    if filter_dim:
-        for f in filter_dim:
-            if "=" in f:
-                k, v = f.split("=", 1)
-                filters[k.strip()] = v.strip()
-    
-    # Load agent
-    agent = DataAgent()
-    
-    # Run decomposition
-    result = decompose_metric_change(
-        core=agent,
-        metric=metric,
-        period=period,
-        filters=filters if filters else None,
-    )
-    
-    # JSON output
-    if json_out:
-        output = {
-            "ok": result.ok,
-            "metric": result.metric,
-            "period": result.period,
-            "total_delta": result.total_delta,
-            "total_pct_change": result.total_pct_change,
-            "current_value": result.current_value,
-            "previous_value": result.previous_value,
-            "dimension_impacts": result.dimension_impacts,
-            "top_dimension": result.top_dimension,
-            "top_dimension_breakdown": result.top_dimension_breakdown,
-            "error": result.error,
-        }
-        typer.echo(json.dumps(output, indent=2))
-        return
-    
-    # Human-readable output
-    if not result.ok:
-        typer.echo(f"❌ Failed to decompose {metric}: {result.error}", err=True)
-        raise typer.Exit(1)
-    
-    # Header
-    pct_str = f"{result.total_pct_change:+.1f}%" if result.total_pct_change is not None else "N/A"
-    delta_str = f"{result.total_delta:+,.2f}"
-    
-    typer.echo(f"\n📊 {metric.upper()} DECOMPOSITION ({period} over {period})")
-    typer.echo("=" * 60)
-    typer.echo(f"\nOverall Change: {delta_str} ({pct_str})")
-    typer.echo(f"  Current:  {result.current_value:>12,.2f}")
-    typer.echo(f"  Previous: {result.previous_value:>12,.2f}")
-    
-    # No change case
-    if abs(result.total_delta) < 0.01:
-        typer.echo("\nℹ️  No significant change detected.")
-        return
-    
-    # Dimension impact ranking
-    if result.dimension_impacts:
-        typer.echo("\n🔍 Dimension Impact Ranking:")
-        typer.echo("   (Which dimension has the biggest single contributor?)\n")
-        
-        for idx, dim_impact in enumerate(result.dimension_impacts[:5], 1):
-            dim_name = dim_impact["dimension"]
-            impact_pct = dim_impact["variance_explained_pct"]
-            
-            indicator = " ← Main driver" if idx == 1 else ""
-            typer.echo(f"   {idx}. {dim_name:20s} {impact_pct:>6.1f}% (largest contributor){indicator}")
-    
-    # Top dimension breakdown
-    if result.top_dimension and result.top_dimension_breakdown:
-        typer.echo(f"\n📈 Breakdown by {result.top_dimension.upper()}:")
-        typer.echo("   (Specific contributors to the change)\n")
-        
-        for item in result.top_dimension_breakdown[:10]:
-            dim_val = item["dimension_value"]
-            delta = item["delta"]
-            pct_change = item["pct_change"]
-            contrib_pct = item.get("contribution_pct", item.get("variance_pct", 0))
-            
-            delta_str = f"{delta:+,.2f}"
-            pct_str = f"{pct_change:+.1f}%" if pct_change is not None else "N/A"
-            
-            emoji = "🔺" if delta > 0 else "🔻"
-            
-            typer.echo(
-                f"   {emoji} {dim_val:25s} {delta_str:>15s} ({pct_str:>8s}) "
-                f"— {contrib_pct:>6.1f}% of total change"
-            )
-        
-        if len(result.top_dimension_breakdown) > 10:
-            remaining = len(result.top_dimension_breakdown) - 10
-            typer.echo(f"\n   ...and {remaining} more")
-    
-    typer.echo("\n💡 Key Insight: Use this breakdown to understand what's driving your metric changes.\n")
-
-
-# ---------------------------------------------------------------------------
-# Core: Export
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def export(
-    metric: str = typer.Argument(..., help="Metric name to export."),
-    output: Optional[str] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Output file (default: stdout). Format inferred from extension (.csv, .json).",
-    ),
-    group_by: Optional[list[str]] = typer.Option(
-        None,
-        "--group-by",
-        "-g",
-        help="Group-by dimensions (repeatable).",
-    ),
-    filter_dim: Optional[list[str]] = typer.Option(
-        None,
-        "--filter",
-        "-f",
-        help='Filter as "dim=value" (repeatable).',
-    ),
-    time_grain: Optional[str] = typer.Option(
-        None,
-        "--time-grain",
-        help='Time grain: "day", "week", "month".',
-    ),
-    limit: Optional[int] = typer.Option(
-        None,
-        "--limit",
-        help="Max rows.",
-    ),
-) -> None:
-    """Export query results to CSV or JSON.
-    
-    Examples:
-        # Export to CSV
-        data-agent export revenue -g region -o revenue.csv
-        
-        # Export to JSON
-        data-agent export revenue -t day -o revenue.json
-        
-        # Print to stdout (JSON)
-        data-agent export revenue -g region
-    """
-    core = _get_agent()
-    
-    # Build query
-    query_obj: dict[str, Any] = {"metric": metric}
-    if group_by:
-        query_obj["dimensions"] = group_by
-    if time_grain:
-        query_obj["time_grain"] = time_grain
-    if limit:
-        query_obj["limit"] = limit
-    
-    # Parse filters
-    if filter_dim:
-        filters: list[dict[str, Any]] = []
-        for f in filter_dim:
-            if "=" not in f:
-                typer.echo(f"❌ Invalid filter '{f}'", err=True)
-                raise typer.Exit(code=1)
-            dim, val = f.split("=", 1)
-            filters.append({"dimension": dim.strip(), "op": "=", "value": val.strip()})
-        query_obj["filters"] = filters
-    
-    result = run_warehouse_query(
-        bsl_models=core.bsl_models,
-        query_object=query_obj,
-    )
-    
-    if not result.ok:
-        typer.echo(f"❌ Query failed: {result.error}", err=True)
-        raise typer.Exit(code=1)
-    
-    rows = result.data or []
-    if not rows:
-        typer.echo("⚠️  No data to export.")
-        return
-    
-    # Determine format
-    if output:
-        path = Path(output)
-        if path.suffix.lower() == ".csv":
-            # CSV
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-                writer.writeheader()
-                writer.writerows(rows)
-            typer.echo(f"✅ Exported {len(rows)} rows to {path}")
-        else:
-            # JSON
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(rows, f, indent=2, default=str)
-            typer.echo(f"✅ Exported {len(rows)} rows to {path}")
-    else:
-        # stdout (JSON)
-        json.dump(rows, sys.stdout, default=str)
-        sys.stdout.write("\n")
-
-
-# ---------------------------------------------------------------------------
-# Metadata: metrics
-# ---------------------------------------------------------------------------
-
-
-metrics_app = typer.Typer(help="Explore available metrics")
-app.add_typer(metrics_app, name="metrics")
-
-
-@metrics_app.command("list")
-def metrics_list(
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """List all available metrics.
-    
-    Examples:
-        # Human-readable list
-        data-agent metrics list
-        
-        # JSON for agent skills
-        data-agent metrics list --json
-    """
-    core = _get_agent()
-    result = core.list_metrics()
-    semantic_models = result.get("semantic_models") or {}
-    
-    # Flatten to simple list
-    all_metrics: list[dict[str, str]] = []
-    for model_name, measures in semantic_models.items():
-        for m in measures:
-            all_metrics.append({
-                "name": m.get("name", ""),
-                "description": m.get("description", ""),
-            })
-    
-    if json_out:
-        typer.echo(json.dumps({"metrics": all_metrics}, default=str))
-        return
-    
-    if not all_metrics:
-        typer.echo("No metrics found.")
-        return
-    
-    typer.echo("Available metrics:")
-    typer.echo("")
-    for m in all_metrics:
-        desc = f" — {m['description']}" if m['description'] else ""
-        typer.echo(f"  • {m['name']}{desc}")
-    typer.echo("")
-    typer.echo(f"Total: {len(all_metrics)} metrics")
-
-
-@metrics_app.command("describe")
-def metrics_describe(
-    name: str = typer.Argument(..., help="Metric name."),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """Describe a metric (dimensions, time grains).
-    
-    Examples:
-        data-agent metrics describe revenue
-        data-agent metrics describe revenue --json
-    """
-    from falk.tools.semantic import get_semantic_model_info
-    
-    core = _get_agent()
-    info = get_semantic_model_info(
-        core.bsl_models,
-        name,
-        core.model_descriptions,
-    )
-    
-    if not info:
-        typer.echo(f"❌ Metric '{name}' not found.", err=True)
-        raise typer.Exit(code=1)
-    
-    if json_out:
-        payload = {
-            "name": name,
-            "description": info.description,
-            "dimensions": [
-                {
-                    "name": d.name,
-                    "description": d.description,
-                    "type": d.type,
-                }
-                for d in info.dimensions
-            ],
-            "time_grains": info.time_grains,
-        }
-        typer.echo(json.dumps(payload, default=str))
-        return
-    
-    # Human output
-    typer.echo(f"*{name}*")
-    if info.description:
-        typer.echo("")
-        typer.echo(info.description)
-    typer.echo("")
-    if info.dimensions:
-        typer.echo("Can group by:")
-        for d in info.dimensions[:10]:
-            t = f" [{d.type}]" if d.type else ""
-            desc = f" — {d.description}" if d.description else ""
-            typer.echo(f"  • {d.name}{t}{desc}")
-        if len(info.dimensions) > 10:
-            typer.echo(f"  ... and {len(info.dimensions) - 10} more")
-    typer.echo("")
-    if info.time_grains:
-        typer.echo("Time grains: " + ", ".join(info.time_grains))
-
-
-# ---------------------------------------------------------------------------
-# Metadata: dimensions
-# ---------------------------------------------------------------------------
-
-
-dimensions_app = typer.Typer(help="Explore available dimensions")
-app.add_typer(dimensions_app, name="dimensions")
-
-
-@dimensions_app.command("list")
-def dimensions_list(
-    domain: Optional[str] = typer.Option(
-        None,
-        "--domain",
-        help="Filter by data domain (e.g. affiliate, finance, core).",
-    ),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """List all available dimensions.
-    
-    Examples:
-        # All dimensions
-        data-agent dimensions list
-        
-        # Only affiliate dimensions
-        data-agent dimensions list --domain affiliate
-        
-        # JSON output
-        data-agent dimensions list --json
-    """
-    core = _get_agent()
-    all_dims: list[dict[str, Any]] = []
-    
-    for model_name, model in core.bsl_models.items():
-        for dim_name, dim in model.get_dimensions().items():
-            desc = core.dimension_descriptions.get((model_name, dim_name), "") or ""
-            dom = core.dimension_domains.get((model_name, dim_name), "") or ""
-            if domain and dom.lower() != domain.lower():
-                continue
-            all_dims.append({
-                "name": dim_name,
-                "description": desc,
-                "domain": dom,
-                "type": "time" if getattr(dim, "is_time_dimension", False) else "categorical",
-            })
-    
-    if json_out:
-        typer.echo(json.dumps({"dimensions": all_dims}, default=str))
-        return
-    
-    if not all_dims:
-        typer.echo("No dimensions found.")
-        return
-    
-    typer.echo("Available dimensions:")
-    typer.echo("")
-    for d in all_dims[:50]:
-        parts = [f"  • {d['name']}"]
-        if d["domain"]:
-            parts.append(f"[{d['domain']}]")
-        if d["description"]:
-            parts.append(f"— {d['description']}")
-        typer.echo(" ".join(parts))
-    if len(all_dims) > 50:
-        typer.echo(f"  ... and {len(all_dims) - 50} more")
-    typer.echo("")
-    typer.echo(f"Total: {len(all_dims)} dimensions")
-
-
-@dimensions_app.command("describe")
-def dimensions_describe(
-    dimension_name: str = typer.Argument(..., help="Dimension name."),
-    json_out: bool = typer.Option(
-        False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
-    ),
-) -> None:
-    """Describe a dimension (type, description, domain).
-    
-    Examples:
-        data-agent dimensions describe region
-        data-agent dimensions describe region --json
-    """
-    core = _get_agent()
-    
-    found: dict[str, Any] | None = None
-    for model_name, model in core.bsl_models.items():
-        for dim_name, dim in model.get_dimensions().items():
-            if dim_name == dimension_name:
-                desc = core.dimension_descriptions.get((model_name, dim_name), "") or ""
-                dom = core.dimension_domains.get((model_name, dim_name), "") or ""
-                dim_type = "time" if getattr(dim, "is_time_dimension", False) else "categorical"
-                found = {
-                    "name": dim_name,
-                    "description": desc,
-                    "domain": dom,
-                    "type": dim_type,
-                }
-                break
-        if found:
-            break
-    
-    if not found:
-        typer.echo(f"❌ Dimension '{dimension_name}' not found.", err=True)
-        raise typer.Exit(code=1)
-    
-    if json_out:
-        typer.echo(json.dumps(found, default=str))
-        return
-    
-    # Human output
-    typer.echo(f"*{found['name']}*")
-    typer.echo(f"Type: {found['type']}")
-    if found["domain"]:
-        typer.echo(f"Domain: {found['domain']}")
-    if found["description"]:
-        typer.echo("")
-        typer.echo(found["description"])
-
-
-# ---------------------------------------------------------------------------
-# Config inspection
-# ---------------------------------------------------------------------------
 
 
 @app.command()
 def config(
-    json_out: bool = typer.Option(
+    show_all: bool = typer.Option(
         False,
-        "--json",
-        help="Output JSON for agent skills / scripting.",
+        "--all",
+        "-a",
+        help="Show all configuration (including defaults)",
     ),
 ) -> None:
-    """Show loaded configuration (metrics count, dimensions count, paths).
+    """Show current falk configuration.
     
-    Useful for debugging what config is active.
+    Displays:
+    - Project root
+    - Semantic models path
+    - Connection settings
+    - Agent provider/model
+    - LangFuse settings
+    - Slack settings
     
-    Examples:
-        data-agent config
-        data-agent config --json
+    Example:
+        falk config
+        falk config --all
     """
-    core = _get_agent()
+    from falk.settings import load_settings
     
-    # Count metrics
-    result = core.list_metrics()
-    semantic_models = result.get("semantic_models") or {}
-    metric_count = sum(len(measures) for measures in semantic_models.values())
-    
-    # Count dimensions (unique by name)
-    all_dim_names = set()
-    for model in core.bsl_models.values():
-        all_dim_names.update(model.get_dimensions().keys())
-    dim_count = len(all_dim_names)
-    
-    # Paths
-    settings = core._settings
-    
-    payload = {
-        "metrics_count": metric_count,
-        "dimensions_count": dim_count,
-        "bsl_config_path": str(settings.bsl_models_path),
-        "connection": settings.connection,
-        "project_config_path": str(settings.project_root / "falk_project.yaml"),
-    }
-    
-    if json_out:
-        typer.echo(json.dumps(payload, default=str))
-        return
-    
-    # Human output
-    typer.echo("*falk Configuration*")
-    typer.echo("")
-    typer.echo(f"Metrics: {metric_count}")
-    typer.echo(f"Dimensions: {dim_count}")
-    typer.echo("")
-    typer.echo("Paths:")
-    typer.echo(f"  • Semantic models: {payload['bsl_config_path']}")
-    typer.echo(f"  • Connection: {payload.get('connection', {}).get('type', '?')}")
-    typer.echo(f"  • Project config: {payload['project_config_path']}")
+    try:
+        settings = load_settings()
+        
+        typer.echo("📋 falk Configuration\n")
+        typer.echo(f"Project root: {settings.project_root}")
+        typer.echo(f"Semantic models: {settings.bsl_models_path}")
+        typer.echo(f"Profile: {settings.profile or 'default'}")
+        typer.echo("")
+        
+        # Connection
+        conn = settings.connection
+        typer.echo("[Connection]")
+        typer.echo(f"  Type: {conn.get('type', '?')}")
+        typer.echo(f"  Database: {conn.get('database', conn.get('project_id', '—'))}")
+        typer.echo("")
+        
+        # Agent
+        typer.echo("[Agent]")
+        typer.echo(f"  Provider: {settings.agent.provider}")
+        typer.echo(f"  Model: {settings.agent.model}")
+        if show_all:
+            typer.echo(f"  Auto-run: {settings.advanced.auto_run}")
+            typer.echo(f"  Examples: {len(settings.agent.examples)}")
+            typer.echo(f"  Rules: {len(settings.agent.rules)}")
+        typer.echo("")
+        
+        # LangFuse
+        typer.echo("[LangFuse]")
+        typer.echo(f"  Enabled: {settings.langfuse.enabled}")
+        if settings.langfuse.enabled or show_all:
+            typer.echo(f"  Host: {settings.langfuse.host}")
+            typer.echo(f"  Project: {settings.langfuse.project_name}")
+        typer.echo("")
+        
+        # Slack
+        typer.echo("[Slack]")
+        typer.echo(f"  Enabled: {settings.slack.enabled}")
+        if settings.slack.enabled or show_all:
+            typer.echo(f"  Bot token: {'Set' if settings.slack.bot_token else 'Not set'}")
+            typer.echo(f"  App token: {'Set' if settings.slack.app_token else 'Not set'}")
+        
+    except Exception as e:
+        typer.echo(f"[FAIL] Failed to load configuration: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
-# Evals
+# Testing & Validation
 # ---------------------------------------------------------------------------
 
 
 @app.command()
-def evals(
-    path: str = typer.Argument(
-        default="evals",
-        help="Path to YAML file or directory (default: evals/)",
+def test(
+    fast: bool = typer.Option(
+        False,
+        "--fast",
+        "-f",
+        help="Skip connection test and evals (config validation only)",
     ),
-    tag: Optional[list[str]] = typer.Option(
-        None,
-        "--tag",
-        "-t",
-        help="Only run cases matching these tags (repeatable).",
+    no_connection: bool = typer.Option(
+        False,
+        "--no-connection",
+        help="Skip warehouse connection test",
+    ),
+    no_agent: bool = typer.Option(
+        False,
+        "--no-agent",
+        help="Skip agent initialization test",
+    ),
+    evals_only: bool = typer.Option(
+        False,
+        "--evals-only",
+        help="Skip validation, only run evals",
+    ),
+    pattern: str = typer.Option(
+        "*.yaml",
+        "--pattern",
+        "-p",
+        help="Glob pattern for eval files",
     ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
         "-v",
-        help="Show detailed output for each case.",
+        help="Show detailed results",
     ),
 ) -> None:
-    """Run YAML-based evaluation test cases.
+    """Test project configuration, semantic models, and agent behavior.
     
-    Examples:
-        # Run all evals
-        data-agent evals
-        
-        # Run evals from specific file
-        data-agent evals examples/evals/basic.yaml
-        
-        # Run only synonym tests
-        data-agent evals --tag synonyms
-        
-        # Verbose output
-        data-agent evals -v
+    Runs comprehensive validation:
+    1. Configuration validation (falk_project.yaml)
+    2. Semantic layer validation (BSL models)
+    3. Warehouse connection test (optional)
+    4. Agent initialization test (optional)
+    5. Evaluation test cases (if evals/ directory exists)
+    
+    Example:
+        falk test                    # Full test suite
+        falk test --fast             # Quick validation only
+        falk test --no-connection    # Skip connection test
+        falk test --evals-only       # Only run evals
+        falk test --verbose          # Detailed output
     """
-    p = Path(path)
-    if p.is_file():
-        cases = load_cases(p)
-    elif p.is_dir():
-        cases = discover_cases(p)
-    else:
-        typer.echo(f"❌ Path not found: {p}", err=True)
-        raise typer.Exit(code=1)
+    from falk.settings import load_settings
+    from falk.validation import validate_project
     
-    if not cases:
-        typer.echo(f"No eval cases found in {p}", err=True)
-        raise typer.Exit(code=1)
-
     try:
-        summary = run_evals(cases, verbose=verbose, tags=tag)
+        settings = load_settings()
+        project_root = settings.project_root
+        
+        # Skip validation if evals-only mode
+        if not evals_only:
+            typer.echo("Validating project...\n")
+            
+            # Run validation with appropriate flags
+            check_connection = not no_connection and not fast
+            check_agent = not no_agent and not fast
+            
+            validation = validate_project(
+                project_root=project_root,
+                check_connection=check_connection,
+                check_agent=check_agent,
+            )
+            
+            # Print validation results
+            for result in validation.results:
+                if result.passed:
+                    typer.echo(f"[PASS] {result.check_name}: {result.message}")
+                elif result.warning:
+                    typer.echo(f"[WARN] {result.check_name}: {result.message}")
+                else:
+                    typer.echo(f"[FAIL] {result.check_name}: {result.message}")
+                
+                if verbose and result.details:
+                    for detail in result.details:
+                        typer.echo(f"       {detail}")
+            
+            typer.echo("")
+            
+            # Show summary
+            passed_checks = len(validation.passed_checks)
+            failed_checks = len(validation.failed_checks)
+            warnings = len(validation.warnings)
+            total = len(validation.results)
+            
+            if not validation.passed:
+                typer.echo(f"[FAIL] Validation failed: {passed_checks}/{total} checks passed, {failed_checks} failed")
+                if warnings > 0:
+                    typer.echo(f"[WARN] {warnings} warning(s)")
+                raise typer.Exit(code=1)
+            
+            typer.echo(f"[PASS] Validation passed: {passed_checks}/{total} checks")
+            if warnings > 0:
+                typer.echo(f"[WARN] {warnings} warning(s)")
+            typer.echo("")
+            
+            # Exit early if fast mode
+            if fast:
+                typer.echo("[OK] Fast validation complete (skipped connection test and evals)")
+                return
+        
+        # Run evaluations (if evals directory exists)
+        evals_dir = project_root / "evals"
+        
+        if not evals_dir.exists():
+            if evals_only:
+                typer.echo(f"[FAIL] Evals directory not found: {evals_dir}", err=True)
+                typer.echo("       Create evals/ directory with YAML files", err=True)
+                raise typer.Exit(code=1)
+            else:
+                typer.echo("[INFO] No evals directory found (optional)")
+                typer.echo("       Create evals/ directory with test cases to enable behavior testing")
+                return
+        
+        typer.echo(f"Running evaluations from {evals_dir}\n")
+        
+        # Discover and load eval cases
+        cases = discover_cases(evals_dir)
+        if not cases:
+            if evals_only:
+                typer.echo(f"[FAIL] No eval cases found in {evals_dir}", err=True)
+                raise typer.Exit(code=1)
+            else:
+                typer.echo(f"[INFO] No eval cases found in {evals_dir}")
+                return
+        
+        typer.echo(f"Found {len(cases)} eval case(s)\n")
+        
+        # Run evaluations
+        summary = run_evals(cases, verbose=verbose)
+        
+        # Print results
+        typer.echo(f"\n[INFO] Eval Results: {summary.passed}/{summary.total} passed")
+        if summary.errors > 0:
+            typer.echo(f"[WARN] {summary.errors} error(s)")
+        typer.echo(f"[INFO] Duration: {summary.duration_s:.1f}s")
+        typer.echo(f"[OK] Pass rate: {summary.pass_rate:.1f}%")
+        
+        if verbose:
+            typer.echo("\nDetailed Results:")
+            for result in summary.results:
+                status = "[PASS]" if result.passed else "[FAIL]"
+                typer.echo(f"\n{status} {result.case.name}")
+                if result.error:
+                    typer.echo(f"       Error: {result.error}")
+                elif result.failures:
+                    typer.echo("       Failures:")
+                    for failure in result.failures:
+                        typer.echo(f"       - {failure}")
+        
+        # Exit with error if any tests failed
+        if summary.failed > 0 or summary.errors > 0:
+            typer.echo(f"\n[FAIL] Tests failed")
+            raise typer.Exit(code=1)
+        
+        typer.echo(f"\n[PASS] All tests passed")
+        
+    except typer.Exit:
+        raise
     except Exception as e:
-        from falk.evals.runner import _sanitize_error
-
-        typer.echo(_sanitize_error(str(e)), err=True)
-        raise typer.Exit(code=1)
-
-    if summary.failed or summary.errors:
+        typer.echo(f"\n[FAIL] Test failed: {e}", err=True)
+        if verbose:
+            import traceback
+            typer.echo(traceback.format_exc(), err=True)
         raise typer.Exit(code=1)
 
 
@@ -1425,50 +424,86 @@ def evals(
 
 
 @app.command()
+def mcp() -> None:
+    """Start the MCP (Model Context Protocol) server.
+    
+    The MCP server exposes falk's data agent tools so any MCP client
+    (Cursor, Claude Desktop, other Pydantic AI agents) can query governed metrics.
+    
+    The server uses stdio transport for compatibility with standard MCP clients.
+    
+    Example:
+        falk mcp
+    
+    To connect from Cursor, add to your MCP config:
+        {
+          "mcpServers": {
+            "falk": {
+              "command": "falk",
+              "args": ["mcp"],
+              "cwd": "/path/to/your/falk-project"
+            }
+          }
+        }
+    """
+    from falk.settings import load_settings
+    load_settings()  # Load .env from project root
+    
+    typer.echo("🔌 Starting falk MCP server...", err=True)
+    typer.echo("   Press Ctrl+C to stop", err=True)
+    typer.echo("", err=True)
+    
+    try:
+        from falk.mcp.server import run_server
+        run_server()
+    except KeyboardInterrupt:
+        typer.echo("\n[OK] MCP server stopped", err=True)
+    except Exception as e:
+        typer.echo(f"[FAIL] Failed to start MCP server: {e}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def chat(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        "-h",
+        help="Host to bind to",
+    ),
     port: int = typer.Option(
         8000,
         "--port",
         "-p",
-        help="Port to serve web UI on",
-    ),
-    reload: bool = typer.Option(
-        True,
-        "--reload/--no-reload",
-        help="Auto-reload on code changes",
+        help="Port to bind to",
     ),
 ) -> None:
-    """Start the web chat UI.
+    """Start the web UI chat interface.
     
-    Opens conversational web interface at http://localhost:8000
+    Opens a browser-based chat interface for querying metrics.
+    The web UI connects to the MCP server internally.
     
     Example:
         falk chat
-        falk chat --port 3000
-        falk chat --no-reload  # Production mode
+        falk chat --port 8080
     """
-    import subprocess
-
     from falk.settings import load_settings
-
-    settings = load_settings()
-    cwd = str(settings.project_root)
-
-    typer.echo(f"🌐 Starting web chat UI on http://localhost:{port}")
+    load_settings()  # Load .env from project root
+    
+    typer.echo("💬 Starting falk web UI...")
+    typer.echo(f"   URL: http://{host}:{port}")
     typer.echo("   Press Ctrl+C to stop")
     typer.echo("")
-
-    cmd = ["uvicorn", "falk.web:app", "--port", str(port), "--host", "0.0.0.0"]
-    if reload:
-        cmd.append("--reload")
-
+    
     try:
-        subprocess.run(cmd, check=True, cwd=cwd)
-    except subprocess.CalledProcessError as e:
-        typer.echo(f"❌ Failed to start web UI: {e}", err=True)
-        raise typer.Exit(code=1)
+        # Import and run the web app
+        from falk.pydantic_agent import build_web_app
+        import uvicorn
+        
+        app_instance = build_web_app()
+        uvicorn.run(app_instance, host=host, port=port, log_level="info")
     except KeyboardInterrupt:
-        typer.echo("\n✅ Web UI stopped")
+        typer.echo("\n[OK] Web UI stopped")
 
 
 @app.command()
@@ -1478,6 +513,8 @@ def slack() -> None:
     Requires environment variables:
     - SLACK_BOT_TOKEN
     - SLACK_APP_TOKEN
+    
+    The Slack bot connects to the MCP server internally.
     
     Example:
         falk slack
@@ -1490,12 +527,12 @@ def slack() -> None:
     
     # Check required env vars
     if not os.getenv("SLACK_BOT_TOKEN"):
-        typer.echo("❌ SLACK_BOT_TOKEN not set in environment", err=True)
+        typer.echo("[FAIL] SLACK_BOT_TOKEN not set in environment", err=True)
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
     
     if not os.getenv("SLACK_APP_TOKEN"):
-        typer.echo("❌ SLACK_APP_TOKEN not set in environment", err=True)
+        typer.echo("[FAIL] SLACK_APP_TOKEN not set in environment", err=True)
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
     
@@ -1506,10 +543,10 @@ def slack() -> None:
     try:
         subprocess.run([sys.executable, "-m", "app.slack"], check=True)
     except subprocess.CalledProcessError as e:
-        typer.echo(f"❌ Failed to start Slack bot: {e}", err=True)
+        typer.echo(f"[FAIL] Failed to start Slack bot: {e}", err=True)
         raise typer.Exit(code=1)
     except KeyboardInterrupt:
-        typer.echo("\n✅ Slack bot stopped")
+        typer.echo("\n[OK] Slack bot stopped")
 
 
 if __name__ == "__main__":

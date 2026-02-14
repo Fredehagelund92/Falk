@@ -30,8 +30,10 @@ agent:
   
   # Welcome message for new conversations
   welcome: |
-    👋 Hi! I can help you explore your data.
-    Try asking: "What's our revenue by region?"
+    Hi! I can help you explore your data.
+    Try asking:
+    - "What's our revenue by region?"
+    - "Show me top customers"
 ```
 
 ### `extensions` — Integrations

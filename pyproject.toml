@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "falk Contributors", email = "your-email@example.com"}
+    {name = "falk Contributors", email = "frederik.hagelund@gmail.com"}
 ]
 keywords = [
     "data",
@@ -66,14 +66,17 @@ dependencies = [
   "typer>=0.12.0",
   # Agent skills (bring your own skills)
   "pydantic-ai-skills>=0.4.0",
+  # MCP (Model Context Protocol) server via FastMCP
+  # Pinned to < 3 for stability (FastMCP 3.0 has breaking changes)
+  "fastmcp>=0.5.0,<3",
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/falk"
-Documentation = "https://yourusername.github.io/falk/"
-Repository = "https://github.com/yourusername/falk"
-Issues = "https://github.com/yourusername/falk/issues"
-Changelog = "https://github.com/yourusername/falk/releases"
+Homepage = "https://github.com/Fredehagelund92/Falk"
+Documentation = "https://fredehagelund92.github.io/Falk/"
+Repository = "https://github.com/Fredehagelund92/Falk"
+Issues = "https://github.com/Fredehagelund92/Falk/issues"
+Changelog = "https://github.com/Fredehagelund92/Falk/releases"
 
 [project.optional-dependencies]
 # Optional: Documentation site (only needed for building docs)
@@ -91,6 +94,9 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/falk", "app"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"src/falk/scaffold" = "falk/scaffold"
 
 [project.scripts]
 falk = "falk.cli:app"

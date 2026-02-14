@@ -57,13 +57,14 @@ def list_dimensions(ctx: RunContext[DataAgent]) -> dict[str, Any]:
     all_dims: list[dict[str, Any]] = []
     for model_name, model in ctx.deps.bsl_models.items():
         for dim_name, dim in model.get_dimensions().items():
+            display_name = ctx.deps.dimension_display_names.get((model_name, dim_name), "") or dim_name
             desc = ctx.deps.dimension_descriptions.get((model_name, dim_name), "") or ""
             dom = ctx.deps.dimension_domains.get((model_name, dim_name), "") or ""
             all_dims.append({
                 "name": dim_name,
+                "display_name": display_name,
                 "description": desc,
                 "domain": dom,
-                "type": "time" if getattr(dim, "is_time_dimension", False) else "categorical",
             })
     return {"dimensions": all_dims}
 
@@ -110,14 +111,18 @@ def describe_model(ctx: RunContext[DataAgent], name: str) -> dict[str, Any] | st
     }
 
 
-def _format_describe_dimension(name: str, description: str, domain: str, dim_type: str) -> str:
+def _format_describe_dimension(name: str, display_name: str, description: str, domain: str) -> str:
     """Format dimension description as prose."""
-    lead = f"**{name}**"
+    # Show technical name in parentheses only if display_name is different
+    if display_name != name:
+        lead = f"**{display_name}** (`{name}`)"
+    else:
+        lead = f"**{display_name}**"
+    
     if description:
         lead += f" — {description}"
-    lead += f". Type: {dim_type}."
     if domain:
-        lead += f" Domain: {domain}."
+        lead += f". Domain: {domain}"
     return lead
 
 
@@ -128,13 +133,14 @@ def describe_dimension(ctx: RunContext[DataAgent], name: str) -> str:
     for model_name, model in ctx.deps.bsl_models.items():
         for dim_name, dim in model.get_dimensions().items():
             if dim_name == name:
+                display_name = ctx.deps.dimension_display_names.get((model_name, dim_name), "") or dim_name
                 desc = ctx.deps.dimension_descriptions.get((model_name, dim_name), "") or ""
                 dom = ctx.deps.dimension_domains.get((model_name, dim_name), "") or ""
                 found = {
                     "name": dim_name,
+                    "display_name": display_name,
                     "description": desc,
                     "domain": dom,
-                    "type": "time" if getattr(dim, "is_time_dimension", False) else "categorical",
                 }
                 break
         if found:
@@ -142,7 +148,7 @@ def describe_dimension(ctx: RunContext[DataAgent], name: str) -> str:
     if not found:
         return f"Dimension '{name}' not found. Use list_dimensions to see available dimensions."
     return _format_describe_dimension(
-        found["name"], found["description"], found["domain"], found["type"]
+        found["name"], found["display_name"], found["description"], found["domain"]
     )
 
 

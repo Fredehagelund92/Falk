@@ -35,9 +35,10 @@ def create_example_database(db_path: Path) -> None:
             date DATE,
             product_category VARCHAR,
             region VARCHAR,
+            customer_segment VARCHAR,
+            customer_id VARCHAR,
             revenue DOUBLE,
-            orders INTEGER,
-            customers INTEGER
+            orders INTEGER
         )
     """)
 
@@ -45,29 +46,36 @@ def create_example_database(db_path: Path) -> None:
     start_date = date.today() - timedelta(days=90)
     categories = ['Electronics', 'Clothing', 'Home & Garden', 'Sports', 'Books']
     regions = ['US', 'EU', 'APAC', 'LATAM']
+    segments = ['Enterprise', 'SMB', 'Consumer']
     
     rows = []
+    customer_counter = 1000
+    
     for day_offset in range(90):
         current_date = start_date + timedelta(days=day_offset)
         
-        # Generate data for each category/region combination
+        # Generate data for each category/region/segment combination
         for category in categories:
             for region in regions:
-                # Add some randomness and trends
-                base_revenue = random.uniform(200, 2000)
-                # Weekend boost
-                if current_date.weekday() >= 5:
-                    base_revenue *= 1.3
-                
-                revenue = round(base_revenue, 2)
-                orders = max(1, int(revenue / random.uniform(50, 200)))
-                customers = max(1, int(orders * random.uniform(0.7, 0.95)))
-                
-                rows.append((current_date, category, region, revenue, orders, customers))
+                for segment in segments:
+                    # Add some randomness and trends
+                    base_revenue = random.uniform(100, 800)
+                    # Weekend boost
+                    if current_date.weekday() >= 5:
+                        base_revenue *= 1.3
+                    
+                    revenue = round(base_revenue, 2)
+                    orders = max(1, int(revenue / random.uniform(50, 200)))
+                    
+                    # Generate unique customer IDs
+                    customer_id = f"CUST_{customer_counter:05d}"
+                    customer_counter += 1
+                    
+                    rows.append((current_date, category, region, segment, customer_id, revenue, orders))
     
     # Insert all rows
     con.executemany(
-        "INSERT INTO sales_fact VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sales_fact VALUES (?, ?, ?, ?, ?, ?, ?)",
         rows
     )
     
@@ -77,9 +85,9 @@ def create_example_database(db_path: Path) -> None:
     con.execute("CREATE INDEX idx_region ON sales_fact(region)")
     
     con.close()
-    print(f"✓ Created example database at {db_path}")
-    print(f"  - {len(rows)} rows of sample data")
-    print(f"  - Date range: {start_date} to {date.today()}")
+    print(f"[OK] Created example database at {db_path}")
+    print(f"     {len(rows)} rows of sample data")
+    print(f"     Date range: {start_date} to {date.today()}")
 
 
 if __name__ == "__main__":

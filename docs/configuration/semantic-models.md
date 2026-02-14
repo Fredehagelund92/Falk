@@ -11,6 +11,7 @@ model_name:
   description: "What this model represents"
   dimensions:
     dimension_name:
+      display_name: "Dimension Name"  # business-friendly label (optional)
       expr: _.column_name           # ibis deferred expression
       description: "What this dimension means"
       is_time_dimension: true       # mark date/time columns
@@ -25,6 +26,31 @@ model_name:
       synonyms: ["alias1", "alias2"]  # optional: terms your team uses
       gotchas: "Known data quirk"    # optional: data quality warning
 ```
+
+## Display Names
+
+Use `display_name` to provide business-friendly labels for dimensions:
+
+```yaml
+dimensions:
+  customer_segment:
+    display_name: "Customer Segment"  # Shows as "Customer Segment" not "customer_segment"
+    expr: _.customer_segment
+    description: "Customer segment (Enterprise, SMB, Consumer)"
+  
+  product_category:
+    display_name: "Product Category"
+    expr: _.product_category
+    description: "Product category (Electronics, Clothing, etc.)"
+```
+
+**Best practice:** Always add `display_name` as the first property (before `expr`) for readability.
+
+**How it appears:**
+- With `display_name`: **"Customer Segment"** (`customer_segment`)
+- Without `display_name`: **"customer_segment"**
+
+The technical name is still used for SQL queries, but users see the friendly label.
 
 ## Synonyms
 
@@ -62,11 +88,13 @@ sales_metrics:
 
   dimensions:
     date:
+      display_name: "Date"
       expr: _.date
       description: "Transaction date"
       is_time_dimension: true
 
     region:
+      display_name: "Region"
       expr: _.region
       description: "Sales region (US, EU, APAC, LATAM)"
       synonyms: ["territory", "area", "market"]

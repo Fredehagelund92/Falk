@@ -343,6 +343,12 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
     # Format reply and update the Thinking message (or post new if update fails)
     reply_formatted = _markdown_to_mrkdwn(reply)
     reply_formatted = _strip_file_paths(reply_formatted)
+    
+    # Tag user in public channels/mentions (not in DMs or slash commands without thread)
+    # Only tag if we're in a thread (thread_ts) which indicates a channel conversation
+    if user_id and channel and thread_ts:
+        reply_formatted = f"<@{user_id}> {reply_formatted}"
+    
     blocks = _build_slack_blocks(reply_formatted)
 
     try:

@@ -23,7 +23,7 @@ LangFuse provides full observability, cost tracking, and evaluation for your dat
 
 **Option B: Self-hosted**
 - Deploy LangFuse on your infrastructure
-- Set `LANGFUSE_HOST` to your instance URL
+- Set `LANGFUSE_BASE_URL` to your instance URL
 
 ### 2. Configure Environment
 
@@ -32,7 +32,7 @@ Add to your `.env` file:
 ```bash
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_PUBLIC_KEY=pk-lf-...
-LANGFUSE_HOST=https://cloud.langfuse.com  # Optional, defaults to cloud
+LANGFUSE_BASE_URL=https://cloud.langfuse.com  # Optional, defaults to cloud
 ```
 
 ### 3. Install Dependencies
@@ -116,7 +116,7 @@ This makes LangFuse **opt-in** — you can use the agent without it, and add it 
 ### "Failed to initialize LangFuse"
 
 - Check your `LANGFUSE_SECRET_KEY` and `LANGFUSE_PUBLIC_KEY`
-- Verify `LANGFUSE_HOST` is correct (if self-hosting)
+- Verify `LANGFUSE_BASE_URL` is correct (if self-hosting)
 - Check network connectivity to LangFuse
 
 ### No traces appearing

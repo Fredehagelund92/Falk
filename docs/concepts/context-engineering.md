@@ -338,7 +338,7 @@ models:
 ### 4. Test
 
 ```bash
-falk sync
+falk test --fast
 falk query ltv
 falk query ltv --group-by customer_segment
 ```

@@ -9,12 +9,7 @@ build/
 # Secrets
 .env
 
-# User-generated config (created via falk init)
-config/
-
 # Local data (user-specific, runtime)
-# Note: data/ contains runtime databases, not example/test data
-# See examples/ for example files
 data/
 !data/.gitkeep
 !data/README.md

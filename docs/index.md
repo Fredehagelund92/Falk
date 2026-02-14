@@ -25,15 +25,16 @@ sales_metrics:
 ## What you get
 
 - **Governed access** — only approved metrics and dimensions, not raw tables
+- **MCP server** — standard protocol for AI tools (Cursor, Claude Desktop, any MCP client)
 - **Consistent numbers** — same calculation as your BI layer
 - **Business context** — synonyms, gotchas, and rules built into the schema
 - **Automatic root cause** — ask "why did revenue increase?" and get a real answer
-- **Multi-interface** — Slack, CLI, web UI, agent skills — same data everywhere
+- **Multi-interface** — MCP server, Slack, web UI — same data everywhere
 
 ## Quick start
 
 ```bash
-git clone https://github.com/yourusername/falk.git
+git clone https://github.com/Fredehagelund92/Falk.git
 cd falk && uv venv && uv sync
 
 falk init my-project
@@ -42,10 +43,17 @@ cd my-project
 # Add your API key
 cp .env.example .env  # edit: OPENAI_API_KEY=sk-...
 
-# Start querying
-falk query revenue --group-by region
-falk decompose revenue --period month
-falk chat   # web UI on localhost:8000
+# Validate configuration
+falk test --fast
+
+# Start MCP server (connect from Cursor, Claude Desktop)
+falk mcp
+
+# OR start web UI
+falk chat   # localhost:8000
+
+# OR start Slack bot
+falk slack
 ```
 
 ## Learn more
@@ -57,3 +65,15 @@ falk chat   # web UI on localhost:8000
 | [Semantic Models](configuration/semantic-models.md) | Define your metrics |
 | [CLI Reference](cli-reference.md) | All commands |
 | [Metric Decomposition](concepts/metric-decomposition.md) | Automatic root cause analysis |
+
+---
+
+## Inspiration & Credits
+
+falk was inspired by excellent work in the data agent space:
+
+- **[OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/)** — Pioneered grounded metric decomposition and root cause analysis for data agents
+- **[nao](https://github.com/getnao/nao)** — Context engineering patterns and agent reliability testing
+- **[dash](https://github.com/agno-agi/dash)** — Self-learning from feedback and six layers of context
+
+We're grateful to these projects for showing what's possible with well-designed data agents.

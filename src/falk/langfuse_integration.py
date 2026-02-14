@@ -38,7 +38,7 @@ def get_langfuse_client():
 
     secret_key = os.getenv("LANGFUSE_SECRET_KEY", "").strip()
     public_key = os.getenv("LANGFUSE_PUBLIC_KEY", "").strip()
-    host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com").strip()
+    host = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com").strip()
 
     if not secret_key or not public_key:
         logger.debug("LangFuse not configured (LANGFUSE_SECRET_KEY or LANGFUSE_PUBLIC_KEY not set)")

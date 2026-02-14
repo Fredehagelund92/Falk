@@ -1,0 +1,48 @@
+# Cursor MCP Configuration for falk
+
+You can connect falk as an MCP server to access governed data queries.
+
+## Setup
+
+1. Start the falk MCP server in your project:
+   ```bash
+   cd /path/to/your/falk-project
+   falk mcp
+   ```
+
+2. Add to Cursor's MCP configuration:
+   ```json
+   {
+     "mcpServers": {
+       "falk": {
+         "command": "falk",
+         "args": ["mcp"],
+         "cwd": "/absolute/path/to/your/falk-project"
+       }
+     }
+   }
+   ```
+
+3. Restart Cursor to load the MCP server
+
+## Available Tools
+
+- `list_metrics` — List all available metrics
+- `list_dimensions` — List all available dimensions
+- `query_metric` — Query metrics with filtering and grouping
+- `decompose_metric` — Root cause analysis (why did X change?)
+- `compare_periods` — Compare time periods
+- `generate_chart` — Create visualizations
+- Plus more...
+
+## Example Queries
+
+Ask Cursor natural questions about your data:
+
+- "What metrics are available?"
+- "Show revenue by region last month"
+- "Why did sales increase this quarter?"
+- "Compare this month vs last month for revenue"
+- "What are the top 10 customers by revenue?"
+
+All queries go through your semantic layer with governed metrics.

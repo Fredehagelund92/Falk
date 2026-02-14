@@ -17,134 +17,6 @@ Creates: `RULES.md`, `knowledge/`, `semantic_models.yaml`, `falk_project.yaml`, 
 
 ---
 
-## `falk sync`
-
-Validate configuration.
-
-```bash
-falk sync
-falk sync --verbose
-```
-
-Checks project root, config files, semantic models, database, and skills (if enabled).
-
----
-
-## `falk query`
-
-Query a metric from the warehouse.
-
-```bash
-falk query revenue
-falk query revenue -g region
-falk query revenue -g region -f region=US --order desc --limit 10
-falk query revenue --json
-```
-
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--group-by` | `-g` | Group by dimensions |
-| `--filter` | `-f` | Filter as `dim=value` |
-| `--time-grain` | `-t` | `day`, `week`, `month`, `quarter`, `year` |
-| `--order` | | `asc` or `desc` by metric |
-| `--limit` | `-n` | Max rows |
-| `--json` | | JSON output |
-
----
-
-## `falk decompose`
-
-Root cause analysis — explain *why* a metric changed.
-
-```bash
-falk decompose revenue
-falk decompose revenue --period month
-falk decompose revenue --filter "region=North America"
-falk decompose revenue --json
-```
-
-| Option | Description |
-|--------|-------------|
-| `--period` | `week`, `month`, or `quarter` (default: `month`) |
-| `--filter` | Filter as `dim=value` |
-| `--json` | JSON output |
-
----
-
-## `falk lookup`
-
-Fuzzy-search dimension values.
-
-```bash
-falk lookup customer_name --search "acme"
-falk lookup region --json
-```
-
----
-
-## `falk compare`
-
-Compare a metric across periods.
-
-```bash
-falk compare revenue --period month
-falk compare revenue --period week --filter "region=US"
-```
-
----
-
-## `falk export`
-
-Export query results to file.
-
-```bash
-falk export revenue -g region -o revenue.csv
-falk export revenue -g region -o revenue.json
-```
-
-Format is inferred from the file extension.
-
----
-
-## `falk metrics list`
-
-List all available metrics.
-
-```bash
-falk metrics list
-falk metrics list --json
-```
-
-## `falk metrics describe`
-
-Get details about a specific metric.
-
-```bash
-falk metrics describe revenue
-falk metrics describe revenue --json
-```
-
----
-
-## `falk dimensions list`
-
-List all available dimensions.
-
-```bash
-falk dimensions list
-falk dimensions list --json
-```
-
-## `falk dimensions describe`
-
-Get details about a specific dimension.
-
-```bash
-falk dimensions describe region
-```
-
----
-
 ## `falk config`
 
 Show current configuration.
@@ -156,14 +28,41 @@ falk config --json
 
 ---
 
-## `falk evals`
+## `falk test`
 
-Run evaluation test cases.
+Validate project configuration, semantic models, and run test cases.
 
 ```bash
-falk evals evals/basic.yaml
-falk evals evals/ --json
+falk test                    # Full test suite
+falk test --fast             # Quick validation only
+falk test --no-connection    # Skip connection test
+falk test --evals-only       # Only run evals
+falk test --verbose          # Detailed output
 ```
+
+**Validation phases:**
+1. Configuration validation (falk_project.yaml)
+2. Semantic layer validation (BSL models)
+3. Warehouse connection test (optional)
+4. Agent initialization test (optional)
+5. Evaluation test cases (if evals/ exists)
+
+---
+
+## `falk mcp`
+
+Start the MCP server.
+
+```bash
+falk mcp
+```
+
+Exposes tools via Model Context Protocol for use with:
+- Cursor
+- Claude Desktop
+- Any MCP-compatible client
+
+See [MCP Guide](getting-started/mcp.md) for setup instructions.
 
 ---
 

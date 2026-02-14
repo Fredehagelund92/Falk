@@ -1,10 +1,18 @@
-# Evaluation Framework
+# Testing & Validation
 
-Test that your agent gives correct answers — and catch regressions when you change config.
+Validate your project configuration, semantic models, and test that your agent gives correct answers.
 
-## Why evaluate?
+## What does `falk test` do?
 
-Every time you update `semantic_models.yaml`, `RULES.md`, or context files, the agent's behavior can change. Evals make sure it still answers correctly.
+The test command runs comprehensive validation:
+
+1. **Configuration validation** - Checks `falk_project.yaml` structure and required fields
+2. **Semantic layer validation** - Validates BSL models for errors, duplicates, missing fields
+3. **Connection test** - Verifies warehouse connectivity (optional with `--no-connection`)
+4. **Agent initialization** - Ensures agent can be built with current config
+5. **Evaluation test cases** - Runs behavior tests from `evals/` directory (if present)
+
+Every time you update `semantic_models.yaml`, `RULES.md`, or context files, run `falk test` to catch issues early.
 
 ## Test cases (YAML)
 
@@ -37,14 +45,17 @@ Each test case specifies:
 ## Running evals
 
 ```bash
-# Run a specific file
-falk evals evals/basic.yaml
+# Full test suite (validation + evals)
+falk test
 
-# Run all evals in a directory
-falk evals evals/
+# Quick validation only (no connection test, no evals)
+falk test --fast
 
-# JSON output (for CI)
-falk evals evals/ --json
+# Only run evals (skip validation)
+falk test --evals-only
+
+# Verbose output
+falk test --verbose
 ```
 
 ## Writing good test cases
@@ -113,7 +124,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -e .
-      - run: falk evals evals/ --json
+      - run: falk test --verbose
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```

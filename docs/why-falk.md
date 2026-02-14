@@ -55,7 +55,7 @@ Because falk understands metrics and dimensions from the semantic layer, it can:
 
 We wanted something that works well in many contexts:
 
-- CLI for skills, CI, automation (`falk query`, `falk decompose`, `falk sync`)
+- CLI for project management and testing (`falk init`, `falk test`)
 - Pydantic‑AI agent for conversational interfaces (Slack, web)
 - Clear JSON outputs so other agents/orchestrators can treat falk as a **governed data tool**
 
@@ -79,6 +79,20 @@ falk is built for teams that:
 - Want agents/skills that can safely answer data questions
 
 If you just want to let a model explore every table freely, falk is probably not the right choice. If you want **governed AI access to trusted metrics**, that’s exactly what falk is for.
+
+---
+
+## Inspiration & Credits
+
+falk was inspired by excellent work in the data agent space:
+
+- **[OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/)** — Pioneered grounded metric decomposition and root cause analysis. Their approach to breaking down metric changes across dimensions and derived metrics heavily influenced falk's decomposition engine.
+
+- **[nao](https://github.com/getnao/nao)** — Demonstrated the power of context engineering with file-system based context, unit testing for agent reliability, and the importance of versioning agent behavior. Their approach to organizing business context in structured files influenced falk's `knowledge/` and `RULES.md` design.
+
+- **[dash](https://github.com/agno-agi/dash)** — Showed how agents can learn from errors through "6 layers of context" and a feedback loop that captures learnings without retraining. Their focus on self-improvement influenced falk's evaluation framework and feedback collection.
+
+We're grateful to these projects for pushing the boundaries of what data agents can do.
 
 ---
 

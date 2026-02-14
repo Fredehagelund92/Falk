@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/yourusername/falk.git
+git clone https://github.com/Fredehagelund92/Falk.git
 cd falk
 uv venv
 uv sync --extra dev

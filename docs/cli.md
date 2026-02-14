@@ -1,70 +1,60 @@
 # CLI Overview
 
-The `falk` CLI is the primary interface for querying, exploring, and running falk.
+The `falk` CLI manages projects, runs tests, and starts servers.
 
-Use `--json` on most commands to get machine-readable output for agent skills and automation.
+**For data queries and agent interactions**, use:
+- **MCP server** (`falk mcp`) - Connect from Cursor, Claude Desktop, or any MCP client
+- **Web UI** (`falk chat`) - Interactive web interface
+- **Slack bot** (`falk slack`) - Team collaboration
 
 ## Getting started
 
 ```bash
-# After installing (pip install -e . or uv sync)
-falk --help
+# After installing
+pip install falk
+
+# Or from source
+git clone https://github.com/Fredehagelund92/Falk.git
+cd Falk
+uv sync
 ```
 
 ## Commands
 
-### Data
+### Project Management
 
 | Command | What it does |
 |---------|-------------|
-| `falk query` | Query a metric from the warehouse |
-| `falk decompose` | Root cause analysis — explain *why* a metric changed |
-| `falk lookup` | Fuzzy-search dimension values |
-| `falk compare` | Compare metrics across periods |
-| `falk export` | Export results to CSV or JSON |
-
-### Discovery
-
-| Command | What it does |
-|---------|-------------|
-| `falk metrics list` | List all available metrics |
-| `falk metrics describe` | Get details about a specific metric |
-| `falk dimensions list` | List all available dimensions |
-| `falk dimensions describe` | Get details about a specific dimension |
-| `falk config` | Show current configuration |
-
-### Project
-
-| Command | What it does |
-|---------|-------------|
-| `falk init` | Scaffold a new falk project |
-| `falk sync` | Validate configuration |
-| `falk evals` | Run evaluation test cases |
+| `falk init` | Create a new project with sample data |
+| `falk test` | Validate configuration and run tests |
+| `falk config` | Show current project configuration |
 
 ### Servers
 
 | Command | What it does |
 |---------|-------------|
-| `falk chat` | Start the web UI (default: port 8000) |
-| `falk slack` | Start the Slack bot |
+| `falk mcp` | Start MCP server (for Cursor, Claude Desktop) |
+| `falk chat` | Start web UI (default: port 8000) |
+| `falk slack` | Start Slack bot |
 
 ## Examples
 
 ```bash
-# Query revenue grouped by region
-falk query revenue -g region --order desc --limit 10
+# Create a new project
+falk init my-project
+cd my-project
 
-# Why did revenue change?
-falk decompose revenue --period month
+# Validate configuration
+falk test --fast
 
-# Machine-readable output
-falk query revenue -g region --json
+# Start MCP server (connect from Cursor)
+falk mcp
 
-# Start the web UI
+# Or start web UI for interactive queries
 falk chat
 
-# Validate everything works
-falk sync
+# Or start Slack bot for team collaboration
+falk slack
 ```
 
 For full details on every command and option, see the [CLI Reference](cli-reference.md).

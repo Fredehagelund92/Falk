@@ -4,6 +4,11 @@
 
 version: 1
 
+# Project Metadata
+project:
+  name: my-falk-project
+  description: AI-powered data agent for metric queries
+
 # Database Connection (inline — no separate profiles file)
 connection:
   type: duckdb
@@ -39,8 +44,10 @@ agent:
   
   # Welcome Message
   welcome: |
-    👋 Hi! I can help you explore your data.
-    Try asking: "What's our revenue by region?" or "Show me top customers"
+    Hi! I can help you explore your data.
+    Try asking:
+    - "What's our revenue by region?"
+    - "Show me top customers"
 
 # Extensions - Pluggable integrations
 extensions:

@@ -45,6 +45,7 @@ nav:
   - Getting Started:
       - Quick Start: getting-started/quickstart.md
       - Installation: getting-started/installation.md
+      - MCP Server: getting-started/mcp.md
       - CLI Overview: cli.md
   - Concepts:
       - How It Works: concepts/how-it-works.md
@@ -66,5 +67,7 @@ nav:
       - Agent Skills: concepts/agent-skills.md
       - Evaluation: concepts/evals.md
       - Knowledge & Feedback: concepts/learning.md
-  - CLI Reference: cli-reference.md
+  - Reference:
+      - CLI Commands: cli-reference.md
+      - WHERE Clause Syntax: reference/where-syntax.md
   - Contributing: contributing.md

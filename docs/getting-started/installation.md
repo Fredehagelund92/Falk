@@ -10,7 +10,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/falk.git
+git clone https://github.com/Fredehagelund92/Falk.git
 cd falk
 
 # Set up virtual environment
@@ -43,7 +43,7 @@ cp .env.example .env
 # Edit .env: OPENAI_API_KEY=sk-...
 
 # Validate
-falk sync
+falk test --fast
 
 # Query
 falk metrics list
@@ -75,7 +75,7 @@ For production monitoring, add LangFuse:
 # .env
 LANGFUSE_PUBLIC_KEY=pk-...
 LANGFUSE_SECRET_KEY=sk-...
-LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
 ```
 
 All queries, LLM calls, and user feedback will be traced automatically.

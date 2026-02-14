@@ -21,7 +21,7 @@ Features → **Slash Commands** → **Create New Command**:
 | Field | Value |
 |-------|-------|
 | Command | `/falk` |
-| Request URL | `https://example.com` (Socket Mode uses websocket; URL not called) |
+| Request URL | `https://fredehagelund92.github.io` (Socket Mode uses websocket; URL not called) |
 | Short Description | Query your data |
 
 ### 4. Subscribe to events

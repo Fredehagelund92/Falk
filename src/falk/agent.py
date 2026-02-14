@@ -136,6 +136,9 @@ def _load_bsl_models(
     # BSL also doesn't pass dimension descriptions through, so we store them
     # separately: {(model_name, dimension_name): description}
     dimension_descriptions: dict[tuple[str, str], str] = {}
+    # Display names for business-friendly labels
+    # {(model_name, dimension_name): display_name}
+    dimension_display_names: dict[tuple[str, str], str] = {}
     # Also store custom metadata like data_domain
     dimension_domains: dict[tuple[str, str], str] = {}
     # Synonyms — optional aliases for metrics and dimensions
@@ -158,6 +161,9 @@ def _load_bsl_models(
                 desc = str(dim_cfg.get("description") or "")
                 if desc:
                     dimension_descriptions[(model_name, dim_name)] = desc
+                display_name = str(dim_cfg.get("display_name") or "").strip()
+                if display_name:
+                    dimension_display_names[(model_name, dim_name)] = display_name
                 domain = str(dim_cfg.get("data_domain") or "").strip()
                 if domain:
                     dimension_domains[(model_name, dim_name)] = domain
@@ -193,6 +199,7 @@ def _load_bsl_models(
         models,
         model_descriptions,
         dimension_descriptions,
+        dimension_display_names,
         dimension_domains,
         metric_synonyms,
         dimension_synonyms,
@@ -237,6 +244,7 @@ class DataAgent:
             self._bsl_models,
             self._model_descriptions,
             self._dimension_descriptions,
+            self._dimension_display_names,
             self._dimension_domains,
             self._metric_synonyms,
             self._dimension_synonyms,
@@ -272,6 +280,16 @@ class DataAgent:
         BSL doesn't pass dimension descriptions through, so we store them separately.
         """
         return self._dimension_descriptions
+
+    @property
+    def dimension_display_names(self) -> dict[tuple[str, str], str]:
+        """Business-friendly display names for dimensions.
+
+        Keyed by ``(model_name, dimension_name)`` tuples.
+        Example: ``{("sales_metrics", "customer_segment"): "Customer Segment"}``
+        Falls back to snake_case name if not specified.
+        """
+        return self._dimension_display_names
 
     @property
     def dimension_domains(self) -> dict[tuple[str, str], str]:

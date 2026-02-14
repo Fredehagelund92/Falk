@@ -66,7 +66,7 @@ Updates config/context files → agent improves
 2. **Understand why** — see the full trace (query → tools → response)
 3. **Fix the source** — update synonyms, gotchas, rules, or context
 4. **Write a test** — add a case to `evals/` to prevent regression
-5. **Verify** — `falk evals evals/`
+5. **Verify** — `falk test`
 
 ## Everything is files
 

@@ -1,29 +1,29 @@
-"""falk — semantic-metric data agent library (BSL + DuckDB).
+"""falk — semantic-metric data agent library.
 
-File guide
-----------
+Core modules
+------------
 settings.py           Configuration (env vars, paths)
-agent.py              DataAgent core (BSL models from YAML + metric listing)
+agent.py              DataAgent core (BSL models + metric listing)
 prompt.py             System-prompt template + auto-generation from BSL metadata
-pydantic_agent.py     Pydantic AI Agent with tool definitions (main entry point)
-feedback.py           Emoji-reaction feedback collection (LangFuse)
-langfuse_integration.py  LangFuse observability and tracing (optional)
-tools/warehouse.py    BSL-backed query execution
-tools/semantic.py     Semantic-model info lookups (from BSL models)
-tools/calculations.py Analytics helpers (shares, deltas, date ranges)
-tools/charts.py       Plotly chart generation
+pydantic_agent.py     Pydantic AI Agent with tool definitions
+feedback.py           Feedback collection (Slack → LangFuse)
+langfuse_integration.py  LangFuse observability and tracing
+cli.py                Project management CLI
+validation.py         Project validation and testing
+mcp/                  MCP server (FastMCP) for external clients
+tools/                Core functionality (warehouse, semantic, charts, calculations)
+evals/                Test framework for agent validation
 
-Entry points (app/ — thin wrappers, not part of the library)
--------------------------------------------------------------
-app/web.py            Local web UI (Pydantic AI built-in, uvicorn)
-app/slack.py          Slack bot (socket mode) — primary production interface
-app/mcp_server.py     MCP server for exploring agent configuration
+Application interfaces (app/ — thin wrappers)
+----------------------------------------------
+app/web.py            Local web UI (Pydantic AI built-in)
+app/slack.py          Slack bot (socket mode)
 
 Public API
 ----------
-- ``DataAgent``    — core class (no LLM, just BSL models + metrics)
-- ``build_agent``  — Pydantic AI Agent wired to DataAgent (requires ``pydantic-ai``)
-- ``build_web_app`` — ASGI app via ``Agent.to_web()`` for local testing
+- ``DataAgent``    — core class (BSL models + metrics)
+- ``build_agent``  — Pydantic AI Agent wired to DataAgent
+- ``build_web_app`` — ASGI app for local testing
 """
 
 from falk.agent import DataAgent

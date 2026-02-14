@@ -5,7 +5,7 @@ Get a working falk project in under 5 minutes.
 ## 1. Install
 
 ```bash
-git clone https://github.com/yourusername/falk.git
+git clone https://github.com/Fredehagelund92/Falk.git
 cd falk
 uv venv && uv sync
 ```
@@ -48,7 +48,7 @@ cp .env.example .env
 ## 4. Verify
 
 ```bash
-falk sync
+falk test --fast
 ```
 
 ```text

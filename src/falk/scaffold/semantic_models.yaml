@@ -1,0 +1,61 @@
+# Semantic Models (Boring Semantic Layer format)
+# Define your metrics and dimensions here
+# See: https://docs.boringsemantic.com
+
+semantic_models:
+  - name: sales_metrics
+    model: sales_fact
+    description: "E-commerce sales data with revenue, orders, and customer metrics"
+    
+    dimensions:
+      - name: date
+        display_name: "Date"
+        type: time
+        expr: date
+        description: "Transaction date"
+        
+      - name: product_category
+        display_name: "Product Category"
+        type: categorical
+        expr: product_category
+        description: "Product category (Electronics, Clothing, etc.)"
+        synonyms: ["category", "product type"]
+        
+      - name: region
+        display_name: "Region"
+        type: categorical
+        expr: region
+        description: "Sales region (US, EU, APAC, LATAM)"
+        synonyms: ["territory", "area", "market"]
+        
+      - name: customer_segment
+        display_name: "Customer Segment"
+        type: categorical
+        expr: customer_segment
+        description: "Customer segment (Enterprise, SMB, Consumer)"
+        synonyms: ["segment", "customer type"]
+    
+    metrics:
+      - name: revenue
+        type: sum
+        expr: revenue
+        description: "Total revenue in USD"
+        synonyms: ["sales", "income", "turnover"]
+        
+      - name: orders
+        type: sum
+        expr: orders
+        description: "Total number of orders"
+        synonyms: ["transactions", "purchases"]
+        
+      - name: average_order_value
+        type: derived
+        expr: "revenue / orders"
+        description: "Average revenue per order"
+        synonyms: ["aov", "avg order size", "basket size"]
+        
+      - name: customers
+        type: count_distinct
+        expr: customer_id
+        description: "Number of unique customers"
+        synonyms: ["users", "buyers", "unique customers"]
