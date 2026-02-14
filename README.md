@@ -1,6 +1,7 @@
-# falk
+<img height="150" alt="falk_logo" src="https://github.com/user-attachments/assets/fbe218ea-8730-452a-9ccc-b740afca8120" />
 
-> **Governed AI access to your data warehouse, powered by semantic layers.**
+
+*Governed AI access to your data warehouse, powered by semantic layers.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
