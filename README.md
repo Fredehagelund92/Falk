@@ -1,4 +1,4 @@
-<img height="150" alt="falk_logo" src="https://github.com/user-attachments/assets/fbe218ea-8730-452a-9ccc-b740afca8120" />
+<img height="150" alt="tt" src="https://github.com/user-attachments/assets/ab3b7519-06a6-4ddd-9c2c-aa707daed224" />
 
 
 *Governed AI access to your data warehouse, powered by semantic layers.*
