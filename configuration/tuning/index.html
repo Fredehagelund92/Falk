@@ -1307,6 +1307,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#6-tool-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Tool loops
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1383,7 +1394,11 @@
 </ul>
 <h3 id="5-timeouts-query-took-too-long">5. Timeouts ("query took too long")</h3>
 <ul>
-<li><strong>Model vs query:</strong> <code>advanced.model_timeout_seconds</code> limits how long the LLM has to respond (single turn). <code>advanced.query_timeout_seconds</code> limits each tool call (e.g. warehouse query). If you see "query took too long," increase the one that is actually slow: use a higher <code>model_timeout_seconds</code> for slow/reasoning models, or a higher <code>query_timeout_seconds</code> for heavy or slow warehouse queries.</li>
+<li><strong>Model vs query vs Slack:</strong> <code>advanced.model_timeout_seconds</code> limits how long the LLM has to respond (single turn). <code>advanced.query_timeout_seconds</code> limits each tool call (e.g. warehouse query). <code>advanced.slack_run_timeout_seconds</code> is the outer timeout for a whole Slack run (model + tools). If you see "query took too long," check which layer is slow: raise <code>model_timeout_seconds</code> for slow/reasoning models, <code>query_timeout_seconds</code> for heavy or slow warehouse queries, or <code>slack_run_timeout_seconds</code> if the whole Slack request needs more time.</li>
+</ul>
+<h3 id="6-tool-loops">6. Tool loops</h3>
+<ul>
+<li>If the agent seems to \"get stuck\" repeatedly calling tools instead of answering, lower <code>advanced.tool_calls_limit</code> and/or <code>advanced.request_limit</code>. The system prompt also instructs the model to answer once it has data from <code>query_metric</code> instead of re-querying.\n*** End Patch```}"/&gt;</li>
 </ul>
 <h2 id="order-of-operations">Order of operations</h2>
 <p>A practical order:</p>

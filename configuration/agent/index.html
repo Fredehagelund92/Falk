@@ -1621,8 +1621,11 @@ and runtime limits.</p>
 <ul>
 <li><code>max_tokens</code>, <code>temperature</code>, <code>model_timeout_seconds</code>, and <code>max_retries</code> are applied to model execution (LLM request timeout).</li>
 <li><code>query_timeout_seconds</code> is the timeout for tool execution (e.g. warehouse queries); tune it separately from <code>model_timeout_seconds</code> if you see "query took too long" from slow DB vs slow model.</li>
+<li><code>slack_run_timeout_seconds</code> is the timeout for a whole Slack run (model + tools), used by the Slack bot's outer <code>future.result(timeout=...)</code>.</li>
+<li><code>tool_calls_limit</code> is the maximum number of tool calls allowed per run; lower values stop tool loops sooner.</li>
+<li><code>request_limit</code> is the maximum number of LLM turns per run.</li>
 <li><code>max_rows_per_query</code> and retry settings are enforced in warehouse query execution.</li>
-<li><code>log_level</code> and both timeout settings are applied in Slack runtime behavior.</li>
+<li><code>log_level</code> and timeout settings are applied in Slack runtime behavior.</li>
 <li><code>auto_run</code> is reserved for future use.</li>
 </ul>
 <h3 id="session"><code>session</code></h3>
