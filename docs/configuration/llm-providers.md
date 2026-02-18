@@ -6,28 +6,21 @@ falk supports multiple LLM providers through Pydantic AI. Choose the provider th
 
 | Provider | Model Format | API Key Env Var | Example Models |
 |---|---|---|---|
-| **OpenAI** | `openai:MODEL` | `OPENAI_API_KEY` | `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo` |
+| **OpenAI** | `openai:MODEL` | `OPENAI_API_KEY` | `gpt-5-mini`, `gpt-5`, `gpt-5.2` |
 | **Anthropic** | `anthropic:MODEL` | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022`, `claude-3-opus`, `claude-3-haiku` |
 | **Google** | `google-genai:MODEL` | `GOOGLE_API_KEY` | `gemini-1.5-pro`, `gemini-1.5-flash`, `gemini-pro` |
 
 ## Configuration
 
-### 1. Set Your Model
+### 1. Set Provider and Model
 
-Use the `LLM_MODEL` environment variable:
+Set `agent.provider` and `agent.model` in `falk_project.yaml`:
 
-```bash
-# OpenAI (default)
-LLM_MODEL=gpt-4o-mini
-
-# Anthropic Claude
-LLM_MODEL=anthropic:claude-3-5-sonnet-20241022
-
-# Google Gemini
-LLM_MODEL=google-genai:gemini-1.5-pro
+```yaml
+agent:
+  provider: openai   # openai, anthropic, gemini, mistral
+  model: gpt-5-mini  # or gpt-5.2, claude-3-5-sonnet-20241022, gemini-1.5-pro, etc.
 ```
-
-**Note:** If the model string already includes the provider prefix (e.g., `anthropic:claude-3-5-sonnet`), use it as-is. Otherwise, it defaults to OpenAI.
 
 ### 2. Set Your API Key
 
@@ -47,17 +40,17 @@ GOOGLE_API_KEY=...
 ## Model Selection Guide
 
 **Cost-effective:**
-- OpenAI: `gpt-4o-mini`
+- OpenAI: `gpt-5-mini`
 - Anthropic: `claude-3-haiku`
 - Google: `gemini-1.5-flash`
 
 **Balanced:**
-- OpenAI: `gpt-4o`
+- OpenAI: `gpt-5`
 - Anthropic: `claude-3-5-sonnet`
 - Google: `gemini-1.5-pro`
 
 **Best quality:**
-- OpenAI: `gpt-4-turbo`
+- OpenAI: `gpt-5.2`
 - Anthropic: `claude-3-opus`
 - Google: `gemini-1.5-pro` (latest)
 

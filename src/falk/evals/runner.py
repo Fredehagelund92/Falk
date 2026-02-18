@@ -226,6 +226,14 @@ def _run_single(agent: Any, case: EvalCase, deps: DataAgent) -> EvalResult:
                         f"but only saw: {tool_calls or ['(none)']}"
                     )
 
+        # Agent must call a tool unless it correctly says "outside my capabilities" or case allows no tool
+        if not tool_calls and not skip_tool_checks and not case.allow_no_tool:
+            outside_ok = "outside my capabilities" in response_lower
+            if not outside_ok:
+                failures.append(
+                    "Agent must call a tool to answer (or respond 'This request is outside my capabilities'). Saw 0 tool calls."
+                )
+
         # Check response contains expected substrings
         for needle in case.expect_contains:
             if needle.lower() not in response_lower:
@@ -249,9 +257,9 @@ def _run_single(agent: Any, case: EvalCase, deps: DataAgent) -> EvalResult:
         # Check metric/group_by/filters in tool calls (unless skip_tool_checks)
         if not skip_tool_checks:
             if case.expect_metric:
-                if not _tool_arg_matches(run_result, "query_metric", "metric", case.expect_metric):
+                if not _tool_arg_matches(run_result, "query_metric", "metrics", case.expect_metric):
                     failures.append(
-                        f"Expected query_metric to use metric='{case.expect_metric}'"
+                        f"Expected query_metric to use metric '{case.expect_metric}' (in metrics list)"
                     )
             if case.expect_group_by:
                 if not _tool_arg_contains(run_result, "query_metric", "group_by", case.expect_group_by):

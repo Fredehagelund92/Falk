@@ -54,15 +54,18 @@ def get_semantic_model_info(
 
     # Measure match — search all models
     for model_name, model in bsl_models.items():
-        for measure_name, measure in model.get_measures().items():
-            if measure_name.lower() == name_l:
-                info = _info_from_bsl_model(model, model_descriptions.get(model_name))
-                return SemanticModelInfo(
-                    description=measure.description or info.description,
-                    dimensions=info.dimensions,
-                    metrics=[measure_name],
-                    time_grains=info.time_grains,
-                )
+        measures = model.measures if hasattr(model, "measures") else list(model.get("measures", {}).keys())
+        if name_l in [m.lower() for m in measures]:
+            # Found the metric in this model
+            info = _info_from_bsl_model(model, model_descriptions.get(model_name))
+            # Get the actual measure name (preserve case)
+            actual_name = next((m for m in measures if m.lower() == name_l), name)
+            return SemanticModelInfo(
+                description=f"Metric: {actual_name}",  # BSL doesn't expose measure descriptions reliably
+                dimensions=info.dimensions,
+                metrics=[actual_name],
+                time_grains=info.time_grains,
+            )
 
     return None
 
@@ -84,7 +87,7 @@ def _info_from_bsl_model(model: Any, description: str | None = None) -> Semantic
         if dim.is_time_dimension:
             time_grains.update({"day", "week", "month"})
 
-    metrics = list(model.get_measures().keys())
+    metrics = list(model.measures) if hasattr(model, "measures") else list(model.get("measures", {}).keys())
 
     if not time_grains:
         time_grains = {"day", "week", "month"}

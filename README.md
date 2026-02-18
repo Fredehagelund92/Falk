@@ -16,7 +16,6 @@ falk is a data agent that queries your warehouse using **governed metrics** from
 
 - **Governed access** — Only approved metrics, not raw SQL
 - **MCP server** — Standard protocol for AI tools (Cursor, Claude Desktop, any MCP client)
-- **Metric decomposition** — Automatic root cause analysis ("Why did revenue drop?")
 - **Multi-interface** — MCP server, Slack bot, web UI
 - **Observable** — LangFuse tracing, feedback collection, YAML-based evals
 - **Multi-LLM** — OpenAI, Anthropic, Gemini (via Pydantic AI)
@@ -64,14 +63,8 @@ Connect Cursor to falk's MCP server and query naturally:
 You: "Show me revenue by region"
 → falk uses governed metrics, returns structured data
 
-You: "Why did revenue increase this month?"
-→ falk decomposes the change:
-   📊 REVENUE: +$50k (+20%)
-   🔍 WHERE: Region (70% variance explained)
-      🔺 North America: +$35k (+50%)
-   🧮 HOW: revenue = orders × average_order_value
-      → Orders: +1,000 (+10%)
-      → AOV: +$5 (+10%)
+You: "Compare revenue this month vs last"
+→ falk uses compare_periods and returns current vs previous period
 ```
 
 No manual drilling. Instant root cause analysis. Same experience in Slack, web UI, or any MCP client.
@@ -107,7 +100,7 @@ See [Contributing Guide](https://fredehagelund92.github.io/Falk/contributing/) f
 
 falk was inspired by:
 
-- [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/) — grounded metric decomposition
+- [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/) — grounded metric querying
 - [nao](https://github.com/getnao/nao) — context engineering and agent reliability
 - [dash](https://github.com/agno-agi/dash) — self-learning from feedback
 

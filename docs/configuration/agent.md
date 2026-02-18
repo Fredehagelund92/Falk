@@ -1,114 +1,10 @@
 # Project Configuration
 
-`falk_project.yaml` is the technical configuration for your falk project (in project root). It controls agent behavior, extensions, and access control.
+`falk_project.yaml` is the canonical runtime configuration for falk.
+It controls model behavior, prompt extensions, session storage, observability,
+and runtime limits.
 
-> **Note:** Business context and rules live in `RULES.md` and `knowledge/` files. See [Context Engineering](../concepts/context-engineering.md).
-
-## Sections
-
-### `agent` — LLM settings and behavior
-
-```yaml
-agent:
-  provider: anthropic        # anthropic, openai, gemini
-  model: claude-sonnet-4     # Model to use
-  
-  # Business context (brief summary)
-  context: |
-    We're a SaaS company selling analytics software.
-    The funnel is: trials -> signups -> paid customers -> revenue.
-  
-  # Example questions (shown to users)
-  examples:
-    - "What's our revenue by region this month?"
-    - "Show me top 5 customers by trials"
-  
-  # Rules the agent should follow
-  rules:
-    - "Revenue data has a 24-hour processing delay"
-    - "Always mention the date range when showing results"
-  
-  # Welcome message for new conversations
-  welcome: |
-    Hi! I can help you explore your data.
-    Try asking:
-    - "What's our revenue by region?"
-    - "Show me top customers"
-```
-
-### `extensions` — Integrations
-
-```yaml
-extensions:
-  langfuse:
-    enabled: true
-    trace_all: true
-    collect_feedback: true
-  
-  slack:
-    enabled: true
-    feedback_reactions: true
-    channels: []  # Empty = all channels
-  
-  charts:
-    enabled: true
-    default_type: auto  # auto, bar, line, pie
-    formats: [png, html]
-  
-  exports:
-    enabled: true
-    formats: [csv, excel, google_sheets]
-    max_rows: 100000
-```
-
-### `access` — Data governance
-
-```yaml
-access:
-  # access_policy: access_policy.yaml  # If set and file exists, row-level filtering enabled
-```
-
-### `skills` — Bring your own skills
-
-```yaml
-skills:
-  enabled: false
-  directories: ["./skills"]
-```
-
-See [Agent Skills](./skills.md) for details.
-
-### `connection` — Database (inline)
-
-```yaml
-connection:
-  type: duckdb
-  database: data/warehouse.duckdb
-```
-
-BigQuery: `type: bigquery`, `project_id`, `dataset_id`. Snowflake: `type: snowflake`, `user`, `password`, `account`, `database`, `schema`.
-
-### `paths` — File locations
-
-```yaml
-paths:
-  semantic_models: semantic_models.yaml
-```
-
-### `advanced` — Technical settings
-
-```yaml
-advanced:
-  auto_run: false
-  max_tokens: 4096
-  temperature: 0.1
-  max_rows_per_query: 10000
-  query_timeout_seconds: 30
-  max_retries: 3
-  log_level: INFO
-```
-
-## Full Example
+## Canonical Config Surface
 
 ```yaml
 version: 1
@@ -118,163 +14,99 @@ connection:
   database: data/warehouse.duckdb
 
 agent:
-  provider: anthropic
-  model: claude-sonnet-4
+  provider: openai
+  model: gpt-5-mini
   context: |
-    We're a SaaS analytics company.
-  rules:
-    - "Revenue data has a 48-hour delay"
+    We are a B2B SaaS company selling analytics software.
+
   examples:
-    - "What's our revenue by region?"
+    - "What is revenue by region this month?"
+    - "Top 5 customers by revenue"
 
-extensions:
-  langfuse:
-    enabled: true
-  charts:
-    enabled: true
-  exports:
-    enabled: true
+  rules:
+    - "Always mention the date range used."
+    - "Revenue has a 24-hour delay."
 
-access:
-  # access_policy: access_policy.yaml  # optional
+  gotchas:
+    - "Data from today may be incomplete before daily refresh."
+
+  welcome: |
+    Hi! I can help you explore your data.
+
+  custom_sections:
+    - title: Reporting Conventions
+      content: |
+        - Use USD unless requested otherwise.
+        - Round percentages to one decimal place.
+
+  knowledge:
+    enabled: true
+    business_path: knowledge/business.md
+    gotchas_path: knowledge/gotchas.md
+    load_mode: startup   # startup (phase 1), on_demand reserved
+
+observability:
+  langfuse_sync: true
+
+session:
+  store: memory          # memory or redis
+  url: redis://localhost:6379
+  ttl: 3600
+  maxsize: 500
 
 paths:
   semantic_models: semantic_models.yaml
 
 advanced:
-  auto_run: false
+  auto_run: false                 # reserved for future use
   max_tokens: 4096
   temperature: 0.1
   max_rows_per_query: 10000
-  query_timeout_seconds: 30
+  query_timeout_seconds: 30       # warehouse/tool execution
+  model_timeout_seconds: 60       # LLM request (single turn)
+  max_retries: 3
+  retry_delay_seconds: 1
+  log_level: INFO
 ```
 
-## What Goes Where?
+## What Is Applied at Runtime
 
-falk uses multiple config files for different purposes. Here's how to decide where content should live:
+### `agent`
+- `context`, `examples`, `rules`, `gotchas`, `welcome`, and `custom_sections` are injected into prompt construction.
+- `knowledge.*` controls startup loading of `knowledge/business.md` and `knowledge/gotchas.md`.
 
-### 📄 `falk_project.yaml` — Quick Config & Examples
+### `advanced`
+- `max_tokens`, `temperature`, `model_timeout_seconds`, and `max_retries` are applied to model execution (LLM request timeout).
+- `query_timeout_seconds` is the timeout for tool execution (e.g. warehouse queries); tune it separately from `model_timeout_seconds` if you see "query took too long" from slow DB vs slow model.
+- `max_rows_per_query` and retry settings are enforced in warehouse query execution.
+- `log_level` and both timeout settings are applied in Slack runtime behavior.
+- `auto_run` is reserved for future use.
 
-**Purpose:** High-level settings an analyst can quickly edit
+### `session`
+- `memory` for single-process deployments.
+- `redis` for multi-worker deployments.
 
-**Put here:**
-- ✅ LLM settings (`provider: openai`, `model: gpt-4o`)
-- ✅ Quick business context (2-3 sentences: "We're a SaaS company...")
-- ✅ Example questions (5-10 sample queries users can try)
-- ✅ Top-level rules (3-5 critical constraints: "Revenue delayed 24h")
-- ✅ Welcome message
-- ✅ Extension toggles (langfuse, slack, charts on/off)
+### `observability`
+- `langfuse_sync` controls Langfuse flush behavior.
+- Langfuse is active when the required env vars are set.
 
-**Keep it:** Short, high-signal, quick-scan. Think "settings file."
+### `paths`
+- `paths.semantic_models` controls semantic model file resolution.
 
----
+### `connection`
+- Inline database connection profile consumed by BSL.
 
-### 📘 `RULES.md` — Agent Behavior & Style
+## Related Files
 
-**Purpose:** How the agent acts, responds, and formats answers
+| File | Purpose | Loaded |
+|---|---|---|
+| `falk_project.yaml` | Canonical config and short inline context | Startup |
+| `semantic_models.yaml` | Metrics, dimensions, synonyms, model metadata | Startup |
+| `RULES.md` | Organization-wide response/process policy | Startup (included in prompt) |
+| `knowledge/business.md` | Domain/company context | Startup when `agent.knowledge.enabled: true` |
+| `knowledge/gotchas.md` | Data caveats and known issues | Startup when `agent.knowledge.enabled: true` |
+| `.env` | Secrets | Startup |
 
-**Put here:**
-- ✅ Tone & personality ("Be conversational, not robotic")
-- ✅ Response structure ("Answer first, show data, add comparisons")
-- ✅ Formatting rules ("Use bullets, no tables, nested lists for hierarchical data")
-- ✅ Interaction patterns ("When to ask clarifying questions")
-- ✅ SQL style guide ("Use CTEs, add LIMIT, explicit JOINs")
-- ✅ Edge cases ("How to handle exports, large results, errors")
+## Phase 2 Note
 
-**Keep it:** Process-oriented, universal rules that apply to any query.
-
-**Location:** `RULES.md` in project root (included with every agent message)
-
----
-
-### 📚 `knowledge/business.md` — Domain Knowledge
-
-**Purpose:** What the business does and how it works
-
-**Put here:**
-- ✅ Company overview (What you sell, business model)
-- ✅ Glossary ("MRR = monthly recurring revenue")
-- ✅ Customer journey (Awareness → Trial → Paid → Active)
-- ✅ Target segments (B2B enterprise, SMBs, etc.)
-- ✅ Key metrics (North Star metric, why each metric matters)
-- ✅ Seasonality ("Q4 is 40% of revenue due to holidays")
-
-**Keep it:** Business-specific, changes when your business evolves.
-
-**Location:** `knowledge/business.md` (loaded dynamically as needed)
-
----
-
-### 📚 `knowledge/gotchas.md` — Data Quality & Caveats
-
-**Purpose:** Known issues, limitations, and workarounds
-
-**Put here:**
-- ✅ Data freshness ("Revenue synced daily at 6 AM UTC")
-- ✅ Known bugs ("Missing UTM params Aug 1-15, 2024")
-- ✅ Table quirks ("`users.email` has 0.5% duplicates")
-- ✅ Approximations ("15% of web events blocked by ad blockers")
-- ✅ Historical context ("New tracking started March 2024")
-
-**Keep it:** Technical gotchas the agent should proactively mention.
-
-**Location:** `knowledge/gotchas.md` (loaded when relevant to queries)
-
----
-
-### 🗄️ `semantic_models.yaml` — Data Definitions
-
-**Purpose:** Metrics, dimensions, and database structure
-
-**Put here:**
-- ✅ Metric formulas (`revenue = SUM(orders.amount)`)
-- ✅ Dimension definitions (tables, columns, relationships)
-- ✅ Synonyms (`mrr` → `monthly_recurring_revenue`)
-- ✅ Time grains (day, week, month, quarter)
-
-**Keep it:** Pure data layer. No business logic or behavior.
-
-See [Semantic Models](./semantic-models.md) for full documentation.
-
----
-
-### 🔐 `.env` — Secrets
-
-**Purpose:** API keys and credentials
-
-**Put here:**
-- ✅ `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
-- ✅ `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`
-- ✅ `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`
-- ✅ Database credentials (if not using local DuckDB)
-
-**Never commit to git.** Use `.env.example` for documentation.
-
----
-
-## Quick Decision Tree
-
-| Content | Where It Goes |
-|---------|---------------|
-| "What LLM to use" | `falk_project.yaml` → `agent.provider`, `agent.model` |
-| "Revenue = orders.amount WHERE status='paid'" | `semantic_models.yaml` → metric definition |
-| "Always use nested bullets" | `RULES.md` → Response Formatting |
-| "MRR = monthly recurring revenue" | `knowledge/business.md` → Glossary |
-| "Revenue delayed 24h" | `knowledge/gotchas.md` → Data Freshness |
-| "Be conversational" | `RULES.md` → Tone of Voice |
-| Sample questions | `falk_project.yaml` → `agent.examples` |
-| Customer journey stages | `knowledge/business.md` → Customer Journey |
-| SQL style preferences | `RULES.md` → SQL Code Style |
-| "`users.email` has duplicates" | `knowledge/gotchas.md` → Table-Specific Notes |
-
----
-
-## File Relationship Summary
-
-| File | Loaded When | Purpose |
-|------|-------------|---------|
-| `falk_project.yaml` | Startup | Technical config, quick context |
-| `semantic_models.yaml` | Startup | Data structure (BSL) |
-| `RULES.md` | Every message | Agent behavior & style |
-| `knowledge/*.md` | As needed | Deep domain knowledge |
-| `.env` | Startup | Secrets (not in git) |
+Access policy / row-level governance is intentionally deferred to phase 2.

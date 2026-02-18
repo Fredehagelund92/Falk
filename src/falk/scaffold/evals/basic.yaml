@@ -20,4 +20,21 @@
 - question: "What metrics are available?"
   expected_tool: list_metrics
 
+# Capability / meta questions — agent answers directly, no tool call
+- question: "What can you do?"
+  allow_no_tool: true
+  expect_contains: ["data"]
+  name: "what can you do (capability)"
+
+# Knowledge questions — answered from prompt context (no tool call)
+- question: "Tell me about the company"
+  allow_no_tool: true
+  expect_contains: ["saas"]
+  name: "company context answer"
+
+# Precedence check — inline project rules should be answerable directly
+- question: "What reporting convention should you follow?"
+  allow_no_tool: true
+  expect_contains: ["usd"]
+  name: "inline rules/custom section precedence"
 

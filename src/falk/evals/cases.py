@@ -28,6 +28,8 @@ class EvalCase:
         allow_tool_skip_if_contains: If response contains all of these (case-insensitive),
             tool/metric/group_by/filters checks are skipped. Use for gotcha cases where
             the agent may explain the caveat instead of querying.
+        allow_no_tool: If True, passing with 0 tool calls is allowed (e.g. out-of-scope
+            questions where the agent should say "This request is outside my capabilities").
         tags: Optional tags for filtering (e.g. ``["synonyms", "gotchas"]``).
         max_tool_calls: Max number of tool calls allowed (catches infinite loops).
     """
@@ -41,6 +43,7 @@ class EvalCase:
     expect_group_by: str | None = None
     expect_filters: str | None = None
     allow_tool_skip_if_contains: list[str] = field(default_factory=list)
+    allow_no_tool: bool = False
     tags: list[str] = field(default_factory=list)
     max_tool_calls: int = 8
 
@@ -122,6 +125,7 @@ def load_cases(path: str | Path) -> list[EvalCase]:
             expect_group_by=egb,
             expect_filters=get("expect_filters", "expected_filters"),
             allow_tool_skip_if_contains=_to_list(get("allow_tool_skip_if_contains")),
+            allow_no_tool=bool(get("allow_no_tool")),
             tags=tags,
             max_tool_calls=get("max_tool_calls") or 8,
         ))

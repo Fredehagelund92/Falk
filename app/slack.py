@@ -26,9 +26,6 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 from pathlib import Path
 from typing import Any
 
-# Query timeout (seconds) — show friendly message if exceeded
-QUERY_TIMEOUT = 120
-
 from dotenv import load_dotenv
 
 # Load .env before importing falk (needs LLM API keys)
@@ -43,12 +40,21 @@ else:
 from slack_bolt import App  # noqa: E402
 from slack_bolt.adapter.socket_mode import SocketModeHandler  # noqa: E402
 
+from pydantic_ai import UsageLimitExceeded, UsageLimits  # noqa: E402
+
 from falk import build_agent  # noqa: E402
 from falk.agent import DataAgent  # noqa: E402
-from falk.feedback import record_feedback  # noqa: E402
+from falk.llm import get_pending_files_for_session, clear_pending_files_for_session  # noqa: E402
+from falk.observability import record_feedback  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+APP_SETTINGS = load_settings()
+QUERY_TIMEOUT = max(5, int(APP_SETTINGS.advanced.query_timeout_seconds))
+_LOG_LEVEL = str(APP_SETTINGS.advanced.log_level).upper()
+logging.basicConfig(
+    level=getattr(logging, _LOG_LEVEL, logging.INFO),
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
 logger = logging.getLogger("falk.slack")
 
 # ---------------------------------------------------------------------------
@@ -56,6 +62,18 @@ logger = logging.getLogger("falk.slack")
 # ---------------------------------------------------------------------------
 
 bolt = App(token=os.environ["SLACK_BOT_TOKEN"])
+
+# Initialize DataAgent once at startup (shared across all queries)
+try:
+    core_agent = DataAgent(settings=APP_SETTINGS)
+    logger.info(f"DataAgent initialized with {len(core_agent.bsl_models)} semantic models")
+except Exception as e:
+    logger.error(f"Failed to initialize DataAgent: {e}")
+    raise RuntimeError(
+        f"Cannot start Slack bot - DataAgent initialization failed: {e}\n"
+        "Check your falk_project.yaml, semantic_models.yaml, and database connection."
+    ) from e
+
 agent = build_agent()
 
 # ---------------------------------------------------------------------------
@@ -98,9 +116,87 @@ def _strip_mention(text: str) -> str:
 
 
 def _markdown_to_mrkdwn(text: str) -> str:
-    """Convert Markdown to Slack mrkdwn via SlackMarkdownConverter."""
-    from falk.slack_markdown import markdown_to_mrkdwn
-    return markdown_to_mrkdwn(text)
+    """Convert Markdown to Slack mrkdwn format.
+    
+    - Bullets: `- item` or `* item` → `• item`
+    - Numbered: `1. item` → `• item`
+    - Bold: `**text**` or `__text__` → `*text*`
+    - Italic: `*text*` → `_text_`
+    - Links: `[text](url)` → `<url|text>`
+    - Headings: `# text` → `*text*`
+    - Code: `` `code` `` → `` `code` ``
+    - Code blocks: ``` preserved
+    - Blockquotes: `> text` → `> text`
+    - Strikethrough: `~~text~~` → `~text~`
+    - HTML entities: `&amp;` → `&`
+    """
+    import html
+    
+    if not text:
+        return ""
+
+    try:
+        text = text.strip()
+        
+        # Unescape HTML entities if LLM outputs them
+        text = html.unescape(text)
+        
+        # Track if we're inside a code block (skip conversion)
+        in_code_block = False
+        lines = []
+        
+        for line in text.split("\n"):
+            # Code block delimiters
+            if re.match(r"^```\s*\w*\s*$", line.strip()) or line.strip() == "```":
+                in_code_block = not in_code_block
+                lines.append(line)
+                continue
+            
+            # Skip conversion inside code blocks
+            if in_code_block:
+                lines.append(line)
+                continue
+            
+            # Italic: *text* → _text_ (do BEFORE heading/bold conversion)
+            line = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"_\1_", line)
+            
+            # Bullets: - or * or • → • (after italic so * doesn't interfere)
+            line = re.sub(r"^(\s*)([-\u2022]\s+)(.+)", r"\1• \3", line)
+            
+            # Numbered lists: 1. 2. 3. → •
+            line = re.sub(r"^(\s*)(\d+)\.\s+(.+)", r"\1• \3", line)
+            
+            # Headings: # text → *text*
+            line = re.sub(r"^#{1,6}\s+(.+?)\s*$", r"*\1*", line)
+            
+            # Blockquotes (preserve)
+            # Already in correct format: > text
+            
+            lines.append(line)
+        
+        result = "\n".join(lines)
+        
+        # Bold: **text** or __text__ → *text* (single-line only)
+        result = re.sub(r"(?<!\*)\*\*([^\n]+?)\*\*(?!\*)", r"*\1*", result)
+        result = re.sub(r"__([^\n]+?)__", r"*\1*", result)
+        
+        # Links: [text](url) → <url|text>
+        result = re.sub(r"\[(.+?)\]\((.+?)\)", r"<\2|\1>", result)
+        
+        # Strikethrough: ~~text~~ → ~text~
+        result = re.sub(r"~~(.+?)~~", r"~\1~", result)
+        
+        # Inline code: `code` (already correct format)
+        # No conversion needed
+        
+        # Clean up orphaned ** at end (truncated text)
+        result = re.sub(r"\*\*\s*$", "", result)
+        
+        return result.strip()
+        
+    except Exception as e:
+        logging.error("Markdown conversion error: %s", e)
+        return text
 
 
 def _strip_file_paths(text: str) -> str:
@@ -240,9 +336,9 @@ def _extract_tool_calls(messages: list) -> list[dict[str, Any]]:
 # Agent handler
 # ---------------------------------------------------------------------------
 
-def _upload_pending_files(client, channel: str, thread_ts: str | None):
+def _upload_pending_files(client, channel: str, thread_ts: str | None, session_id: str):
     """Upload any files the agent produced (CSV, Excel, charts) to Slack."""
-    files: list[dict[str, Any]] = getattr(agent, "_pending_files", None) or []
+    files = get_pending_files_for_session(session_id)
     if not files:
         return
 
@@ -264,7 +360,7 @@ def _upload_pending_files(client, channel: str, thread_ts: str | None):
         except Exception:
             logger.warning("Failed to upload %s", filepath.name, exc_info=True)
 
-    files.clear()
+    clear_pending_files_for_session(session_id)
 
 
 def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str | None = None, channel: str | None = None):
@@ -293,15 +389,21 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
 
     tool_calls: list[dict[str, Any]] = []
     langfuse_trace_id: str | None = None
-    langfuse_sync: bool = True
+    langfuse_sync: bool = APP_SETTINGS.observability.langfuse_sync
     try:
         with ThreadPoolExecutor(max_workers=1) as ex:
             future = ex.submit(
                 agent.run_sync,
                 text,
                 message_history=history or None,
-                deps=DataAgent(),
-                metadata={"interface": "slack", "user_id": user_id},
+                deps=core_agent,  # Reuse the shared DataAgent
+                usage_limits=UsageLimits(request_limit=12, tool_calls_limit=20),
+                metadata={
+                    "interface": "slack",
+                    "user_id": user_id,
+                    "thread_ts": thread_ts,
+                    "channel": channel,
+                },
             )
             try:
                 result = future.result(timeout=QUERY_TIMEOUT)
@@ -313,16 +415,10 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
             else:
                 reply = result.output or "I couldn't generate a response — try rephrasing?"
                 tool_calls = _extract_tool_calls(result.all_messages())
-                # Create LangFuse trace when enabled
-                settings = load_settings()
-                langfuse_ext = settings.extensions.get("langfuse")
-                langfuse_sync = (
-                    langfuse_ext.settings.get("sync", True)
-                    if langfuse_ext and langfuse_ext.enabled
-                    else True
-                )
-                if langfuse_ext and langfuse_ext.enabled:
-                    from falk.langfuse_integration import trace_agent_run
+                # Create LangFuse trace when enabled (auto-detected from env vars)
+                # Check if Langfuse is configured (via env vars)
+                if os.getenv("LANGFUSE_PUBLIC_KEY"):
+                    from falk.observability import trace_agent_run
 
                     trace = trace_agent_run(text, result, user_id=user_id, sync=langfuse_sync)
                     if trace and hasattr(trace, "id"):
@@ -335,6 +431,10 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
         reply = (
             "That query took too long. Try narrowing the scope or breaking it "
             "into smaller questions."
+        )
+    except UsageLimitExceeded:
+        reply = (
+            "That query used too many steps. Try a simpler or more focused question."
         )
     except Exception:
         logger.exception("Agent error")
@@ -391,7 +491,8 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
 
         # Upload any files the agent produced (CSV, Excel, charts)
         if channel:
-            _upload_pending_files(client, channel, thread_ts)
+            session_id = thread_ts or f"{channel}:{user_id}" if user_id else "default"
+            _upload_pending_files(client, channel, thread_ts, session_id)
 
         if message_ts and channel:
             _message_context[message_ts] = {

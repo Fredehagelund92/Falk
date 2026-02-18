@@ -20,7 +20,7 @@ falk makes the **semantic model** the source of truth:
 
 - Metrics and dimensions live in versioned YAML (semantic models)
 - The agent reads those models instead of guessing from tables
-- Every interface (Slack, CLI, web, skills) uses the same definitions
+- Every interface (Slack, CLI, web) uses the same definitions
 
 ### Governance can’t be an afterthought
 
@@ -66,7 +66,7 @@ The design goal: **falk is the data brain you plug other agents into**, not anot
 - **Governed access** — only metrics/dimensions you’ve modeled
 - **Consistent numbers** — same as your BI/semantic layer
 - **Context‑aware answers** — uses descriptions, synonyms, gotchas
-- **Why‑first analytics** — metric decomposition and related metrics
+- **Context‑aware answers** — related metrics and formulas
 - **Tool‑first design** — CLI and agent tools meant to be composed
 
 ## When falk makes sense
@@ -86,7 +86,7 @@ If you just want to let a model explore every table freely, falk is probably not
 
 falk was inspired by excellent work in the data agent space:
 
-- **[OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/)** — Pioneered grounded metric decomposition and root cause analysis. Their approach to breaking down metric changes across dimensions and derived metrics heavily influenced falk's decomposition engine.
+- **[OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/)** — Grounded metric querying and data agents.
 
 - **[nao](https://github.com/getnao/nao)** — Demonstrated the power of context engineering with file-system based context, unit testing for agent reliability, and the importance of versioning agent behavior. Their approach to organizing business context in structured files influenced falk's `knowledge/` and `RULES.md` design.
 

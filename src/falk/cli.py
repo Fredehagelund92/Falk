@@ -46,7 +46,10 @@ def _copy_scaffold_dir(src_dir: Path, dst_dir: Path) -> None:
 
 @app.command()
 def init(
-    project_name: str = typer.Argument(..., help="Project name"),
+    project_name: str = typer.Argument(
+        ...,
+        help="Project name, or '.' to scaffold into the current directory",
+    ),
     warehouse: str = typer.Option(
         "duckdb",
         "--warehouse",
@@ -71,21 +74,25 @@ def init(
     
     Example:
         falk init my-project
+        falk init .                    # scaffold into current directory
         falk init analytics --warehouse snowflake --no-sample-data
     """
     # Import here to avoid circular dependency
     import importlib.resources
     
-    typer.echo(f"Initializing falk project: {project_name}\n")
-    
-    # Create project directory
-    project_dir = Path.cwd() / project_name
-    if project_dir.exists():
-        typer.echo(f"[FAIL] Directory already exists: {project_dir}", err=True)
-        raise typer.Exit(code=1)
-    
-    project_dir.mkdir(parents=True)
-    typer.echo(f"[OK] Created project directory: {project_dir}")
+    init_in_place = project_name.strip() == "."
+    if init_in_place:
+        project_dir = Path.cwd().resolve()
+        display_name = project_dir.name
+        typer.echo(f"Initializing falk project in current directory: {project_dir}\n")
+    else:
+        project_dir = (Path.cwd() / project_name).resolve()
+        display_name = project_name
+        if project_dir.exists():
+            typer.echo(f"[FAIL] Directory already exists: {project_dir}", err=True)
+            raise typer.Exit(code=1)
+        project_dir.mkdir(parents=True)
+        typer.echo(f"[OK] Created project directory: {project_dir}")
     
     # Copy scaffold files
     try:
@@ -113,7 +120,7 @@ def init(
         # Update project name in falk_project.yaml
         config_path = project_dir / "falk_project.yaml"
         config_text = config_path.read_text(encoding="utf-8")
-        config_text = config_text.replace("name: my-falk-project", f"name: {project_name}")
+        config_text = config_text.replace("name: my-falk-project", f"name: {display_name}")
         config_path.write_text(config_text, encoding="utf-8")
         
         # Sample data (DuckDB only) - generate using seed script
@@ -151,17 +158,23 @@ def init(
         
         typer.echo(f"\n[PASS] Project initialized: {project_dir}")
         typer.echo("\nNext steps:")
-        typer.echo(f"1. cd {project_name}")
-        typer.echo("2. cp .env.example .env")
-        typer.echo("3. Edit .env with your API keys")
-        typer.echo("4. falk test --fast  # Validate configuration")
-        typer.echo("5. falk mcp  # Start MCP server for queries")
+        step = 1
+        if not init_in_place:
+            typer.echo(f"{step}. cd {project_name}")
+            step += 1
+        typer.echo(f"{step}. cp .env.example .env")
+        step += 1
+        typer.echo(f"{step}. Edit .env with your API keys")
+        step += 1
+        typer.echo(f"{step}. falk test --fast  # Validate configuration")
+        step += 1
+        typer.echo(f"{step}. falk mcp  # Start MCP server for queries")
         typer.echo("   OR falk chat  # Start web UI")
         
     except Exception as e:
         typer.echo(f"\n[FAIL] Failed to initialize project: {e}", err=True)
-        # Clean up on failure
-        if project_dir.exists():
+        # Clean up on failure only if we created a new directory (not init .)
+        if not init_in_place and project_dir.exists():
             shutil.rmtree(project_dir)
         raise typer.Exit(code=1)
 
@@ -454,7 +467,7 @@ def mcp() -> None:
     typer.echo("", err=True)
     
     try:
-        from falk.mcp.server import run_server
+        from app.mcp import run_server
         run_server()
     except KeyboardInterrupt:
         typer.echo("\n[OK] MCP server stopped", err=True)
@@ -497,7 +510,7 @@ def chat(
     
     try:
         # Import and run the web app
-        from falk.pydantic_agent import build_web_app
+        from falk.llm import build_web_app
         import uvicorn
         
         app_instance = build_web_app()

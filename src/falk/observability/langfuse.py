@@ -3,20 +3,13 @@
 This module provides optional LangFuse tracing and feedback collection.
 If LangFuse is not configured (env vars not set), all functions are no-ops.
 
-Usage::
-
-    from falk.langfuse_integration import get_langfuse_client, trace_agent_run
-
-    # In pydantic_agent.py
-    langfuse = get_langfuse_client()
-    if langfuse:
-        trace = trace_agent_run(user_query, agent_result)
-        # Feedback is recorded via record_feedback() which uses LangFuse
+Uses LangFuse Python SDK v3 API (start_as_current_span, propagate_attributes).
 """
 from __future__ import annotations
 
 import logging
 import os
+import types
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -38,7 +31,7 @@ def get_langfuse_client():
 
     secret_key = os.getenv("LANGFUSE_SECRET_KEY", "").strip()
     public_key = os.getenv("LANGFUSE_PUBLIC_KEY", "").strip()
-    host = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com").strip()
+    base_url = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com").strip()
 
     if not secret_key or not public_key:
         logger.debug("LangFuse not configured (LANGFUSE_SECRET_KEY or LANGFUSE_PUBLIC_KEY not set)")
@@ -51,7 +44,7 @@ def get_langfuse_client():
         _langfuse_client = Langfuse(
             secret_key=secret_key,
             public_key=public_key,
-            host=host,
+            base_url=base_url,
         )
         logger.info("LangFuse client initialized")
         return _langfuse_client
@@ -75,7 +68,7 @@ def trace_agent_run(
     metadata: dict[str, Any] | None = None,
     sync: bool = True,
 ) -> Any:
-    """Create a LangFuse trace for an agent run.
+    """Create a LangFuse trace for an agent run (SDK v3 API).
 
     Args:
         user_query: The user's question/request.
@@ -85,70 +78,52 @@ def trace_agent_run(
         sync: If True, flush immediately so data is sent before process exit.
 
     Returns:
-        LangFuse trace object, or None if LangFuse not configured.
+        Object with .id (trace ID) for feedback linking, or None if LangFuse not configured.
     """
     langfuse = get_langfuse_client()
     if not langfuse:
         return None
 
     try:
-        trace = langfuse.trace(
-            name="falk_query",
-            user_id=user_id,
-            metadata={
-                "source": "slack" if user_id else "web",
-                **(metadata or {}),
-            },
-        )
+        from langfuse import propagate_attributes
 
-        # Extract model info from agent result
+        trace_metadata = {"source": "slack" if user_id else "web", **(metadata or {})}
         model_name = "unknown"
-        tokens_used = None
-        cost = None
-        
-        # Pydantic AI stores model info in the result
         if hasattr(agent_result, "model_name"):
             model_name = agent_result.model_name
         elif hasattr(agent_result, "model"):
             model_name = str(agent_result.model)
-        
-        # Try to extract token usage if available
-        if hasattr(agent_result, "tokens_used"):
-            tokens_used = agent_result.tokens_used
-        if hasattr(agent_result, "cost"):
-            cost = agent_result.cost
+        tokens_used = getattr(agent_result, "tokens_used", None)
+        cost = getattr(agent_result, "cost", None)
+        gen_metadata = {"tokens_used": tokens_used, "cost": cost}
 
-        # Add the user query as a generation
-        generation = trace.generation(
-            name="agent_response",
-            model=model_name,
-            input=user_query,
-            output=agent_result.output or "",
-            metadata={
-                "tokens_used": tokens_used,
-                "cost": cost,
-            },
-        )
-
-        # Add tool calls as spans (nested under the generation for better hierarchy)
-        messages = agent_result.all_messages() if hasattr(agent_result, "all_messages") else []
-        for msg in messages:
-            for part in getattr(msg, "parts", []):
-                if hasattr(part, "tool_name") and hasattr(part, "args"):
-                    tool_args = part.args if isinstance(part.args, dict) else {}
-                    # Get tool result if available
-                    tool_result = getattr(part, "result", None)
-                    # Create span as child of generation
-                    generation.span(
-                        name=f"tool_{part.tool_name}",
-                        input=tool_args,
-                        output=str(tool_result)[:500] if tool_result else None,  # Truncate long outputs
-                        metadata={"tool": part.tool_name},
-                    )
+        trace_id = None
+        with langfuse.start_as_current_span(name="falk_query", input=user_query) as root_span:
+            with propagate_attributes(user_id=user_id, metadata=trace_metadata):
+                with root_span.start_as_current_generation(
+                    name="agent_response",
+                    model=model_name,
+                    input=user_query,
+                    output=agent_result.output or "",
+                    metadata=gen_metadata,
+                ):
+                    messages = agent_result.all_messages() if hasattr(agent_result, "all_messages") else []
+                    for msg in messages:
+                        for part in getattr(msg, "parts", []):
+                            if hasattr(part, "tool_name") and hasattr(part, "args"):
+                                tool_args = part.args if isinstance(part.args, dict) else {}
+                                tool_result = getattr(part, "result", None)
+                                with langfuse.start_as_current_span(
+                                    name=f"tool_{part.tool_name}",
+                                    input=tool_args,
+                                    output=str(tool_result)[:500] if tool_result else None,
+                                ):
+                                    pass
+            trace_id = langfuse.get_current_trace_id()
 
         if sync:
             langfuse.flush()
-        return trace
+        return types.SimpleNamespace(id=trace_id) if trace_id else None
     except Exception as e:
         logger.warning("Failed to create LangFuse trace: %s", e)
         return None
@@ -175,7 +150,7 @@ def record_feedback_to_langfuse(
         return
 
     try:
-        langfuse.score(
+        langfuse.create_score(
             trace_id=trace_id,
             name="user_feedback",
             value=score,

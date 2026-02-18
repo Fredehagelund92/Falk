@@ -65,8 +65,8 @@ falk metrics list
 # Query a metric
 falk query revenue --group-by region
 
-# Why did revenue change?
-falk decompose revenue --period month
+# Compare periods
+falk chat  # then ask: "Compare revenue this month vs last"
 
 # Web UI
 falk chat
@@ -77,7 +77,7 @@ Try asking in the web UI:
 
 - "What's our total revenue?"
 - "Top 5 regions by revenue"
-- "Why did revenue change this month?"
+- "Compare revenue this month vs last"
 
 ## 6. Make it yours
 

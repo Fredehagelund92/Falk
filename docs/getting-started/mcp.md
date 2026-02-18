@@ -42,8 +42,6 @@ falk exposes these tools via MCP:
 
 - **`query_metric`** — Query a metric with optional grouping and WHERE filtering
 - **`compare_periods`** — Compare metric across time periods
-- **`decompose_metric`** — Decompose metric change to find root causes (variance analysis)
-
 ### Visualization
 
 - **`generate_chart`** — Generate bar/line/pie chart from query data
@@ -76,8 +74,8 @@ falk exposes these tools via MCP:
    You: "Show me revenue by region"
    → Cursor calls falk's query_metric tool
    
-   You: "Why did revenue increase this month?"
-   → Cursor calls falk's decompose_metric tool
+   You: "Compare revenue this month vs last"
+   → Cursor calls falk's compare_periods tool
    ```
 
 ## Connecting from Claude Desktop
@@ -222,33 +220,9 @@ query_metric(
 - `IN (...)` — List membership
 - `AND` — Multiple conditions
 
-### Decompose a metric change
+### Compare periods
 
-```python
-# MCP client calls:
-decompose_metric(
-    metric="revenue",
-    period="month"
-)
-
-# Returns:
-{
-    "metric": "revenue",
-    "current_value": 150000,
-    "previous_value": 100000,
-    "change": 50000,
-    "change_pct": 50.0,
-    "drivers": [
-        {
-            "dimension": "region",
-            "dimension_value": "North America",
-            "contribution": 0.70,
-            "change": 35000
-        },
-        ...
-    ]
-}
-```
+Use `compare_periods` to compare a metric across current vs previous period (week, month, quarter).
 
 ## Benefits of MCP
 

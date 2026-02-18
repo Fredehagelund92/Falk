@@ -1,16 +1,12 @@
 """MCP server for falk data agent using FastMCP.
 
 Exposes falk's governed metric queries as MCP tools that any MCP client can use.
-The server maintains a DataAgent instance and provides tools for:
-- Listing and describing metrics/dimensions
-- Querying metrics with filtering and grouping
-- Metric decomposition (root cause analysis)
-- Period comparisons
-- Chart generation
+The server maintains a DataAgent instance and provides tools for querying metrics,
+dimensions, and generating charts.
 
 Usage:
     # Start with stdio transport (default for MCP)
-    python -m falk.mcp.server
+    python -m app.mcp
     
     # Or via CLI
     falk mcp
@@ -20,15 +16,30 @@ Usage:
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from falk.agent import DataAgent
-from falk.mcp import tools
+from falk.settings import load_settings
+from falk.tools.calculations import compute_shares, period_date_ranges
+from falk.tools.warehouse import run_warehouse_query
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Load .env before initializing agent
+_env_candidates = [Path(__file__).resolve().parent.parent / ".env", Path.cwd() / ".env"]
+for _p in _env_candidates:
+    if _p.exists():
+        load_dotenv(_p, override=True)
+        break
+else:
+    load_dotenv(override=True)
+
+# Configure logging from project settings
+_settings = load_settings()
+_log_level = str(_settings.advanced.log_level).upper()
+logging.basicConfig(level=getattr(logging, _log_level, logging.INFO))
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
@@ -55,24 +66,23 @@ def get_agent() -> DataAgent:
 
 @mcp.tool()
 def list_metrics() -> dict[str, Any]:
-    """List all available metrics grouped by semantic model.
+    """List all available metrics.
     
-    Returns dict with semantic_models containing model->metrics mapping.
+    Returns {"metrics": [{name, description, synonyms, gotcha}, ...]}.
     Use this to discover what metrics are available before querying.
     """
-    agent = get_agent()
-    return tools.list_metrics(agent)
+    return get_agent().list_metrics()
 
 
 @mcp.tool()
 def list_dimensions() -> dict[str, Any]:
-    """List all available dimensions across semantic models.
+    """List all available dimensions.
     
-    Returns dict with dimensions containing list of dimension info.
+    Returns {"dimensions": [{name, display_name, description, synonyms, gotcha}, ...]}.
+    Use display_name when showing dimensions to users.
     Dimensions can be used to group metrics in queries.
     """
-    agent = get_agent()
-    return tools.list_dimensions(agent)
+    return get_agent().list_dimensions()
 
 
 @mcp.tool()
@@ -84,8 +94,7 @@ def describe_metric(name: str) -> str:
         
     Returns formatted description with available dimensions and time grains.
     """
-    agent = get_agent()
-    return tools.describe_metric(agent, name)
+    return get_agent().describe_metric(name)
 
 
 @mcp.tool()
@@ -97,8 +106,7 @@ def describe_model(name: str) -> dict[str, Any] | str:
         
     Returns dict with model details or error string if not found.
     """
-    agent = get_agent()
-    return tools.describe_model(agent, name)
+    return get_agent().describe_model(name)
 
 
 @mcp.tool()
@@ -110,8 +118,7 @@ def describe_dimension(name: str) -> str:
         
     Returns formatted description with type, domain, and usage info.
     """
-    agent = get_agent()
-    return tools.describe_dimension(agent, name)
+    return get_agent().describe_dimension(name)
 
 
 @mcp.tool()
@@ -131,8 +138,7 @@ def lookup_dimension_values(
         
     Returns dict with dimension name and list of values.
     """
-    agent = get_agent()
-    return tools.lookup_values(agent, dimension, limit, search)
+    return get_agent().lookup_dimension_values(dimension, search, limit)
 
 
 # ---------------------------------------------------------------------------
@@ -142,46 +148,53 @@ def lookup_dimension_values(
 
 @mcp.tool()
 def query_metric(
-    metric: str,
+    metrics: list[str],
     dimensions: list[str] | None = None,
-    where: str | None = None,
+    filters: list[dict[str, Any]] | None = None,
     order_by: str | None = None,
     limit: int | None = None,
     time_grain: str | None = None,
 ) -> dict[str, Any]:
-    """Query a metric from the warehouse with optional grouping and filtering.
+    """Query one or more metrics from the warehouse with optional grouping and filtering.
     
     This is the primary tool for retrieving metric data.
     
     Args:
-        metric: Metric name to query (use list_metrics to discover)
+        metrics: List of metric names to query (use list_metrics to discover)
         dimensions: Optional list of dimension names to group by
-        where: Optional WHERE clause for filtering
-               Supported formats:
-               - Simple: "region = 'US'"
-               - Comparison: "date >= '2024-01-01'"
-               - Combined: "region = 'US' AND date >= '2024-01-01'"
-               - IN clause: "region IN ('US', 'EU')"
-        order_by: Optional ORDER BY clause (e.g. "revenue DESC")
+        filters: Optional list of filters, e.g. [{"field": "date", "op": ">=", "value": "2024-01-01"}, {"field": "date", "op": "<=", "value": "2024-12-31"}]
+        order_by: Optional ORDER BY direction ("asc" or "desc")
         limit: Optional row limit
         time_grain: Optional time grain (day, week, month, quarter, year)
         
     Returns dict with:
         - rows: Query results as list of dicts
         - row_count: Number of rows returned
-        - metric: Metric name
+        - metrics: List of metric names
         - model: Semantic model name
     """
     agent = get_agent()
-    return tools.query_metric(
-        agent=agent,
-        metric=metric,
+    
+    result = run_warehouse_query(
+        core=agent,
+        metrics=metrics,
         dimensions=dimensions,
-        where=where,
+        filters=filters,
         order_by=order_by,
         limit=limit,
         time_grain=time_grain,
     )
+    
+    # Convert WarehouseQueryResult to dict
+    if not result.ok:
+        return {"error": result.error}
+    
+    return {
+        "rows": result.data,
+        "row_count": len(result.data),
+        "metrics": result.metrics,
+        "model": result.model,
+    }
 
 
 @mcp.tool()
@@ -204,72 +217,58 @@ def compare_periods(
     Returns dict with current_period, previous_period, and comparison data.
     """
     agent = get_agent()
-    return tools.compare_periods(agent, metric, dimension, period, limit)
-
-
-@mcp.tool()
-def decompose_metric(
-    metric: str,
-    dimension: str | None = None,
-    period: str = "month",
-) -> dict[str, Any]:
-    """Decompose a metric change to find root causes (variance analysis).
     
-    This performs automatic root cause analysis by:
-    1. Comparing current vs previous period
-    2. Breaking down by top dimensions
-    3. Computing variance contribution
+    # Get date ranges for current and previous period
+    current_range, previous_range = period_date_ranges(period)
+    date_filters_cur = [
+        {"field": "date", "op": ">=", "value": current_range[0]},
+        {"field": "date", "op": "<=", "value": current_range[1]},
+    ]
+    date_filters_prev = [
+        {"field": "date", "op": ">=", "value": previous_range[0]},
+        {"field": "date", "op": "<=", "value": previous_range[1]},
+    ]
     
-    Use this to answer "why did X change?" questions.
+    # Query both periods
+    current_result = run_warehouse_query(
+        core=agent,
+        metrics=[metric],
+        dimensions=[dimension] if dimension else [],
+        filters=date_filters_cur,
+        limit=limit,
+    )
     
-    Args:
-        metric: Metric name to decompose
-        dimension: Optional specific dimension to analyze (if None, analyzes all)
-        period: Time period for comparison (day, week, month, quarter, year)
-        
-    Returns dict with decomposition results and variance drivers.
-    """
-    agent = get_agent()
-    return tools.decompose_metric(agent, metric, dimension, period)
+    previous_result = run_warehouse_query(
+        core=agent,
+        metrics=[metric],
+        dimensions=[dimension] if dimension else [],
+        filters=date_filters_prev,
+        limit=limit,
+    )
+    
+    return {
+        "current_period": {
+            "range": current_range,
+            "rows": current_result.data,
+            "row_count": len(current_result.data),
+        },
+        "previous_period": {
+            "range": previous_range,
+            "rows": previous_result.data,
+            "row_count": len(previous_result.data),
+        },
+        "metric": metric,
+        "dimension": dimension,
+        "period": period,
+    }
 
 
 # ---------------------------------------------------------------------------
 # MCP Tools - Visualization
 # ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-def generate_chart(
-    chart_type: str,
-    data: dict[str, Any],
-    title: str | None = None,
-) -> dict[str, Any]:
-    """Generate a chart (bar, line, pie) from query data.
-    
-    Args:
-        chart_type: Chart type (bar, line, pie)
-        data: Query result from query_metric (must have rows key)
-        title: Optional chart title
-        
-    Returns dict with chart data in Plotly format.
-    """
-    agent = get_agent()
-    return tools.generate_chart(agent, chart_type, data, title)
-
-
-@mcp.tool()
-def suggest_chart(data: dict[str, Any]) -> str:
-    """Suggest best chart type for query data.
-    
-    Analyzes the structure of query results to recommend bar, line, or pie chart.
-    
-    Args:
-        data: Query result from query_metric
-        
-    Returns suggested chart type as string.
-    """
-    agent = get_agent()
-    return tools.suggest_chart(agent, data)
+# NOTE: Chart generation has been migrated to BSL's built-in charting (in llm.py).
+# MCP charting tools are disabled as they require session state and BSL aggregates.
+# Re-enable when MCP gains session state support or use llm agent directly.
 
 
 # ---------------------------------------------------------------------------

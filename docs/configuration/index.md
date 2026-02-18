@@ -4,11 +4,11 @@ falk uses **files, not databases**. All configuration is version-controlled and 
 
 | File | Purpose | Loaded When | Who Edits |
 |------|---------|-------------|-----------|
-| `falk_project.yaml` | LLM settings, extensions, quick context | Startup | Platform team |
+| `falk_project.yaml` | LLM settings, session config, quick context | Startup | Platform team |
 | `semantic_models.yaml` | Metrics, dimensions, data structure | Startup | Data engineers |
 | `RULES.md` | Agent behavior, tone, formatting | **Every message** | Anyone |
-| `knowledge/business.md` | Business terms, glossary, company context | As needed | Domain experts |
-| `knowledge/gotchas.md` | Data quality issues, caveats | As needed | Data stewards |
+| `knowledge/business.md` | Business terms, glossary, company context | Startup (if enabled) | Domain experts |
+| `knowledge/gotchas.md` | Data quality issues, caveats | Startup (if enabled) | Data stewards |
 | `.env` | API keys, secrets | Startup | DevOps |
 
 ## What Goes Where?
@@ -29,9 +29,9 @@ See [Context Engineering](../concepts/context-engineering.md) for detailed guida
 
 ```
 semantic_models.yaml    →  "What data exists" (metrics, dimensions)
-falk_project.yaml       →  "How the agent runs" (LLM, extensions)
+falk_project.yaml       →  "How the agent runs" (LLM, session store)
 RULES.md                →  "How the agent behaves" (always included)
-knowledge/              →  "Deep domain knowledge" (loaded as needed)
+knowledge/              →  "Deep domain knowledge" (startup when enabled)
 ```
 
 Update any config file and the agent picks up the changes automatically — no prompt editing needed.
@@ -39,7 +39,6 @@ Update any config file and the agent picks up the changes automatically — no p
 ## Reference
 
 - [Semantic Models](semantic-models.md) — metrics, dimensions, synonyms, gotchas
-- [Project Config](agent.md) — LLM provider, extensions, access control
+- [Project Config](agent.md) — LLM provider, session store, runtime settings
 - [Metric Relationships](metric-relationships.md) — define how metrics relate
-- [Agent Skills](skills.md) — bring your own skills (pydantic-ai-skills)
 - [LLM Providers](llm-providers.md) — OpenAI, Anthropic, Gemini setup

@@ -15,11 +15,12 @@ Extension points
   ``synonyms`` on metrics/dimensions — auto-injected into the prompt
 
 ``falk_project.yaml``
-  ``business.description``  — company / domain context paragraph
+  ``agent.context``         — company / domain context paragraph
   ``examples``              — custom query examples (appended to auto-generated ones)
   ``welcome``               — override the first-message suggestions
   ``rules``                 — business rules the agent must follow
-  ``response_rules``        — additional response-style rules
+  ``gotchas``               — global data caveats from project config
+  ``knowledge``             — controls loading business.md / gotchas.md files
   ``custom_sections``       — freeform titled sections appended to the prompt
 
 ``build_system_prompt()`` is the only function the rest of the codebase calls.
@@ -27,48 +28,98 @@ Extension points
 from __future__ import annotations
 
 from datetime import date
+import logging
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
-# Template — intentionally generic (no partner, no clicks)
+# Template — intentionally generic
 # ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT_TEMPLATE = """\
-You are a data assistant that helps teams explore their data using semantic models.{database_info}
+You are a data assistant. Your ONLY job is to help users query and explore their data (metrics, dimensions, charts, exports).{database_info}
+
+## Instruction Precedence
+
+When instructions conflict, follow this order:
+1) This built-in system prompt
+2) Project `RULES.md`
+3) `falk_project.yaml` inline rules/custom sections
+4) Knowledge files (`knowledge/business.md`, `knowledge/gotchas.md`)
+5) Semantic metadata (model descriptions, synonyms, gotchas)
+
+You MUST call one of the provided tools to answer when the user asks for data (metrics, dimensions, queries, charts, exports). There is no tool for writing emails, code, essays, plans, or general advice.
+**Answer directly (no tool call)** when the question can be answered from knowledge already in this prompt: e.g. "what can you do?", "tell me about the company", rules, business context, custom sections, gotchas — use the information provided above and keep the answer short.
+**Use tools** when the answer requires listing or querying live data (metrics, dimensions, filters, charts, exports).
+If the user asks for something that is neither in your knowledge (above) nor a data request, respond exactly: "This request is outside my capabilities."
+
+Examples of out-of-scope requests (respond "outside my capabilities"): writing emails, drafting documents, coding, math problems, translations, travel plans, general knowledge unrelated to the project.
 
 Today is {current_date} ({day_of_week}).
 
+
+
 {company_context}
 {business_context}
+{knowledge_business}
+{knowledge_gotchas}
+
+## Error Handling
+
+**NEVER expose technical details to users:**
+- Don't mention "bsl_models", "DataAgent", "semantic model not found", or internal errors
+- Don't explain how the system works under the hood
+- Don't dump tool errors verbatim
+
+**If a tool fails or returns empty results:**
+- Say something friendly: "Hmm, I'm having trouble finding that" or "I don't see that metric in the data"
+- Suggest what to try next: "Want me to show you what metrics are available?"
+- If multiple tools fail, just say: "Something's not quite right with the data connection. Mind checking your setup?"
+
+**NEVER:**
+- Debug out loud ("Tried to run X, got error Y, looked up Z...")
+- List all your failed attempts
+- Ask users for technical details like "model names" or "workspace configuration"
+
+## Scope
+
+**From knowledge in this prompt** (About the Business, rules, custom sections, gotchas, etc.): answer directly in a short message; no tool call. **For data** (metrics, dimensions, queries, charts, exports): use the tools. For anything else — emails, code, essays, plans, translations, general knowledge unrelated to the project — respond: "This request is outside my capabilities."
 
 ## Your Tools
 
-- `list_metrics()` — see available metrics
-- `list_dimensions()` — see available dimensions
+- `list_metrics()` — see available metrics (returns: `{{"metrics": [{{name, display_name, description, synonyms}}, ...]}}`)
+  - **IMPORTANT:** Always show `display_name` to users, never the technical `name`
+  - Example: Show "Revenue" not "revenue", "Average Order Value" not "average_order_value"
+- `list_dimensions()` — see available dimensions (returns: `{{"dimensions": [{{name, display_name, description, synonyms}}, ...]}}`)
+  - **IMPORTANT:** Always show `display_name` to users, never the technical `name`
+  - Example: Show "Product Category" not "product_category"
 - `describe_metric(name)` — get metric details
 - `describe_model(name)` — get full description of a semantic model
 - `describe_dimension(name)` — get full description of a dimension
 - `lookup_values(dimension, search)` — find actual values in a dimension (fuzzy)
-- `query_metric(metric, group_by, time_grain, filters, order, limit)` — query data
+- `query_metric(metrics, group_by, time_grain, filters, order, limit)` — query one or more metrics. Pass multiple metrics in one call when user asks for them together (e.g. ``metrics=["revenue", "clicks"]``)
 - `compare_periods(metric, period, group_by, limit)` — compare this vs last week/month/quarter
-- `decompose_metric(metric, period, dimensions?)` — explain why a metric changed (root cause). Pass dimensions only if user specified; omit to analyze all.
 - `compute_share()` — show % breakdown from the last query
 - `export_to_csv()` — export last result to CSV
 - `export_to_excel()` — export last result to Excel (.xlsx)
 - `export_to_google_sheets()` — export last result to Google Sheets
-- `generate_chart(chart_type, dimension)` — generate a Plotly chart
-  - If chart_type is omitted, auto-detects: line (time series), pie (2-8 categories), bar (9+)
+- `generate_chart()` — generate a chart from the last query result
+  - BSL auto-detects chart type from the data (line for time series, pie for few categories, bar otherwise)
   - In Slack the chart is uploaded; in web UI the tool returns the file path
+  - Requires a previous query_metric call with group_by dimensions
 
 ## How to Query Data
 
-1. Pick the metric (use `list_metrics` if unsure)
+1. Pick the metric(s) (use `list_metrics` if unsure). You can query multiple metrics in one call; all must be from the same semantic model.
+   - **IMPORTANT:** When the user asks for multiple metrics in the same query (e.g. "revenue and clicks", "show orders, revenue, units"), combine them in one call: `metrics=["revenue", "clicks", "units"]`. Do NOT make separate calls for each metric.
 2. If user mentions a specific entity, use `lookup_values` to find exact value
-3. Call `query_metric` with the right parameters
+3. For date ranges, always send **two** filters: one with `op` ">=" and `value` as start date (YYYY-MM-DD), one with `op` "<=" and `value` as end date. Use the current date (today) from the prompt to compute start and end (e.g. "last 12 months" → start = today minus 12 months, end = today). Example: `filters=[{{"field": "date", "op": ">=", "value": "2024-02-01"}}, {{"field": "date", "op": "<=", "value": "2025-02-11"}}]`
+4. Call `query_metric` with the right parameters
 
 {examples}
 
@@ -107,8 +158,9 @@ If the user says hello or asks a vague question, welcome them:
 {welcome_examples}
 
 {extra_rules}
-{gotchas}
 {custom_sections}\
+{gotchas}
+
 """
 
 
@@ -225,31 +277,30 @@ def _load_rules_content(project_root: Path | None = None) -> str:
 
 def build_system_prompt(
     bsl_models: dict[str, Any],
+    *,
+    metadata: Any = None,
     agent_config: Any = None,
-    model_descriptions: dict[str, str] | None = None,
-    dimension_descriptions: dict[tuple[str, str], str] | None = None,
-    metric_synonyms: dict[str, list[str]] | None = None,
-    dimension_synonyms: dict[str, list[str]] | None = None,
-    metric_gotchas: dict[str, str] | None = None,
-    dimension_gotchas: dict[str, str] | None = None,
     project_root: Path | None = None,
 ) -> str:
     """Assemble the full system prompt from template + BSL model metadata.
 
     Args:
         bsl_models: BSL SemanticModel objects keyed by model name.
+        metadata: ``SemanticMetadata`` from ``DataAgent`` (descriptions, synonyms, etc.).
         agent_config: AgentConfig from falk_project.yaml (optional).
-        model_descriptions: Model-level descriptions from YAML (optional).
-        dimension_descriptions: Dimension descriptions from YAML (optional).
-        metric_synonyms: Metric synonyms from YAML (optional).
-        dimension_synonyms: Dimension synonyms from YAML (optional).
-        metric_gotchas: Metric gotchas from YAML (optional).
-        dimension_gotchas: Dimension gotchas from YAML (optional).
         project_root: Project root for loading RULES.md (optional).
     """
     today = date.today()
-    dimension_descriptions = dimension_descriptions or {}
     config = _agent_config_to_dict(agent_config)
+
+    # Extract metadata fields (or empty defaults)
+    model_descriptions = getattr(metadata, "model_descriptions", {}) or {}
+    dimension_descriptions = getattr(metadata, "dimension_descriptions", {}) or {}
+    dimension_display_names = getattr(metadata, "dimension_display_names", {}) or {}
+    metric_synonyms = getattr(metadata, "metric_synonyms", None)
+    dimension_synonyms = getattr(metadata, "dimension_synonyms", None)
+    metric_gotchas = getattr(metadata, "metric_gotchas", None)
+    dimension_gotchas = getattr(metadata, "dimension_gotchas", None)
 
     return SYSTEM_PROMPT_TEMPLATE.format(
         current_date=today.isoformat(),
@@ -257,11 +308,13 @@ def build_system_prompt(
         database_info=_build_database_info(bsl_models),
         company_context=_build_company_context(config),
         business_context=_build_business_context(
-            bsl_models, model_descriptions or {}, dimension_descriptions,
+            bsl_models, model_descriptions, dimension_descriptions,
         ),
+        knowledge_business=_load_knowledge_business(config, project_root),
+        knowledge_gotchas=_load_knowledge_gotchas(config, project_root),
         examples=_build_examples(bsl_models, config),
         dimension_glossary=_build_dimension_glossary(
-            bsl_models, dimension_descriptions,
+            bsl_models, dimension_descriptions, dimension_display_names,
         ),
         vocabulary=_build_vocabulary(metric_synonyms, dimension_synonyms),
         rules_content=_load_rules_content(project_root),
@@ -286,23 +339,40 @@ def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
     """
     if not agent_config:
         return {}
-    
-    config_dict = {}
-    
-    # Map AgentConfig fields to old config format
-    if hasattr(agent_config, 'context') and agent_config.context:
-        config_dict['business'] = {'description': agent_config.context}
-    
-    if hasattr(agent_config, 'examples') and agent_config.examples:
-        config_dict['examples'] = agent_config.examples
-    
-    if hasattr(agent_config, 'welcome') and agent_config.welcome:
-        config_dict['welcome'] = agent_config.welcome
-    
-    if hasattr(agent_config, 'rules') and agent_config.rules:
-        config_dict['rules'] = agent_config.rules
-    
-    return config_dict
+
+    # Backward compatibility for callers that still pass a raw dict.
+    if isinstance(agent_config, dict):
+        context = str(
+            agent_config.get("context")
+            or (agent_config.get("business") or {}).get("description")
+            or agent_config.get("description")
+            or ""
+        ).strip()
+        return {
+            "context": context,
+            "examples": list(agent_config.get("examples") or []),
+            "welcome": agent_config.get("welcome") or "",
+            "rules": list(agent_config.get("rules") or []),
+            "gotchas": list(agent_config.get("gotchas") or []),
+            "custom_sections": list(agent_config.get("custom_sections") or []),
+            "knowledge_enabled": bool((agent_config.get("knowledge") or {}).get("enabled", True)),
+            "knowledge_business_path": str((agent_config.get("knowledge") or {}).get("business_path") or "knowledge/business.md"),
+            "knowledge_gotchas_path": str((agent_config.get("knowledge") or {}).get("gotchas_path") or "knowledge/gotchas.md"),
+            "knowledge_load_mode": str((agent_config.get("knowledge") or {}).get("load_mode") or "startup").lower(),
+        }
+
+    return {
+        "context": str(getattr(agent_config, "context", "") or "").strip(),
+        "examples": list(getattr(agent_config, "examples", []) or []),
+        "welcome": getattr(agent_config, "welcome", "") or "",
+        "rules": list(getattr(agent_config, "rules", []) or []),
+        "gotchas": list(getattr(agent_config, "gotchas", []) or []),
+        "custom_sections": list(getattr(agent_config, "custom_sections", []) or []),
+        "knowledge_enabled": bool(getattr(agent_config, "knowledge_enabled", True)),
+        "knowledge_business_path": str(getattr(agent_config, "knowledge_business_path", "knowledge/business.md") or "knowledge/business.md"),
+        "knowledge_gotchas_path": str(getattr(agent_config, "knowledge_gotchas_path", "knowledge/gotchas.md") or "knowledge/gotchas.md"),
+        "knowledge_load_mode": str(getattr(agent_config, "knowledge_load_mode", "startup") or "startup").lower(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -310,9 +380,10 @@ def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _build_company_context(config: dict[str, Any]) -> str:
-    business = config.get("business") or {}
-    desc = str(business.get("description") or "").strip() if isinstance(business, dict) else ""
-    # Fallback: old format had description at top level
+    desc = str(config.get("context") or "").strip()
+    # Backward-compatible fallback for legacy dict format.
+    if not desc and isinstance(config.get("business"), dict):
+        desc = str((config.get("business") or {}).get("description") or "").strip()
     if not desc:
         desc = str(config.get("description") or "").strip()
     return f"## About the Business\n{desc}" if desc else ""
@@ -332,11 +403,13 @@ def _build_examples(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     # Pick a sample metric and dimension from whatever BSL models are loaded
     sample_metric = None
     sample_dimension = None
+    sample_model_measures: list[str] = []
     for _model_name, model in bsl_models.items():
         if not sample_metric:
-            measures = list(model.get_measures().keys())
+            measures = list(model.measures) if hasattr(model, "measures") else list(model.get("measures", {}).keys())
             if measures:
                 sample_metric = measures[0]
+                sample_model_measures = measures
         if not sample_dimension:
             dims = [
                 d for d in model.get_dimensions().keys()
@@ -352,34 +425,37 @@ def _build_examples(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
 
     lines = [
         "Examples:",
-        f'- "total {m}" -> query_metric(metric="{m}")',
-        f'- "{m} by {d}" -> query_metric(metric="{m}", group_by=["{d}"])',
-        f'- "top 10 {d}s by {m}" -> query_metric(metric="{m}", '
+        f'- "total {m}" -> query_metric(metrics=["{m}"])',
+        f'- "{m} by {d}" -> query_metric(metrics=["{m}"], group_by=["{d}"])',
+        f'- "top 10 {d}s by {m}" -> query_metric(metrics=["{m}"], '
         f'group_by=["{d}"], order="desc", limit=10)',
         f'- "{m} for <entity>" -> lookup_values("{d}", "<entity>") -> get exact name -> '
-        f'query_metric(metric="{m}", group_by=["{d}"], '
+        f'query_metric(metrics=["{m}"], group_by=["{d}"], '
         f'filters=[{{"dimension": "{d}", "op": "=", "value": "<exact>"}}])',
-        f'- "{m} by month" -> query_metric(metric="{m}", time_grain="month")',
+        f'- "{m} by month" -> query_metric(metrics=["{m}"], time_grain="month")',
+        f'- "last 12 months of {m}" -> query_metric(metrics=["{m}"], filters=[{{"field": "date", "op": ">=", "value": "<start_YYYY-MM-DD>"}}, {{"field": "date", "op": "<=", "value": "<end_YYYY-MM-DD>"}}]) (compute start/end from today)',
         f'- "compare {m} this month vs last" -> compare_periods(metric="{m}", period="month")',
         f'- "what % does each {d} have?" -> first query_metric, then compute_share()',
-        '- "show me a chart" -> generate_chart() (auto-detects best type)',
-        '- "show me a line chart over time" -> generate_chart(chart_type="line")',
+        '- "show me a chart" -> generate_chart() (run query_metric first with group_by)',
         '- "daily breakdown for top 2" -> TWO STEPS REQUIRED:',
-        f'  1) query_metric(metric="{m}", group_by=["{d}"], order="desc", limit=2)',
-        f'  2) query_metric(metric="{m}", group_by=["{d}", "date"], '
+        f'  1) query_metric(metrics=["{m}"], group_by=["{d}"], order="desc", limit=2)',
+        f'  2) query_metric(metrics=["{m}"], group_by=["{d}", "date"], '
         f'filters=[{{"dimension": "{d}", "op": "IN", "value": ["<top1>", "<top2>"]}}])',
         "  CRITICAL: For 'top N with breakdown', always do step 1 first, "
         "then filter by results in step 2.",
-        '- "show me a time breakdown as a chart" -> FIRST run query_metric with the '
-        "same filters from the previous query but add time_grain or group_by date, "
-        'THEN generate_chart(chart_type="line"). Preserves context from prior query.',
+        '- "show me a time breakdown as a chart" -> FIRST run query_metric with '
+        "time_grain or group_by=[\"date\"] to get time series data, THEN generate_chart(). "
+        "BSL auto-detects line chart for time series.",
     ]
+    # If we have multiple metrics from the same model, show multi-metric example
+    if len(sample_model_measures) >= 2:
+        m1, m2 = sample_model_measures[0], sample_model_measures[1]
+        lines.append(f'- "{m1} and {m2}" -> query_metric(metrics=["{m1}", "{m2}"])')
 
     # Append domain hints from agent.yaml (natural language, no tool names needed)
     custom = config.get("examples") or []
     if custom:
         lines.append("")
-        lines.append("Domain-specific hints (from your team):")
         for ex in custom:
             lines.append(f"- {ex}")
 
@@ -398,14 +474,17 @@ def _build_welcome(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     """
     custom = config.get("welcome")
     if custom:
-        return "\n".join(f"- {ex}" for ex in custom)
+        if isinstance(custom, str):
+            return custom.strip()
+        if isinstance(custom, list):
+            return "\n".join(f"- {ex}" for ex in custom if str(ex).strip())
 
     # Auto-generate from BSL models
     sample_metric = None
     sample_dimension = None
     for _model_name, model in bsl_models.items():
         if not sample_metric:
-            measures = list(model.get_measures().keys())
+            measures = list(model.measures) if hasattr(model, "measures") else list(model.get("measures", {}).keys())
             if measures:
                 sample_metric = measures[0]
         if not sample_dimension:
@@ -455,6 +534,47 @@ def _build_custom_sections(config: dict[str, Any]) -> str:
         if title and content:
             parts.append(f"\n## {title}\n{content}")
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge files (business.md / gotchas.md)
+# ---------------------------------------------------------------------------
+
+def _load_knowledge_file(project_root: Path | None, rel_path: str) -> str:
+    if not project_root:
+        return ""
+    candidate = Path(rel_path)
+    full_path = candidate if candidate.is_absolute() else (project_root / candidate)
+    if not full_path.exists():
+        logger.warning("Knowledge file not found: %s", full_path)
+        return ""
+    try:
+        return full_path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+
+
+def _load_knowledge_business(config: dict[str, Any], project_root: Path | None) -> str:
+    if not config.get("knowledge_enabled", True):
+        return ""
+    # Phase 1 supports startup loading only.
+    if str(config.get("knowledge_load_mode") or "startup").lower() != "startup":
+        return ""
+    content = _load_knowledge_file(project_root, str(config.get("knowledge_business_path") or "knowledge/business.md"))
+    if not content:
+        return ""
+    return f"\n## Knowledge: Business\n{content}\n"
+
+
+def _load_knowledge_gotchas(config: dict[str, Any], project_root: Path | None) -> str:
+    if not config.get("knowledge_enabled", True):
+        return ""
+    if str(config.get("knowledge_load_mode") or "startup").lower() != "startup":
+        return ""
+    content = _load_knowledge_file(project_root, str(config.get("knowledge_gotchas_path") or "knowledge/gotchas.md"))
+    if not content:
+        return ""
+    return f"\n## Knowledge: Data Gotchas\n{content}\n"
 
 
 # ---------------------------------------------------------------------------
@@ -603,23 +723,29 @@ def _build_business_context(
 def _build_dimension_glossary(
     bsl_models: dict[str, Any],
     dimension_descriptions: dict[tuple[str, str], str] | None = None,
+    dimension_display_names: dict[tuple[str, str], str] | None = None,
 ) -> str:
     """Auto-generate disambiguation hints for ambiguous dimension groups."""
     dimension_descriptions = dimension_descriptions or {}
+    dimension_display_names = dimension_display_names or {}
     seen: set[str] = set()
-    all_dims: list[tuple[str, str]] = []  # (name, desc_short)
+    all_dims: list[tuple[str, str]] = []  # (display_name, desc_short)
 
     for model_name, model in bsl_models.items():
         for dim_name, dim in model.get_dimensions().items():
             if dim_name in seen:
                 continue
             seen.add(dim_name)
+            
+            # Use display_name if available, otherwise fall back to technical name
+            display_name = dimension_display_names.get((model_name, dim_name), "") or dim_name
+            
             desc = dimension_descriptions.get((model_name, dim_name)) or ""
             desc = desc.replace("\r\n", " ").replace("\n", " ").strip()
             dot = desc.find(".")
             if dot > 0:
                 desc = desc[:dot + 1]
-            all_dims.append((dim_name, desc))
+            all_dims.append((display_name, desc))
 
     CONCEPT_GROUPS = [
         (

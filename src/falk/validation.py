@@ -169,18 +169,27 @@ def _validate_config(project_root: Path) -> ValidationResult:
                 issues.append("Missing 'agent.model'")
             else:
                 details.append(f"Model: {agent['provider']}/{agent['model']}")
+            knowledge = agent.get("knowledge")
+            if knowledge is not None and not isinstance(knowledge, dict):
+                issues.append("agent.knowledge must be a mapping")
+            if isinstance(knowledge, dict):
+                mode = str(knowledge.get("load_mode", "startup") or "startup").lower()
+                if mode not in {"startup", "on_demand"}:
+                    issues.append("agent.knowledge.load_mode must be 'startup' or 'on_demand'")
         
-        # Check semantic models path
-        if "semantic_models" in config:
-            sem_path = project_root / config["semantic_models"]
+        # Check semantic models path (paths.semantic_models in canonical config)
+        paths_cfg = config.get("paths") or {}
+        sem_rel = paths_cfg.get("semantic_models") or config.get("semantic_models")
+        if sem_rel:
+            sem_path = project_root / sem_rel
             if not sem_path.exists():
                 issues.append(f"Semantic models file not found: {sem_path}")
             else:
-                details.append(f"Semantic models: {config['semantic_models']}")
+                details.append(f"Semantic models: {sem_rel}")
         
         # Warnings for optional sections
-        if "extensions" not in config:
-            details.append("No extensions configured (optional)")
+        if "observability" not in config:
+            details.append("No observability config (optional)")
         
         if issues:
             return ValidationResult(
@@ -350,49 +359,75 @@ def _validate_semantic_models(project_root: Path) -> ValidationResult:
 
 
 def _validate_knowledge(project_root: Path) -> ValidationResult:
-    """Check knowledge directory structure."""
-    knowledge_dir = project_root / "knowledge"
-    
-    if not knowledge_dir.exists():
+    """Check knowledge file configuration and availability."""
+    try:
+        from falk.settings import load_settings
+
+        settings = load_settings()
+        agent = settings.agent
+    except Exception:
+        # Fallback to defaults if settings cannot be loaded.
+        class _AgentDefaults:
+            knowledge_enabled = True
+            knowledge_business_path = "knowledge/business.md"
+            knowledge_gotchas_path = "knowledge/gotchas.md"
+            knowledge_load_mode = "startup"
+
+        agent = _AgentDefaults()
+
+    details = [
+        f"knowledge.enabled={getattr(agent, 'knowledge_enabled', True)}",
+        f"knowledge.load_mode={getattr(agent, 'knowledge_load_mode', 'startup')}",
+    ]
+    warnings: list[str] = []
+
+    if not getattr(agent, "knowledge_enabled", True):
         return ValidationResult(
             check_name="Knowledge Files",
-            passed=False,
-            message="Knowledge directory not found (optional but recommended)",
-            details=["Create knowledge/ directory with business.md and gotchas.md"],
-            warning=True,
+            passed=True,
+            message="Knowledge loading disabled by config",
+            details=details,
         )
-    
-    details = []
-    warnings = []
-    
-    # Check for recommended files
-    if not (knowledge_dir / "business.md").exists():
-        warnings.append("Missing business.md (business context)")
+
+    load_mode = str(getattr(agent, "knowledge_load_mode", "startup") or "startup").lower()
+    if load_mode not in {"startup", "on_demand"}:
+        warnings.append(f"Unknown knowledge.load_mode '{load_mode}' (expected startup or on_demand)")
+
+    business_path_raw = str(getattr(agent, "knowledge_business_path", "knowledge/business.md") or "knowledge/business.md")
+    gotchas_path_raw = str(getattr(agent, "knowledge_gotchas_path", "knowledge/gotchas.md") or "knowledge/gotchas.md")
+    business_path = Path(business_path_raw)
+    gotchas_path = Path(gotchas_path_raw)
+    if not business_path.is_absolute():
+        business_path = project_root / business_path
+    if not gotchas_path.is_absolute():
+        gotchas_path = project_root / gotchas_path
+
+    details.append(f"business_path={business_path}")
+    details.append(f"gotchas_path={gotchas_path}")
+
+    if business_path.exists():
+        details.append("Found business knowledge file")
     else:
-        details.append("Found business.md")
-    
-    if not (knowledge_dir / "gotchas.md").exists():
-        warnings.append("Missing gotchas.md (data quality notes)")
+        warnings.append("Missing configured business knowledge file")
+
+    if gotchas_path.exists():
+        details.append("Found gotchas knowledge file")
     else:
-        details.append("Found gotchas.md")
-    
-    # Count total knowledge files
-    md_files = list(knowledge_dir.glob("*.md"))
-    details.append(f"Total files: {len(md_files)}")
-    
+        warnings.append("Missing configured gotchas knowledge file")
+
     if warnings:
         return ValidationResult(
             check_name="Knowledge Files",
             passed=False,
-            message=f"Knowledge directory exists with {len(warnings)} missing files",
+            message=f"Knowledge configuration has {len(warnings)} warning(s)",
             details=details + warnings,
             warning=True,
         )
-    
+
     return ValidationResult(
         check_name="Knowledge Files",
         passed=True,
-        message="Knowledge files present",
+        message="Knowledge configuration is valid",
         details=details,
     )
 

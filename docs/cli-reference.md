@@ -10,10 +10,11 @@ Scaffold a new falk project.
 
 ```bash
 falk init my-project
-falk init my-project --template ecommerce
+falk init .                    # scaffold into current directory
+falk init analytics --warehouse snowflake --no-sample-data
 ```
 
-Creates: `RULES.md`, `knowledge/`, `semantic_models.yaml`, `falk_project.yaml`, `.env.example`, and sample data.
+Creates: `RULES.md`, `knowledge/`, `semantic_models.yaml`, `falk_project.yaml`, `.env.example`, and sample data (DuckDB). Use `falk init .` to add scaffold files to the current directory instead of creating a subdirectory.
 
 ---
 

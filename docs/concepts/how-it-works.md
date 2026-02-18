@@ -9,7 +9,7 @@ User (Slack / Web UI / CLI)
 Pydantic AI Agent
      │
      ├── System Prompt (auto-generated from RULES.md + semantic models)
-     ├── Tools (query, decompose, export, chart, metadata)
+     ├── Tools (query, export, chart, metadata)
      │     │
      │     ▼
      │   BSL Semantic Layer → Database
@@ -37,7 +37,7 @@ The system prompt is assembled **automatically** from three sources:
 |--------|---------------------|
 | `semantic_models.yaml` | Metrics, dimensions, synonyms, gotchas |
 | `RULES.md` | Agent behavior, tone, orchestration rules |
-| `knowledge/` | Domain knowledge (loaded on demand) |
+| `knowledge/` | Domain knowledge (loaded at startup when enabled) |
 
 You never edit the prompt directly. Update your config files and the prompt updates itself.
 
@@ -63,17 +63,6 @@ When a user says "sales for Acme Corp", the agent:
 3. Uses it as a filter
 
 Works for partial matches too — "acme" finds "Acme Corp".
-
-## Metric decomposition
-
-When a user asks "why did revenue increase?", the agent:
-
-1. Runs `decompose_metric("revenue", period="month")`
-2. Ranks all dimensions by variance explained
-3. Checks `related_metrics` from the semantic model
-4. Presents a WHERE + HOW breakdown
-
-See [Metric Decomposition](./metric-decomposition.md).
 
 ## Conversational delivery
 

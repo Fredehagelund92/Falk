@@ -46,7 +46,7 @@ def record_feedback(
     # Send to LangFuse if configured
     if langfuse_trace_id:
         try:
-            from falk.langfuse_integration import record_feedback_to_langfuse
+            from falk.observability.langfuse import record_feedback_to_langfuse
 
             score = 1.0 if feedback == "positive" else 0.0
             comment = f"User feedback: {feedback}"

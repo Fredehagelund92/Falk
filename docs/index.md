@@ -58,21 +58,19 @@ falk slack
 
 ## Learn more
 
-| | |
+| Topic | Description |
 |---|---|
 | [Why falk?](why-falk.md) | The philosophy behind semantic-layer AI |
 | [Quick Start](getting-started/quickstart.md) | Full setup walkthrough |
 | [Semantic Models](configuration/semantic-models.md) | Define your metrics |
 | [CLI Reference](cli-reference.md) | All commands |
-| [Metric Decomposition](concepts/metric-decomposition.md) | Automatic root cause analysis |
-
 ---
 
 ## Inspiration & Credits
 
 falk was inspired by excellent work in the data agent space:
 
-- **[OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/)** — Pioneered grounded metric decomposition and root cause analysis for data agents
+- **[OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/)** — Grounded metric querying and data agents
 - **[nao](https://github.com/getnao/nao)** — Context engineering patterns and agent reliability testing
 - **[dash](https://github.com/agno-agi/dash)** — Self-learning from feedback and six layers of context
 

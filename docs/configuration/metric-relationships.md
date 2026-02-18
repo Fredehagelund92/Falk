@@ -3,7 +3,7 @@
 > Help the agent answer "why" questions by defining how metrics relate.
 
 When users ask "Why did revenue increase?", they want to understand:
-- **WHERE** the change happened (dimensions → handled by [decomposition](../concepts/metric-decomposition.md))
+- **WHERE** the change happened (dimensions → use `query_metric` with `group_by`)
 - **HOW** the change happened (underlying metrics → handled by relationships)
 
 ## Configuration
@@ -98,5 +98,4 @@ No additional prompting needed — just define the relationships in your semanti
 
 ## Related
 
-- [Metric Decomposition](../concepts/metric-decomposition.md) — automatic root cause analysis
 - [Semantic Models](./semantic-models.md) — full configuration guide

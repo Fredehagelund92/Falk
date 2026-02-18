@@ -21,7 +21,7 @@ connection:
 agent:
   # LLM Provider
   provider: openai  # openai, anthropic, gemini, mistral
-  model: gpt-4o-mini  # or gpt-4o, claude-sonnet-4, gemini-pro, etc.
+  model: gpt-5-mini  # or gpt-5-nano, claude-sonnet-4, gemini-pro, etc.
   
   # Business Context - This is your company's data story
   context: |
@@ -42,6 +42,10 @@ agent:
     - "Always mention the date range when showing results"
     - "Use 'MRR' not 'monthly recurring revenue'"
   
+  # Global gotchas (optional) - caveats not tied to one metric/dimension
+  gotchas:
+    - "Data from the current day may be incomplete until the daily pipeline finishes"
+  
   # Welcome Message
   welcome: |
     Hi! I can help you explore your data.
@@ -49,59 +53,44 @@ agent:
     - "What's our revenue by region?"
     - "Show me top customers"
 
-# Extensions - Pluggable integrations
-extensions:
-  # Observability & Tracing
-  langfuse:
-    enabled: false  # Set to true and add keys to .env to enable
-    sync: true  # Flush after each trace (ensures data sent before process exit)
+  # Optional custom prompt sections (advanced)
+  custom_sections:
+    - title: Reporting Conventions
+      content: |
+        - Use USD unless the user asks for another currency.
+        - Round percentages to one decimal place.
   
-  # Slack Integration
-  slack:
-    enabled: false  # Enable when deploying to Slack
-    feedback_reactions: true  # Collect 👍/👎
-    channels: []  # Empty = all channels, or specify: ["#data-questions"]
-  
-  # Chart Generation
-  charts:
+  # Knowledge files loaded into the system prompt
+  knowledge:
     enabled: true
-    default_type: auto  # auto, bar, line, pie
-    formats: [png, html]
-    max_categories: 20
-  
-  # Exports
-  exports:
-    enabled: true
-    formats: [csv, excel, google_sheets]
-    max_rows: 100000
-  
-  # Future: dbt Integration
-  dbt:
-    enabled: false
-    project_dir: null
-    sync_on_startup: false
+    business_path: knowledge/business.md
+    gotchas_path: knowledge/gotchas.md
+    load_mode: startup  # startup (phase 1), on_demand reserved for future
 
-# Data Access Control
-access:
-  # access_policy: access_policy.yaml  # If set and file exists, row-level filtering enabled
-
-# Agent Skills - Bring your own skills (pydantic-ai-skills)
-# See https://github.com/DougTrajano/pydantic-ai-skills
-skills:
-  enabled: false  # Set to true to enable custom skills
-  directories: ["./skills"]  # Directory(ies) containing SKILL.md files
+# Observability (optional - auto-enabled if env vars are set)
+# Set LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST in .env to enable
+observability:
+  langfuse_sync: true  # Flush after each trace (ensures data sent before process exit)
 
 # Paths (relative to project root)
 paths:
   semantic_models: semantic_models.yaml  # BSL file
 
+# Session State Storage (for multi-user deployments)
+session:
+  store: memory  # "memory" (single process) or "redis" (multi-worker)
+  url: redis://localhost:6379  # Redis URL (only used if store=redis)
+  ttl: 3600  # Session TTL in seconds (1 hour)
+  maxsize: 500  # Max sessions for memory store
+
 # Advanced Settings (technical — hidden from analyst config)
 advanced:
-  auto_run: false  # If false, ask before executing queries
+  auto_run: false  # Reserved for future use
   max_tokens: 4096
   temperature: 0.1
   max_rows_per_query: 10000
-  query_timeout_seconds: 30
+  query_timeout_seconds: 30   # warehouse/tool execution (e.g. query_metric)
+  model_timeout_seconds: 60   # LLM request (single turn)
   max_retries: 3
   retry_delay_seconds: 1
   log_level: INFO  # DEBUG, INFO, WARNING, ERROR

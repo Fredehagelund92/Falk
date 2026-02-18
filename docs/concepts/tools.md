@@ -28,19 +28,6 @@ query_metric(
 |------|--------------|
 | `compare_periods` | Compare this vs last week/month/quarter |
 | `compute_share` | Show % breakdown from the last query |
-| `decompose_metric` | Explain why a metric changed (root cause analysis) |
-
-### `decompose_metric` — Root cause analysis
-
-```python
-decompose_metric(
-    metric="revenue",
-    period="month",
-    filters={"region": "North America"}
-)
-```
-
-Automatically ranks dimensions by impact and checks related metrics. See [Metric Decomposition](./metric-decomposition.md).
 
 ## Export
 

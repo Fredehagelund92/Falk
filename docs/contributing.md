@@ -13,33 +13,35 @@ uv sync --extra dev
 
 ```
 src/falk/                         ← The library (pip-installable)
-├── cli.py                        # Typer CLI
-├── agent.py                      # DataAgent core (BSL models + knowledge)
-├── pydantic_agent.py             # Pydantic AI Agent + tool definitions
-├── prompt.py                     # System prompt generation
+├── agent.py                      # DataAgent core (BSL models + all data methods)
+├── llm.py                        # Pydantic AI Agent + tool definitions
+├── prompt.py                     # System prompt construction
 ├── settings.py                   # Configuration loading
-├── pydantic_agent.py            # Agent + tools
-├── scaffold/                     # Templates for falk init
-│   ├── RULES.md
-│   ├── falk_project.yaml
-│   ├── semantic_models_ecommerce.yaml
-│   ├── seed_data.py
-│   └── knowledge/
-├── evals/                        # Evaluation framework
+├── cli.py                        # Typer CLI
+├── validation.py                 # Project validation and testing
+├── observability/                # Tracing and feedback
+│   ├── langfuse.py               # LangFuse integration
+│   └── feedback.py               # Feedback recording
+├── tools/                        # Core functionality
+│   ├── warehouse.py              # Query execution via BSL
+│   ├── semantic.py               # Semantic model lookups
+│   ├── calculations.py           # Analytics helpers
+│   └── charts.py                 # Plotly chart generation
+├── evals/                        # Test framework
 │   ├── cases.py
 │   ├── runner.py
 │   └── pydantic_adapter.py
-└── tools/
-    ├── warehouse.py              # Query execution via BSL
-    ├── semantic.py               # Semantic model lookups
-    ├── calculations.py           # Analytics helpers
-    └── charts.py                 # Plotly chart generation
+└── scaffold/                     # Templates for falk init
+    ├── RULES.md
+    ├── falk_project.yaml
+    ├── semantic_models.yaml
+    ├── seed_data.py
+    └── knowledge/
 
-app/                              ← Entry points (thin wrappers)
+app/                              ← Application interfaces (thin wrappers)
 ├── web.py                        # Web UI (uvicorn)
-└── slack.py                      # Slack bot (socket mode)
-
-evals/                            ← Evaluation test cases (YAML)
+├── slack.py                      # Slack bot (socket mode + markdown converter)
+└── mcp.py                        # MCP server (FastMCP)
 ```
 
 ## Key principles
