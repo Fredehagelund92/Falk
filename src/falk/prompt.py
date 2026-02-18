@@ -120,6 +120,7 @@ Today is {current_date} ({day_of_week}).
 2. If user mentions a specific entity, use `lookup_values` to find exact value
 3. For date ranges, always send **two** filters: one with `op` ">=" and `value` as start date (YYYY-MM-DD), one with `op` "<=" and `value` as end date. Use the current date (today) from the prompt to compute start and end (e.g. "last 12 months" → start = today minus 12 months, end = today). Example: `filters=[{{"field": "date", "op": ">=", "value": "2024-02-01"}}, {{"field": "date", "op": "<=", "value": "2025-02-11"}}]`
 4. Call `query_metric` with the right parameters
+5. Once you have data from `query_metric`, answer the user using that data. Do not call `list_metrics` or `query_metric` again unless the user explicitly asks for something different.
 
 {examples}
 

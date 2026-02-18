@@ -91,6 +91,9 @@ advanced:
   max_rows_per_query: 10000
   query_timeout_seconds: 30   # warehouse/tool execution (e.g. query_metric)
   model_timeout_seconds: 60   # LLM request (single turn)
+  slack_run_timeout_seconds: 120  # Whole Slack run (model + tools)
+  tool_calls_limit: 8   # Max tool calls per run (prevent tool loops)
+  request_limit: 6      # Max LLM requests per run
   max_retries: 3
   retry_delay_seconds: 1
   log_level: INFO  # DEBUG, INFO, WARNING, ERROR

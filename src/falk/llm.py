@@ -157,7 +157,12 @@ def query_metric(
     state["last_query_metric"] = result.metrics
     state["last_query_aggregate"] = getattr(result, "aggregate", None)
     _session_store.set(_session_id(ctx), state)
-    return {"ok": True, "data": state["last_query_data"], "rows": len(state["last_query_data"])}
+    return {
+        "ok": True,
+        "data": state["last_query_data"],
+        "rows": len(state["last_query_data"]),
+        "sql": getattr(result, "sql", None),
+    }
 
 
 @data_tools.tool

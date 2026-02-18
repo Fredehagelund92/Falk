@@ -49,7 +49,7 @@ from falk.observability import record_feedback  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
 
 APP_SETTINGS = load_settings()
-QUERY_TIMEOUT = max(5, int(APP_SETTINGS.advanced.query_timeout_seconds))
+QUERY_TIMEOUT = max(5, int(APP_SETTINGS.advanced.slack_run_timeout_seconds))
 _LOG_LEVEL = str(APP_SETTINGS.advanced.log_level).upper()
 logging.basicConfig(
     level=getattr(logging, _LOG_LEVEL, logging.INFO),
@@ -397,7 +397,10 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 text,
                 message_history=history or None,
                 deps=core_agent,  # Reuse the shared DataAgent
-                usage_limits=UsageLimits(request_limit=12, tool_calls_limit=20),
+                usage_limits=UsageLimits(
+                    request_limit=APP_SETTINGS.advanced.request_limit,
+                    tool_calls_limit=APP_SETTINGS.advanced.tool_calls_limit,
+                ),
                 metadata={
                     "interface": "slack",
                     "user_id": user_id,
@@ -409,8 +412,8 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 result = future.result(timeout=QUERY_TIMEOUT)
             except FuturesTimeoutError:
                 reply = (
-                    "That query took too long. Try narrowing the scope or breaking it "
-                    "into smaller questions."
+                    "That request took too long. Try a simpler question or try again in a moment. "
+                    "If this happens often, ask your admin to increase the timeout settings."
                 )
             else:
                 reply = result.output or "I couldn't generate a response — try rephrasing?"
@@ -429,8 +432,8 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                     _store_history(thread_ts, result.all_messages())
     except FuturesTimeoutError:
         reply = (
-            "That query took too long. Try narrowing the scope or breaking it "
-            "into smaller questions."
+            "That request took too long. Try a simpler question or try again in a moment. "
+            "If this happens often, ask your admin to increase the timeout settings."
         )
     except UsageLimitExceeded:
         reply = (

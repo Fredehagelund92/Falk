@@ -32,7 +32,11 @@ The built-in system prompt is intentionally **data-only**: it tells the agent to
 
 ### 5. Timeouts ("query took too long")
 
-- **Model vs query:** `advanced.model_timeout_seconds` limits how long the LLM has to respond (single turn). `advanced.query_timeout_seconds` limits each tool call (e.g. warehouse query). If you see "query took too long," increase the one that is actually slow: use a higher `model_timeout_seconds` for slow/reasoning models, or a higher `query_timeout_seconds` for heavy or slow warehouse queries.
+- **Model vs query vs Slack:** `advanced.model_timeout_seconds` limits how long the LLM has to respond (single turn). `advanced.query_timeout_seconds` limits each tool call (e.g. warehouse query). `advanced.slack_run_timeout_seconds` is the outer timeout for a whole Slack run (model + tools). If you see "query took too long," check which layer is slow: raise `model_timeout_seconds` for slow/reasoning models, `query_timeout_seconds` for heavy or slow warehouse queries, or `slack_run_timeout_seconds` if the whole Slack request needs more time.
+
+### 6. Tool loops
+
+- If the agent seems to \"get stuck\" repeatedly calling tools instead of answering, lower `advanced.tool_calls_limit` and/or `advanced.request_limit`. The system prompt also instructs the model to answer once it has data from `query_metric` instead of re-querying.\n*** End Patch```}"/>
 
 ## Order of operations
 

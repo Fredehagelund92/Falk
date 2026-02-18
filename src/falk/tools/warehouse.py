@@ -47,6 +47,29 @@ class WarehouseQueryResult:
     model: str | None = None
     metrics: list[str] = ()  # One or more measure names (when ok=True)
     aggregate: Any = None  # BSL SemanticAggregate for charting (when ok=True)
+    sql: str | None = None  # Optional SQL text (for observability)
+
+
+def _extract_sql_from_query(query_result: Any) -> str | None:
+    """Best-effort extraction of SQL text from a BSL/Ibis query object.
+
+    BSL is built on Ibis; depending on version, the aggregate may expose
+    methods like ``compile()`` or ``to_sql()``. This helper tries the
+    common ones and falls back to None on failure.
+    """
+    if query_result is None:
+        return None
+    for attr in ("compile", "to_sql", "sql"):
+        try:
+            fn = getattr(query_result, attr, None)
+            if callable(fn):
+                sql = fn()
+                if isinstance(sql, str):
+                    return sql
+        except Exception:
+            # If one method fails, try the next; SQL logging is best-effort only.
+            continue
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +174,7 @@ def run_warehouse_query(
         last_error: Exception | None = None
         query_result = None
         result_df = None
+        sql_text: str | None = None
         for attempt in range(1, max_retries + 1):
             try:
                 query_result = model.query(
@@ -161,6 +185,9 @@ def run_warehouse_query(
                     limit=effective_limit,
                     time_grain=bsl_grain,
                 )
+                # Best-effort SQL extraction before executing the query
+                if sql_text is None:
+                    sql_text = _extract_sql_from_query(query_result)
                 result_df = query_result.execute()
                 last_error = None
                 break
@@ -181,6 +208,7 @@ def run_warehouse_query(
             model=model_name,
             metrics=metrics,
             aggregate=query_result,
+            sql=sql_text,
         )
 
     except Exception as e:

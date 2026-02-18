@@ -113,10 +113,14 @@ def trace_agent_run(
                             if hasattr(part, "tool_name") and hasattr(part, "args"):
                                 tool_args = part.args if isinstance(part.args, dict) else {}
                                 tool_result = getattr(part, "result", None)
+                                span_metadata: dict[str, Any] | None = None
+                                if isinstance(tool_result, dict) and "sql" in tool_result:
+                                    span_metadata = {"sql": tool_result.get("sql")}
                                 with langfuse.start_as_current_span(
                                     name=f"tool_{part.tool_name}",
                                     input=tool_args,
                                     output=str(tool_result)[:500] if tool_result else None,
+                                    metadata=span_metadata,
                                 ):
                                     pass
             trace_id = langfuse.get_current_trace_id()

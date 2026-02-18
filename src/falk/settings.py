@@ -42,6 +42,9 @@ class AdvancedConfig:
     max_rows_per_query: int = 10000
     query_timeout_seconds: int = 30  # tool/warehouse execution
     model_timeout_seconds: int = 60  # LLM request (single turn)
+    slack_run_timeout_seconds: int = 120  # Whole Slack run (model + tools)
+    tool_calls_limit: int = 8  # Max tool calls per run
+    request_limit: int = 6  # Max LLM requests per run
     max_retries: int = 3
     retry_delay_seconds: int = 1
     log_level: str = "INFO"
@@ -184,6 +187,9 @@ def load_settings() -> Settings:
         max_rows_per_query=advanced_config.get("max_rows_per_query", 10000),
         query_timeout_seconds=advanced_config.get("query_timeout_seconds", 30),
         model_timeout_seconds=advanced_config.get("model_timeout_seconds", 60),
+        slack_run_timeout_seconds=advanced_config.get("slack_run_timeout_seconds", 120),
+        tool_calls_limit=advanced_config.get("tool_calls_limit", 8),
+        request_limit=advanced_config.get("request_limit", 6),
         max_retries=advanced_config.get("max_retries", 3),
         retry_delay_seconds=advanced_config.get("retry_delay_seconds", 1),
         log_level=advanced_config.get("log_level", "INFO"),

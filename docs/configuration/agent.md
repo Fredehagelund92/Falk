@@ -78,8 +78,11 @@ advanced:
 ### `advanced`
 - `max_tokens`, `temperature`, `model_timeout_seconds`, and `max_retries` are applied to model execution (LLM request timeout).
 - `query_timeout_seconds` is the timeout for tool execution (e.g. warehouse queries); tune it separately from `model_timeout_seconds` if you see "query took too long" from slow DB vs slow model.
+- `slack_run_timeout_seconds` is the timeout for a whole Slack run (model + tools), used by the Slack bot's outer `future.result(timeout=...)`.
+- `tool_calls_limit` is the maximum number of tool calls allowed per run; lower values stop tool loops sooner.
+- `request_limit` is the maximum number of LLM turns per run.
 - `max_rows_per_query` and retry settings are enforced in warehouse query execution.
-- `log_level` and both timeout settings are applied in Slack runtime behavior.
+- `log_level` and timeout settings are applied in Slack runtime behavior.
 - `auto_run` is reserved for future use.
 
 ### `session`
