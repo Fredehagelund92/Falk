@@ -1,7 +1,7 @@
 """Pydantic AI conversational agent — tools, system prompt, build_agent, build_web_app.
 
 This module provides the LLM-powered agent that wraps DataAgent. It defines all
-tools (query_metric, list_metrics, export_to_csv, etc.) and wires them to the
+tools (query_metric, list_metrics, export, etc.) and wires them to the
 BSL-backed DataAgent core.
 """
 from __future__ import annotations
@@ -19,6 +19,14 @@ from falk.tools.semantic import get_semantic_model_info
 from falk.tools.warehouse import (
     lookup_dimension_values,
     run_warehouse_query,
+)
+from falk.access import (
+    allowed_dimensions,
+    allowed_metrics,
+    filter_dimensions,
+    filter_metrics,
+    is_dimension_allowed,
+    is_metric_allowed,
 )
 
 # ---------------------------------------------------------------------------
@@ -68,6 +76,17 @@ def _get_session_state(ctx: RunContext[DataAgent]) -> dict[str, Any]:
     return state
 
 
+def _user_id(ctx: RunContext[DataAgent]) -> str | None:
+    """Safely extract user_id from context metadata."""
+    return ctx.metadata.get("user_id") if ctx.metadata else None
+
+
+def _access_cfg(ctx: RunContext[DataAgent]) -> "AccessConfig":
+    """Return the AccessConfig from the agent's settings."""
+    from falk.settings import AccessConfig  # noqa: F401 (type-only, imported for hint)
+    return ctx.deps._settings.access
+
+
 def get_pending_files_for_session(session_id: str) -> list[dict[str, Any]]:
     """Get pending files for a specific session (for Slack upload)."""
     state = _session_store.get(session_id)
@@ -87,18 +106,27 @@ def clear_pending_files_for_session(session_id: str) -> None:
 @data_tools.tool
 def list_metrics(ctx: RunContext[DataAgent]) -> dict[str, Any]:
     """List all available metrics grouped by semantic model."""
-    return ctx.deps.list_metrics()
+    result = ctx.deps.list_metrics()
+    allowed = allowed_metrics(_user_id(ctx), _access_cfg(ctx))
+    result["metrics"] = filter_metrics(result["metrics"], allowed)
+    return result
 
 
 @data_tools.tool
 def list_dimensions(ctx: RunContext[DataAgent]) -> dict[str, Any]:
     """List all available dimensions across semantic models."""
-    return ctx.deps.list_dimensions()
+    result = ctx.deps.list_dimensions()
+    allowed = allowed_dimensions(_user_id(ctx), _access_cfg(ctx))
+    result["dimensions"] = filter_dimensions(result["dimensions"], allowed)
+    return result
 
 
 @data_tools.tool
 def describe_metric(ctx: RunContext[DataAgent], name: str) -> str:
     """Get full description of a metric (measure) including dimensions and time grains."""
+    allowed = allowed_metrics(_user_id(ctx), _access_cfg(ctx))
+    if not is_metric_allowed(name, allowed):
+        return f"Metric '{name}' not found. Use list_metrics to see available metrics."
     return ctx.deps.describe_metric(name)
 
 
@@ -121,13 +149,71 @@ def lookup_values(
     search: str | None = None,
 ) -> list[str] | str:
     """Look up actual values for a dimension (fuzzy search). Use before filtering."""
+    allowed = allowed_dimensions(_user_id(ctx), _access_cfg(ctx))
+    if not is_dimension_allowed(dimension, allowed):
+        return f"Dimension '{dimension}' not found."
     result = ctx.deps.lookup_dimension_values(dimension, search)
     values = result.get("values", [])
     if values is None:
         return f"Dimension '{dimension}' not found."
     if not values:
         return f"No values found for '{dimension}'" + (f" matching '{search}'" if search else "") + "."
-    return values[:100]  # Limit for token economy
+    return values[:100]
+
+
+def _matches_concept(item: dict, concept: str) -> bool:
+    """Case-insensitive substring match on name, display_name, or synonyms."""
+    c = concept.lower().strip()
+    if not c:
+        return False
+    name = (item.get("name") or "").lower()
+    display = (item.get("display_name") or "").lower()
+    if c in name or c in display:
+        return True
+    for syn in (item.get("synonyms") or []):
+        if c in str(syn).lower():
+            return True
+    return False
+
+
+@data_tools.tool
+def disambiguate(
+    ctx: RunContext[DataAgent],
+    entity_type: str,
+    concept: str,
+) -> dict[str, Any] | str:
+    """Find metrics or dimensions matching a concept (name or synonym).
+    Use when the user's request is ambiguous — returns candidates so you can ask:
+    'Which did you mean: A (description), B (description)?'"""
+    et = (entity_type or "").strip().lower()
+    c = (concept or "").strip()
+    if not c:
+        return "Concept cannot be empty."
+    if et not in ("metric", "dimension"):
+        return f"entity_type must be 'metric' or 'dimension', got '{entity_type}'."
+
+    allowed_m = allowed_metrics(_user_id(ctx), _access_cfg(ctx))
+    allowed_d = allowed_dimensions(_user_id(ctx), _access_cfg(ctx))
+
+    if et == "metric":
+        items = ctx.deps.list_metrics().get("metrics", [])
+        items = filter_metrics(items, allowed_m)
+    else:
+        items = ctx.deps.list_dimensions().get("dimensions", [])
+        items = filter_dimensions(items, allowed_d)
+
+    matches = [
+        {
+            "name": m.get("name"),
+            "display_name": m.get("display_name") or m.get("name"),
+            "description": (m.get("description") or "").strip() or None,
+        }
+        for m in items
+        if _matches_concept(m, c)
+    ]
+    if not matches:
+        return f"No {et}s found for '{concept}'."
+    return {"matches": matches}
 
 
 @data_tools.tool
@@ -141,6 +227,20 @@ def query_metric(
     limit: int | None = None,
 ) -> dict[str, Any] | str:
     """Query one or more metrics with optional group_by, filters, time_grain, order, limit."""
+    allowed_m = allowed_metrics(_user_id(ctx), _access_cfg(ctx))
+    allowed_d = allowed_dimensions(_user_id(ctx), _access_cfg(ctx))
+
+    for m in metrics:
+        if not is_metric_allowed(m, allowed_m):
+            return f"Metric '{m}' is not available. Use list_metrics to see available metrics."
+    for d in (group_by or []):
+        if not is_dimension_allowed(d, allowed_d):
+            return f"Dimension '{d}' is not available. Use list_dimensions to see available dimensions."
+    for f in (filters or []):
+        field_name = f.get("field") or f.get("dimension")
+        if field_name and not is_dimension_allowed(field_name, allowed_d):
+            return f"Dimension '{field_name}' is not available for filtering."
+
     state = _get_session_state(ctx)
     result = run_warehouse_query(
         core=ctx.deps,
@@ -174,6 +274,15 @@ def compare_periods(
     limit: int | None = None,
 ) -> dict[str, Any] | str:
     """Compare metric for current vs previous period (week, month, quarter)."""
+    allowed_m = allowed_metrics(_user_id(ctx), _access_cfg(ctx))
+    allowed_d = allowed_dimensions(_user_id(ctx), _access_cfg(ctx))
+
+    if not is_metric_allowed(metric, allowed_m):
+        return f"Metric '{metric}' is not available. Use list_metrics to see available metrics."
+    for d in (group_by or []):
+        if not is_dimension_allowed(d, allowed_d):
+            return f"Dimension '{d}' is not available. Use list_dimensions to see available dimensions."
+
     state = _get_session_state(ctx)
     (cur_start, cur_end), (prev_start, prev_end) = period_date_ranges(period)
     date_filters_cur = [
@@ -231,60 +340,50 @@ def compute_share(ctx: RunContext[DataAgent]) -> dict[str, Any] | str:
 
 
 @data_tools.tool
-def export_to_csv(ctx: RunContext[DataAgent]) -> str:
-    """Export the last query result to CSV."""
+def export(ctx: RunContext[DataAgent], format: str = "csv") -> str:
+    """Export the last query result. format: csv | excel | sheets.
+    csv and excel write to exports/; sheets requires additional setup."""
     state = _get_session_state(ctx)
     if not state["last_query_data"]:
         return "No data to export. Run query_metric first."
-    try:
-        import csv
-        export_dir = Path.cwd() / "exports"
-        export_dir.mkdir(parents=True, exist_ok=True)
-        from datetime import datetime
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        path = export_dir / f"export_{ts}.csv"
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=list(state["last_query_data"][0].keys()))
-            writer.writeheader()
-            writer.writerows(state["last_query_data"])
-        state["pending_files"].append({"path": str(path), "title": path.name})
-        _session_store.set(_session_id(ctx), state)
-        return f"Exported {len(state['last_query_data'])} rows to {path}"
-    except Exception as e:
-        return f"Export failed: {e}"
-
-
-@data_tools.tool
-def export_to_excel(ctx: RunContext[DataAgent]) -> str:
-    """Export the last query result to Excel (.xlsx)."""
-    state = _get_session_state(ctx)
-    if not state["last_query_data"]:
-        return "No data to export. Run query_metric first."
-    try:
-        import pandas as pd
-        export_dir = Path.cwd() / "exports"
-        export_dir.mkdir(parents=True, exist_ok=True)
-        from datetime import datetime
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        path = export_dir / f"export_{ts}.xlsx"
-        df = pd.DataFrame(state["last_query_data"])
-        df.to_excel(path, index=False)
-        state["pending_files"].append({"path": str(path), "title": path.name})
-        _session_store.set(_session_id(ctx), state)
-        return f"Exported {len(state['last_query_data'])} rows to {path}"
-    except ImportError:
-        return "Excel export requires openpyxl. Install with: uv sync"
-    except Exception as e:
-        return f"Export failed: {e}"
-
-
-@data_tools.tool
-def export_to_google_sheets(ctx: RunContext[DataAgent]) -> str:
-    """Export the last query result to Google Sheets. Requires GOOGLE_CREDENTIALS_JSON env."""
-    state = _get_session_state(ctx)
-    if not state["last_query_data"]:
-        return "No data to export. Run query_metric first."
-    return "Google Sheets export requires additional setup. Use export_to_csv or export_to_excel for now."
+    fmt = (format or "csv").strip().lower()
+    if fmt == "csv":
+        try:
+            import csv
+            export_dir = Path.cwd() / "exports"
+            export_dir.mkdir(parents=True, exist_ok=True)
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = export_dir / f"export_{ts}.csv"
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=list(state["last_query_data"][0].keys()))
+                writer.writeheader()
+                writer.writerows(state["last_query_data"])
+            state["pending_files"].append({"path": str(path), "title": path.name})
+            _session_store.set(_session_id(ctx), state)
+            return f"Exported {len(state['last_query_data'])} rows to {path}"
+        except Exception as e:
+            return f"Export failed: {e}"
+    if fmt == "excel":
+        try:
+            import pandas as pd
+            export_dir = Path.cwd() / "exports"
+            export_dir.mkdir(parents=True, exist_ok=True)
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = export_dir / f"export_{ts}.xlsx"
+            df = pd.DataFrame(state["last_query_data"])
+            df.to_excel(path, index=False)
+            state["pending_files"].append({"path": str(path), "title": path.name})
+            _session_store.set(_session_id(ctx), state)
+            return f"Exported {len(state['last_query_data'])} rows to {path}"
+        except ImportError:
+            return "Excel export requires openpyxl. Install with: uv sync"
+        except Exception as e:
+            return f"Export failed: {e}"
+    if fmt == "sheets":
+        return "Google Sheets export requires additional setup. Use export(format='csv') or export(format='excel') for now."
+    return f"Unknown format '{format}'. Use csv, excel, or sheets."
 
 
 @data_tools.tool

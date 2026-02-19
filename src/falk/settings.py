@@ -31,6 +31,7 @@ class AgentConfig:
     knowledge_business_path: str = "knowledge/business.md"
     knowledge_gotchas_path: str = "knowledge/gotchas.md"
     knowledge_load_mode: str = "startup"
+    include_semantic_metadata_in_prompt: bool = True  # False = omit vocabulary + gotchas; use tools
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,37 @@ class SessionConfig:
 
 
 @dataclass(frozen=True)
+class RolePolicy:
+    """Permissions for a single named role.
+
+    metrics/dimensions of None means "all allowed".
+    An empty list means "nothing allowed".
+    """
+    metrics: list[str] | None = None
+    dimensions: list[str] | None = None
+
+
+@dataclass(frozen=True)
+class UserMapping:
+    """Maps a single user_id to one or more roles."""
+    user_id: str
+    roles: list[str]
+
+
+@dataclass(frozen=True)
+class AccessConfig:
+    """Access control configuration.
+
+    Absent from falk_project.yaml = open access (identical to current behaviour).
+    default_role: role applied when a user has no explicit mapping.
+    None = no default role = open access for unlisted users.
+    """
+    roles: dict[str, RolePolicy] = field(default_factory=dict)
+    users: list[UserMapping] = field(default_factory=list)
+    default_role: str | None = None
+
+
+@dataclass(frozen=True)
 class Settings:
     """Complete falk configuration."""
     # Core paths
@@ -80,6 +112,7 @@ class Settings:
     advanced: AdvancedConfig
     observability: ObservabilityConfig
     session: SessionConfig
+    access: AccessConfig
 
     # Slack (from env)
     slack_bot_token: str | None = None
@@ -175,6 +208,7 @@ def load_settings() -> Settings:
         knowledge_enabled=bool(knowledge_config.get("enabled", True)),
         knowledge_business_path=str(knowledge_config.get("business_path") or "knowledge/business.md"),
         knowledge_gotchas_path=str(knowledge_config.get("gotchas_path") or "knowledge/gotchas.md"),
+        include_semantic_metadata_in_prompt=bool(agent_config.get("include_semantic_metadata_in_prompt", True)),
         knowledge_load_mode=knowledge_load_mode,
     )
 
@@ -209,8 +243,37 @@ def load_settings() -> Settings:
         ttl=session_config.get("ttl", 3600),
         maxsize=session_config.get("maxsize", 500),
     )
-    
-    # 7. Parse connection (inline in falk_project.yaml)
+
+    # 7. Parse access control config
+    access_raw = config.get("access_policies") or {}
+    roles_raw = access_raw.get("roles") or {}
+    roles: dict[str, RolePolicy] = {}
+    for role_name, role_cfg in roles_raw.items():
+        if not isinstance(role_cfg, dict):
+            continue
+        metrics_val = role_cfg.get("metrics")
+        dimensions_val = role_cfg.get("dimensions")
+        roles[str(role_name)] = RolePolicy(
+            metrics=_string_list(metrics_val) if metrics_val is not None else None,
+            dimensions=_string_list(dimensions_val) if dimensions_val is not None else None,
+        )
+
+    users_raw = access_raw.get("users") or []
+    user_mappings: list[UserMapping] = []
+    for entry in users_raw:
+        if not isinstance(entry, dict):
+            continue
+        uid = str(entry.get("user_id") or "").strip()
+        raw_roles = entry.get("roles") or []
+        if uid and raw_roles:
+            user_mappings.append(UserMapping(user_id=uid, roles=_string_list(raw_roles)))
+
+    default_role_raw = access_raw.get("default_role")
+    default_role = str(default_role_raw).strip() if default_role_raw else None
+
+    access = AccessConfig(roles=roles, users=user_mappings, default_role=default_role)
+
+    # 8. Parse connection (inline in falk_project.yaml)
     connection = config.get("connection")
     if not connection or not isinstance(connection, dict):
         # Default: DuckDB warehouse for falk init
@@ -223,7 +286,7 @@ def load_settings() -> Settings:
         if not db_path.is_absolute():
             connection = {**connection, "database": str(project_root / db_path)}
 
-    # 8. Resolve paths
+    # 9. Resolve paths
     paths_config = config.get("paths") or {}
 
     # BSL models path (project root / semantic_models.yaml)
@@ -236,7 +299,7 @@ def load_settings() -> Settings:
         bsl_path = project_root / bsl_path
     bsl_path = bsl_path.resolve()
     
-    # 9. Build Settings object
+    # 10. Build Settings object
     return Settings(
         project_root=project_root,
         bsl_models_path=bsl_path,
@@ -245,6 +308,7 @@ def load_settings() -> Settings:
         advanced=advanced,
         observability=observability,
         session=session,
+        access=access,
         slack_bot_token=os.getenv("SLACK_BOT_TOKEN"),
         slack_app_token=os.getenv("SLACK_APP_TOKEN"),
     )

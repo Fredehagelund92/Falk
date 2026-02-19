@@ -49,7 +49,7 @@ Every agent interaction creates a **trace** in LangFuse with:
 
 - **User query** — The original question
 - **Agent response** — The final answer
-- **Tool calls** — Each tool invocation (query_metric, export_to_csv, etc.)
+- **Tool calls** — Each tool invocation (query_metric, export, etc.)
 - **Model info** — Which LLM was used, token usage, cost
 - **Metadata** — User ID, channel, thread (for Slack)
 

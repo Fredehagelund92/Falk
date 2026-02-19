@@ -105,10 +105,9 @@ Today is {current_date} ({day_of_week}).
 - `query_metric(metrics, group_by, time_grain, filters, order, limit)` — query one or more metrics. Pass multiple metrics in one call when user asks for them together (e.g. ``metrics=["revenue", "clicks"]``)
 - `compare_periods(metric, period, group_by, limit)` — compare this vs last week/month/quarter
 - `compute_share()` — show % breakdown from the last query
-- `export_to_csv()` — export last result to CSV
-- `export_to_excel()` — export last result to Excel (.xlsx)
-- `export_to_google_sheets()` — export last result to Google Sheets
+- `export(format)` — export last result (format: csv | excel | sheets)
 - `generate_chart()` — generate a chart from the last query result
+- `disambiguate(entity_type, concept)` — find metrics or dimensions matching a concept; use when the user's request is ambiguous to get candidates for a clarification question
   - BSL auto-detects chart type from the data (line for time series, pie for few categories, bar otherwise)
   - In Slack the chart is uploaded; in web UI the tool returns the file path
   - Requires a previous query_metric call with group_by dimensions
@@ -126,7 +125,9 @@ Today is {current_date} ({day_of_week}).
 
 ## Disambiguation
 
-Some concepts map to multiple dimensions. When ambiguous:
+When a user's request could match multiple metrics or dimensions, call `disambiguate(entity_type, concept)` to get candidate options, then ask one focused clarification question. For example: "Which revenue metric did you mean: (a) gross revenue from orders, (b) net revenue after returns?"
+
+Some concepts map to multiple dimensions:
 - Use `describe_dimension` to check meanings
 - Ask the user to clarify
 
@@ -317,11 +318,15 @@ def build_system_prompt(
         dimension_glossary=_build_dimension_glossary(
             bsl_models, dimension_descriptions, dimension_display_names,
         ),
-        vocabulary=_build_vocabulary(metric_synonyms, dimension_synonyms),
+        vocabulary=_build_vocabulary(metric_synonyms, dimension_synonyms)
+        if config.get("include_semantic_metadata_in_prompt", True)
+        else "",
         rules_content=_load_rules_content(project_root),
         gotchas=_build_gotchas(
             metric_gotchas, dimension_gotchas, config.get("gotchas"),
-        ),
+        )
+        if config.get("include_semantic_metadata_in_prompt", True)
+        else "",
         welcome_examples=_build_welcome(bsl_models, config),
         extra_rules=_build_extra_list(config.get("rules")),
         custom_sections=_build_custom_sections(config),
@@ -360,6 +365,7 @@ def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
             "knowledge_business_path": str((agent_config.get("knowledge") or {}).get("business_path") or "knowledge/business.md"),
             "knowledge_gotchas_path": str((agent_config.get("knowledge") or {}).get("gotchas_path") or "knowledge/gotchas.md"),
             "knowledge_load_mode": str((agent_config.get("knowledge") or {}).get("load_mode") or "startup").lower(),
+            "include_semantic_metadata_in_prompt": bool(agent_config.get("include_semantic_metadata_in_prompt", True)),
         }
 
     return {
@@ -373,6 +379,7 @@ def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
         "knowledge_business_path": str(getattr(agent_config, "knowledge_business_path", "knowledge/business.md") or "knowledge/business.md"),
         "knowledge_gotchas_path": str(getattr(agent_config, "knowledge_gotchas_path", "knowledge/gotchas.md") or "knowledge/gotchas.md"),
         "knowledge_load_mode": str(getattr(agent_config, "knowledge_load_mode", "startup") or "startup").lower(),
+        "include_semantic_metadata_in_prompt": bool(getattr(agent_config, "include_semantic_metadata_in_prompt", True)),
     }
 
 

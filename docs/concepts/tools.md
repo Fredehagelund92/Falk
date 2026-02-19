@@ -33,9 +33,7 @@ query_metric(
 
 | Tool | What it does |
 |------|--------------|
-| `export_to_csv` | Export last result to CSV |
-| `export_to_excel` | Export to Excel (.xlsx) |
-| `export_to_google_sheets` | Export to Google Sheets |
+| `export(format)` | Export last result (format: csv \| excel \| sheets) |
 | `generate_chart` | Generate a Plotly chart (bar, line, pie) |
 
 In Slack, exported files are uploaded directly to the channel.
@@ -49,6 +47,7 @@ In Slack, exported files are uploaded directly to the channel.
 | `describe_metric` | Get metric details (description, dimensions, time grains) |
 | `describe_model` | Get full semantic model description |
 | `describe_dimension` | Get dimension meaning (helps with disambiguation) |
+| `disambiguate(entity_type, concept)` | Find metrics/dimensions matching a concept; use when the user's request is ambiguous to ask a clarification question |
 
 ## Chart Auto-Detection
 

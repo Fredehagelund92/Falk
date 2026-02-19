@@ -97,6 +97,57 @@ _thread_history: OrderedDict[str, list] = OrderedDict()
 
 _message_context: dict[str, dict[str, Any]] = {}
 
+# ---------------------------------------------------------------------------
+# User identity — resolve Slack user ID to email for access control
+# ---------------------------------------------------------------------------
+# Access policies in falk_project.yaml use email addresses (e.g. alice@company.com)
+# because they are human-readable and easy to maintain.  Here we resolve the
+# opaque Slack user_id (e.g. U012ABC34) that arrives in event payloads to the
+# user's profile email via the Slack users.info API, then cache the result so
+# we only hit the API once per user per process lifetime.
+#
+# Requires the `users:read` OAuth scope (already needed for most Slack bots).
+# Falls back to the raw Slack user_id if the API call fails or returns no email,
+# so existing deployments without access_policies configured are unaffected.
+
+_user_email_cache: dict[str, str] = {}  # slack_user_id -> email
+
+
+def _resolve_user_email(client, slack_user_id: str) -> str | None:
+    """Return the email address for a Slack user_id, with in-process caching.
+
+    Returns None if the lookup fails or the profile has no email set.
+    Requires the ``users:read`` OAuth scope on the bot token.
+    """
+    if slack_user_id in _user_email_cache:
+        return _user_email_cache[slack_user_id]
+    try:
+        resp = client.users_info(user=slack_user_id)
+        email: str | None = (
+            (resp.get("user") or {})
+            .get("profile", {})
+            .get("email")
+        )
+        if email:
+            _user_email_cache[slack_user_id] = email
+            logger.debug("Resolved %s -> %s", slack_user_id, email)
+        return email
+    except Exception:
+        logger.debug("Could not resolve email for Slack user %s", slack_user_id, exc_info=True)
+        return None
+
+
+def _identity(client, slack_user_id: str | None) -> str | None:
+    """Return the access-control identity for a Slack user.
+
+    Prefers the user's email address (matches falk_project.yaml access_policies).
+    Falls back to the raw Slack user_id so that policies using legacy Slack IDs
+    continue to work.  Returns None if no user is known.
+    """
+    if not slack_user_id:
+        return None
+    return _resolve_user_email(client, slack_user_id) or slack_user_id
+
 
 def _store_history(thread_ts: str, messages: list):
     """Store conversation history for a thread, evicting oldest if full."""
@@ -369,6 +420,10 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
         say("Hey! Ask me a data question :wave:", thread_ts=thread_ts)
         return
 
+    # Resolve email for access control. Policies in falk_project.yaml use emails
+    # (alice@company.com). Falls back to raw Slack user_id if unavailable.
+    identity = _identity(client, user_id)
+
     # Post "Thinking..." and get ts so we can replace it with the reply (cleaner threads)
     thinking_ts: str | None = None
     if channel:
@@ -403,7 +458,10 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 ),
                 metadata={
                     "interface": "slack",
-                    "user_id": user_id,
+                    # identity is the email when resolved, raw Slack ID otherwise.
+                    # Tools in llm.py read this as ctx.metadata["user_id"] and
+                    # match it against access_policies in falk_project.yaml.
+                    "user_id": identity,
                     "thread_ts": thread_ts,
                     "channel": channel,
                 },
@@ -423,7 +481,7 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 if os.getenv("LANGFUSE_PUBLIC_KEY"):
                     from falk.observability import trace_agent_run
 
-                    trace = trace_agent_run(text, result, user_id=user_id, sync=langfuse_sync)
+                    trace = trace_agent_run(text, result, user_id=identity, sync=langfuse_sync)
                     if trace and hasattr(trace, "id"):
                         langfuse_trace_id = trace.id
 
@@ -502,7 +560,7 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 "user_query": text,
                 "agent_response": reply,
                 "tool_calls": tool_calls,
-                "user_id": user_id,
+                "user_id": identity,
                 "channel": channel,
                 "thread_ts": thread_ts,
                 "langfuse_trace_id": langfuse_trace_id,

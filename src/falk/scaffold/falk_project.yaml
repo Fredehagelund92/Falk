@@ -67,6 +67,9 @@ agent:
     gotchas_path: knowledge/gotchas.md
     load_mode: startup  # startup (phase 1), on_demand reserved for future
 
+  # include_semantic_metadata_in_prompt: true   # true = synonyms + gotchas in prompt (default)
+  # false = smaller prompt; agent uses list_metrics/describe_metric for discovery
+
 # Observability (optional - auto-enabled if env vars are set)
 # Set LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST in .env to enable
 observability:
@@ -97,4 +100,40 @@ advanced:
   max_retries: 3
   retry_delay_seconds: 1
   log_level: INFO  # DEBUG, INFO, WARNING, ERROR
+
+# Access Control (optional — uncomment and configure to restrict metric access per user)
+# When absent, all users can see and query all metrics and dimensions (open by default).
+#
+# access_policies:
+#   # Role applied to users not listed below. null = open access for unlisted users.
+#   default_role: null
+#
+#   roles:
+#     admin:
+#       metrics: null       # null = all metrics allowed
+#       dimensions: null
+#     analyst:
+#       metrics:
+#         - revenue
+#         - orders
+#         - average_order_value
+#       dimensions:
+#         - date
+#         - region
+#         - product_category
+#     viewer:
+#       metrics:
+#         - revenue
+#       dimensions:
+#         - date
+#         - region
+#
+#   users:
+#     - user_id: alice@company.com   # team member email (easiest to find)
+#       roles: [admin]
+#     - user_id: bob@company.com
+#       roles: [analyst]
+#     - user_id: carol@company.com
+#       roles: [viewer]
+#     # Tip: find emails in Slack → click a profile → "View full profile"
 

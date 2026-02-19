@@ -141,6 +141,61 @@ def lookup_dimension_values(
     return get_agent().lookup_dimension_values(dimension, search, limit)
 
 
+def _mcp_matches_concept(item: dict, concept: str) -> bool:
+    """Case-insensitive substring match on name, display_name, or synonyms."""
+    c = concept.lower().strip()
+    if not c:
+        return False
+    name = (item.get("name") or "").lower()
+    display = (item.get("display_name") or "").lower()
+    if c in name or c in display:
+        return True
+    for syn in (item.get("synonyms") or []):
+        if c in str(syn).lower():
+            return True
+    return False
+
+
+@mcp.tool()
+def disambiguate(entity_type: str, concept: str) -> dict[str, Any]:
+    """Find metrics or dimensions matching a concept (name or synonym).
+    
+    Use when the user's request is ambiguous — returns candidates so you can ask:
+    'Which did you mean: A (description), B (description)?'
+    
+    Args:
+        entity_type: 'metric' or 'dimension'
+        concept: Search term (matched against name, display_name, synonyms)
+        
+    Returns dict with matches: [{name, display_name, description}, ...]
+    """
+    et = (entity_type or "").strip().lower()
+    c = (concept or "").strip()
+    if not c:
+        return {"error": "Concept cannot be empty."}
+    if et not in ("metric", "dimension"):
+        return {"error": f"entity_type must be 'metric' or 'dimension', got '{entity_type}'."}
+
+    agent = get_agent()
+    if et == "metric":
+        items = agent.list_metrics().get("metrics", [])
+    else:
+        items = agent.list_dimensions().get("dimensions", [])
+
+    matches = [
+        {
+            "name": m.get("name"),
+            "display_name": m.get("display_name") or m.get("name"),
+            "description": (m.get("description") or "").strip() or None,
+        }
+        for m in items
+        if _mcp_matches_concept(m, c)
+    ]
+    if not matches:
+        return {"error": f"No {et}s found for '{concept}'."}
+    return {"matches": matches}
+
+
 # ---------------------------------------------------------------------------
 # MCP Tools - Querying
 # ---------------------------------------------------------------------------
