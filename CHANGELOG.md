@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-02-21
+
+Initial release.
+
 ### Added
 - MCP server (`falk mcp`) for Cursor and Claude Desktop integration
 - Comprehensive `falk test` command for project validation and testing
@@ -34,7 +38,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slack message formatting (proper bullets and user tagging)
 - Scaffold completeness (customer_segment dimension, proper semantic_models.yaml format)
 - Project validation error messages
-
-## [0.1.0] - TBD
-
-Initial release.

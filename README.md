@@ -20,6 +20,8 @@ falk is a data agent that queries your warehouse using **governed metrics** from
 - **Observable** — LangFuse tracing, feedback collection, YAML-based evals
 - **Multi-LLM** — OpenAI, Anthropic, Gemini (via Pydantic AI)
 
+**Status:** Alpha / early-stage. 0.1.0 is designed for single-tenant deployments. MCP, web UI, and Slack are supported; multi-tenant and chart export via MCP are not yet available.
+
 ---
 
 ## Quick Start

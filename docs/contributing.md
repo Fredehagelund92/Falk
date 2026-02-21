@@ -4,7 +4,7 @@
 
 ```bash
 git clone https://github.com/Fredehagelund92/Falk.git
-cd falk
+cd Falk
 uv venv
 uv sync --extra dev
 ```

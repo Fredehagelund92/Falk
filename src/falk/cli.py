@@ -531,17 +531,6 @@ def mcp() -> None:
         raise typer.Exit(code=1)
 
 
-# #region agent log
-def _dbg_log(msg: str, data: dict | None = None, hyp: str = "") -> None:
-    import json
-    try:
-        with open(r"c:\Users\fhagelund\Documents\GitHub\data-agent\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"message": msg, "data": data or {}, "hypothesisId": hyp, "timestamp": __import__("time").time() * 1000}) + "\n")
-    except Exception:
-        pass
-# #endregion
-
-
 @app.command()
 def chat() -> None:
     """Start local web chat with the data agent (Pydantic AI built-in UI).
@@ -553,14 +542,7 @@ def chat() -> None:
     """
     from falk.settings import load_settings
 
-    # #region agent log
-    _dbg_log("chat_entry", {"cwd": str(Path.cwd())}, "H4")
-    # #endregion
     load_settings()
-    s = load_settings()
-    # #region agent log
-    _dbg_log("after_load_settings", {"project_root": str(s.project_root)}, "H4")
-    # #endregion
     typer.echo("Starting falk chat (Pydantic AI web)...")
     typer.echo("   Open: http://127.0.0.1:8000")
     typer.echo("   Press Ctrl+C to stop")
