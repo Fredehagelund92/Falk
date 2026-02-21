@@ -46,7 +46,9 @@ from falk import build_agent  # noqa: E402
 from falk.agent import DataAgent  # noqa: E402
 from falk.llm import get_pending_files_for_session, clear_pending_files_for_session  # noqa: E402
 from falk.observability import record_feedback  # noqa: E402
+from falk.slack_policy import can_deliver_exports  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
+from falk.slack_formatting import format_reply_for_slack  # noqa: E402
 
 APP_SETTINGS = load_settings()
 QUERY_TIMEOUT = max(5, int(APP_SETTINGS.advanced.slack_run_timeout_seconds))
@@ -166,210 +168,6 @@ def _strip_mention(text: str) -> str:
     return re.sub(r"<@[A-Z0-9]+>", "", text).strip()
 
 
-def _markdown_to_mrkdwn(text: str) -> str:
-    """Convert Markdown to Slack mrkdwn format.
-    
-    - Bullets: `- item` or `* item` → `• item`
-    - Numbered: `1. item` → `• item`
-    - Bold: `**text**` or `__text__` → `*text*`
-    - Italic: `*text*` → `_text_`
-    - Links: `[text](url)` → `<url|text>`
-    - Headings: `# text` → `*text*`
-    - Code: `` `code` `` → `` `code` ``
-    - Code blocks: ``` preserved
-    - Blockquotes: `> text` → `> text`
-    - Strikethrough: `~~text~~` → `~text~`
-    - HTML entities: `&amp;` → `&`
-    """
-    import html
-    
-    if not text:
-        return ""
-
-    try:
-        text = text.strip()
-        
-        # Unescape HTML entities if LLM outputs them
-        text = html.unescape(text)
-        
-        # Track if we're inside a code block (skip conversion)
-        in_code_block = False
-        lines = []
-        
-        for line in text.split("\n"):
-            # Code block delimiters
-            if re.match(r"^```\s*\w*\s*$", line.strip()) or line.strip() == "```":
-                in_code_block = not in_code_block
-                lines.append(line)
-                continue
-            
-            # Skip conversion inside code blocks
-            if in_code_block:
-                lines.append(line)
-                continue
-            
-            # Italic: *text* → _text_ (do BEFORE heading/bold conversion)
-            line = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"_\1_", line)
-            
-            # Bullets: - or * or • → • (after italic so * doesn't interfere)
-            line = re.sub(r"^(\s*)([-\u2022]\s+)(.+)", r"\1• \3", line)
-            
-            # Numbered lists: 1. 2. 3. → •
-            line = re.sub(r"^(\s*)(\d+)\.\s+(.+)", r"\1• \3", line)
-            
-            # Headings: # text → *text*
-            line = re.sub(r"^#{1,6}\s+(.+?)\s*$", r"*\1*", line)
-            
-            # Blockquotes (preserve)
-            # Already in correct format: > text
-            
-            lines.append(line)
-        
-        result = "\n".join(lines)
-        
-        # Bold: **text** or __text__ → *text* (single-line only)
-        result = re.sub(r"(?<!\*)\*\*([^\n]+?)\*\*(?!\*)", r"*\1*", result)
-        result = re.sub(r"__([^\n]+?)__", r"*\1*", result)
-        
-        # Links: [text](url) → <url|text>
-        result = re.sub(r"\[(.+?)\]\((.+?)\)", r"<\2|\1>", result)
-        
-        # Strikethrough: ~~text~~ → ~text~
-        result = re.sub(r"~~(.+?)~~", r"~\1~", result)
-        
-        # Inline code: `code` (already correct format)
-        # No conversion needed
-        
-        # Clean up orphaned ** at end (truncated text)
-        result = re.sub(r"\*\*\s*$", "", result)
-        
-        return result.strip()
-        
-    except Exception as e:
-        logging.error("Markdown conversion error: %s", e)
-        return text
-
-
-def _strip_file_paths(text: str) -> str:
-    """Remove full file paths from messages — files are uploaded to Slack."""
-    # [here](C:\path\to\file.csv) → "the file is attached above"
-    def _replace_link(match) -> str:
-        link_text, url = match.group(1), match.group(2)
-        if any(url.rstrip().lower().endswith(ext) for ext in (".csv", ".xlsx", ".xls", ".png", ".jpg", ".jpeg", ".gif")):
-            return "in the attachment above"
-        return match.group(0)
-
-    text = re.sub(r"\[([^\]]*)\]\(([^)]+)\)", _replace_link, text)
-    # Bare paths → just filename
-    text = re.sub(
-        r"[A-Za-z]:\\[^\s]+\.(csv|xlsx|xls|png|jpg|jpeg|gif)\b",
-        lambda m: Path(m.group(0)).name,
-        text,
-    )
-    return text
-
-
-def _parse_rich_text_elements(text: str) -> list[dict[str, Any]]:
-    """Parse text with mrkdwn formatting into rich_text elements with styles.
-    
-    Handles: *bold*, _italic_, ~strikethrough~, `code`
-    """
-    elements = []
-    pos = 0
-    
-    # Pattern: *bold* or _italic_ or ~strike~ or `code`
-    pattern = re.compile(r'(\*[^*\n]+?\*|_[^_\n]+?_|~[^~\n]+?~|`[^`\n]+?`)')
-    
-    for match in pattern.finditer(text):
-        # Add plain text before match
-        if match.start() > pos:
-            plain = text[pos:match.start()]
-            if plain:
-                elements.append({"type": "text", "text": plain})
-        
-        # Add styled text
-        matched = match.group(0)
-        if matched.startswith('*') and matched.endswith('*'):
-            elements.append({"type": "text", "text": matched[1:-1], "style": {"bold": True}})
-        elif matched.startswith('_') and matched.endswith('_'):
-            elements.append({"type": "text", "text": matched[1:-1], "style": {"italic": True}})
-        elif matched.startswith('~') and matched.endswith('~'):
-            elements.append({"type": "text", "text": matched[1:-1], "style": {"strike": True}})
-        elif matched.startswith('`') and matched.endswith('`'):
-            elements.append({"type": "text", "text": matched[1:-1], "style": {"code": True}})
-        
-        pos = match.end()
-    
-    # Add remaining plain text
-    if pos < len(text):
-        remaining = text[pos:]
-        if remaining:
-            elements.append({"type": "text", "text": remaining})
-    
-    return elements if elements else [{"type": "text", "text": text}]
-
-
-def _build_slack_blocks(text: str, max_chars: int = 2900) -> list[dict[str, Any]]:
-    """Build Slack blocks using rich_text for proper list rendering."""
-    formatted = _markdown_to_mrkdwn(text)
-    blocks = []
-    
-    # Split into paragraphs
-    paragraphs = formatted.split("\n\n")
-    
-    for para in paragraphs:
-        lines = para.split("\n")
-        
-        # Check if this is a list block (lines starting with •)
-        if any(line.lstrip().startswith("• ") for line in lines):
-            # Group consecutive lines by indent level
-            list_groups = []  # [{indent: 0, items: [...]}, {indent: 1, items: [...]}, ...]
-            
-            for line in lines:
-                stripped = line.lstrip()
-                if stripped.startswith("• "):
-                    indent_level = (len(line) - len(stripped)) // 2  # 2 spaces per level
-                    text_content = stripped[2:]  # Remove "• "
-                    
-                    # If indent changed, start new group
-                    if not list_groups or list_groups[-1]["indent"] != indent_level:
-                        list_groups.append({"indent": indent_level, "items": []})
-                    
-                    # Parse inline formatting in list item text
-                    text_elements = _parse_rich_text_elements(text_content)
-                    
-                    # Add item to current group
-                    list_groups[-1]["items"].append({
-                        "type": "rich_text_section",
-                        "elements": text_elements
-                    })
-            
-            # Build single rich_text block with all list groups
-            if list_groups:
-                rich_text_lists = []
-                for group in list_groups:
-                    rich_text_lists.append({
-                        "type": "rich_text_list",
-                        "style": "bullet",
-                        "indent": group["indent"],
-                        "elements": group["items"]
-                    })
-                
-                blocks.append({
-                    "type": "rich_text",
-                    "elements": rich_text_lists
-                })
-        else:
-            # Non-list paragraph: use section block with mrkdwn
-            if para.strip():
-                blocks.append({
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": para.strip()},
-                })
-    
-    return blocks
-
-
 def _extract_tool_calls(messages: list) -> list[dict[str, Any]]:
     """Extract tool call info from Pydantic AI message history."""
     calls: list[dict[str, Any]] = []
@@ -387,11 +185,18 @@ def _extract_tool_calls(messages: list) -> list[dict[str, Any]]:
 # Agent handler
 # ---------------------------------------------------------------------------
 
-def _upload_pending_files(client, channel: str, thread_ts: str | None, session_id: str):
-    """Upload any files the agent produced (CSV, Excel, charts) to Slack."""
+def _upload_pending_files(client, channel: str, thread_ts: str | None, session_id: str) -> str:
+    """Upload any files the agent produced (CSV, Excel, charts) to Slack.
+
+    Returns one of: "uploaded", "blocked", "none".
+    """
     files = get_pending_files_for_session(session_id)
     if not files:
-        return
+        return "none"
+
+    if not can_deliver_exports(channel, APP_SETTINGS.slack):
+        clear_pending_files_for_session(session_id)
+        return "blocked"
 
     for f in list(files):
         filepath = Path(f["path"])
@@ -412,6 +217,7 @@ def _upload_pending_files(client, channel: str, thread_ts: str | None, session_i
             logger.warning("Failed to upload %s", filepath.name, exc_info=True)
 
     clear_pending_files_for_session(session_id)
+    return "uploaded"
 
 
 def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str | None = None, channel: str | None = None):
@@ -459,7 +265,7 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 metadata={
                     "interface": "slack",
                     # identity is the email when resolved, raw Slack ID otherwise.
-                    # Tools in llm.py read this as ctx.metadata["user_id"] and
+                    # Tools in falk.llm read this as ctx.metadata["user_id"] and
                     # match it against access_policies in falk_project.yaml.
                     "user_id": identity,
                     "thread_ts": thread_ts,
@@ -502,15 +308,12 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
         reply = "Something went wrong — please try again in a moment."
 
     # Format reply and update the Thinking message (or post new if update fails)
-    reply_formatted = _markdown_to_mrkdwn(reply)
-    reply_formatted = _strip_file_paths(reply_formatted)
-    
-    # Tag user in public channels/mentions (not in DMs or slash commands without thread)
-    # Only tag if we're in a thread (thread_ts) which indicates a channel conversation
-    if user_id and channel and thread_ts:
-        reply_formatted = f"<@{user_id}> {reply_formatted}"
-    
-    blocks = _build_slack_blocks(reply_formatted)
+    reply_formatted, blocks = format_reply_for_slack(
+        reply,
+        user_id=user_id,
+        channel=channel,
+        thread_ts=thread_ts,
+    )
 
     try:
         if channel and thinking_ts:
@@ -553,7 +356,13 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
         # Upload any files the agent produced (CSV, Excel, charts)
         if channel:
             session_id = thread_ts or f"{channel}:{user_id}" if user_id else "default"
-            _upload_pending_files(client, channel, thread_ts, session_id)
+            upload_state = _upload_pending_files(client, channel, thread_ts, session_id)
+            if upload_state == "blocked":
+                client.chat_postMessage(
+                    channel=channel,
+                    text=APP_SETTINGS.slack.export_block_message,
+                    thread_ts=thread_ts,
+                )
 
         if message_ts and channel:
             _message_context[message_ts] = {

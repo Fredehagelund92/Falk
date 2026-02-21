@@ -1,0 +1,72 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import yaml
+
+from falk.settings import load_settings
+
+
+def _write_project(tmp_path: Path, config: dict) -> None:
+    (tmp_path / "falk_project.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    (tmp_path / "semantic_models.yaml").write_text("models: {}\n", encoding="utf-8")
+
+
+def test_load_settings_uses_project_root(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {
+            "agent": {"provider": "openai", "model": "gpt-5-mini"},
+            "connection": {"type": "duckdb", "database": "data/warehouse.duckdb"},
+        },
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert settings.project_root == tmp_path
+    assert settings.bsl_models_path == (tmp_path / "semantic_models.yaml").resolve()
+    assert settings.agent.provider == "openai"
+    assert settings.connection["type"] == "duckdb"
+
+
+def test_load_settings_parses_access_policies(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {
+            "agent": {"provider": "openai", "model": "gpt-5-mini"},
+            "access_policies": {
+                "default_role": "viewer",
+                "roles": {"viewer": {"metrics": ["revenue"], "dimensions": ["date"]}},
+                "users": [{"user_id": "alice@company.com", "roles": ["viewer"]}],
+            },
+        },
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert settings.access.default_role == "viewer"
+    assert settings.access.roles["viewer"].metrics == ["revenue"]
+    assert settings.access.users[0].user_id == "alice@company.com"
+
+
+def test_load_settings_parses_slack_policy(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {
+            "agent": {"provider": "openai", "model": "gpt-5-mini"},
+            "slack": {
+                "exports_dm_only": True,
+                "export_channel_allowlist": ["C123", "G123"],
+                "export_block_message": "Use DM for exports.",
+            },
+        },
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert settings.slack.exports_dm_only is True
+    assert settings.slack.export_channel_allowlist == ["C123", "G123"]
+    assert settings.slack.export_block_message == "Use DM for exports."

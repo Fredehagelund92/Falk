@@ -32,10 +32,12 @@ class EvalCase:
             questions where the agent should say "This request is outside my capabilities").
         tags: Optional tags for filtering (e.g. ``["synonyms", "gotchas"]``).
         max_tool_calls: Max number of tool calls allowed (catches infinite loops).
+        user_id: If set, run as this user for access-policy testing (passed as metadata).
     """
 
     name: str
     question: str
+    user_id: str | None = None
     expect_tool: list[str] = field(default_factory=list)
     expect_contains: list[str] = field(default_factory=list)
     expect_not_contains: list[str] = field(default_factory=list)
@@ -115,6 +117,9 @@ def load_cases(path: str | Path) -> list[EvalCase]:
             egb = egb[0] if len(egb) == 1 else str(egb)
         egb = str(egb) if egb else None
 
+        uid = get("user_id", "expected_user_id")
+        user_id_val = str(uid).strip() if uid else None
+
         out.append(EvalCase(
             name=get("name") or "unnamed",
             question=get("question") or "",
@@ -128,6 +133,7 @@ def load_cases(path: str | Path) -> list[EvalCase]:
             allow_no_tool=bool(get("allow_no_tool")),
             tags=tags,
             max_tool_calls=get("max_tool_calls") or 8,
+            user_id=user_id_val,
         ))
 
     return out

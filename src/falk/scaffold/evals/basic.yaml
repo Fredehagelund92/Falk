@@ -18,7 +18,7 @@
   expected_limit: 5
 
 - question: "What metrics are available?"
-  expected_tool: list_metrics
+  expected_tool: list_catalog
 
 # Capability / meta questions — agent answers directly, no tool call
 - question: "What can you do?"

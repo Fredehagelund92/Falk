@@ -1,0 +1,18 @@
+# Access policy evaluation cases
+# REQUIRES: access_policies configured in falk_project.yaml (uncomment and set roles/users)
+# Run with: falk test --tags access
+# These cases test that users see only the metrics/dimensions allowed by their role.
+
+- name: "analyst sees allowed metrics"
+  question: "What metrics are available?"
+  user_id: bob@company.com
+  expected_tool: list_catalog
+  expect_contains: ["revenue"]
+  tags: [access]
+
+- name: "viewer cannot access restricted metric"
+  question: "Describe the orders metric"
+  user_id: carol@company.com
+  expected_tool: [list_catalog, describe_metric]
+  expect_contains: ["not found"]
+  tags: [access]

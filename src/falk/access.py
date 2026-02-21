@@ -1,6 +1,6 @@
 """Access control — metric and dimension filtering per user.
 
-All functions are pure (no I/O). Tools in llm.py call these helpers before
+All functions are pure (no I/O). Tools in falk.llm call these helpers before
 returning data to the LLM.
 
 Three-way return from allowed_*:

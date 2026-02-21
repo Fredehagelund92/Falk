@@ -6,28 +6,23 @@ The agent has tools the LLM can call. Users don't see tool names — they just a
 
 | Tool | What it does |
 |------|--------------|
-| `query_metric` | Query a metric with optional group_by, filters, time_grain, order, limit |
+| `query_metric` | Query metrics with optional group_by, filters, time_grain, order, limit, compare_period, include_share |
 | `lookup_values` | Find actual values in a dimension (fuzzy search) |
 
 ### `query_metric` — The main tool
 
 ```python
 query_metric(
-    metric="revenue",
+    metrics=["revenue"],
     group_by=["customer"],
     time_grain="month",
-    filters=[{"dimension": "customer", "op": "=", "value": "Acme Corp"}],
+    filters=[{"field": "customer", "op": "=", "value": "Acme Corp"}],
     order="desc",
-    limit=10
+    limit=10,
+    compare_period="month",   # optional: week | month | quarter
+    include_share=True,       # optional: add share_pct column
 )
 ```
-
-## Analytics
-
-| Tool | What it does |
-|------|--------------|
-| `compare_periods` | Compare this vs last week/month/quarter |
-| `compute_share` | Show % breakdown from the last query |
 
 ## Export
 
@@ -38,16 +33,27 @@ query_metric(
 
 In Slack, exported files are uploaded directly to the channel.
 
+## Date Ranges
+
+| Tool | What it does |
+|------|--------------|
+| `suggest_date_range(period)` | Get date range for common periods: yesterday, today, last_7_days, last_30_days, this_week, this_month, last_month, this_quarter |
+
 ## Metadata / Discovery
 
 | Tool | What it does |
 |------|--------------|
-| `list_metrics` | See all available metrics |
-| `list_dimensions` | See available dimensions (filterable by domain) |
+| `list_catalog(entity_type)` | List metrics and/or dimensions (entity_type: metric \| dimension \| both) |
 | `describe_metric` | Get metric details (description, dimensions, time grains) |
 | `describe_model` | Get full semantic model description |
 | `describe_dimension` | Get dimension meaning (helps with disambiguation) |
 | `disambiguate(entity_type, concept)` | Find metrics/dimensions matching a concept; use when the user's request is ambiguous to ask a clarification question |
+
+## Interface Naming Note
+
+- Agent interface tool: `lookup_values(dimension, search)`
+- MCP interface tool: `lookup_dimension_values(dimension, search)`
+- They expose the same lookup capability with interface-specific names.
 
 ## Chart Auto-Detection
 

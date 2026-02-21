@@ -101,42 +101,51 @@ class RedisSessionStore:
         self._client.delete(f"falk:session:{session_id}")
 
 
+def _load_session_config() -> Any | None:
+    """Best-effort settings loader for session config."""
+    try:
+        from falk.settings import load_settings
+        settings = load_settings()
+        return settings.session if hasattr(settings, "session") else None
+    except Exception:
+        return None
+
+
+def _int_with_default(value: str | None, default: int) -> int:
+    """Parse int env values safely with fallback."""
+    try:
+        return int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
 def create_session_store() -> SessionStore:
     """Factory to create session store based on config.
     
-    Reads from SESSION_STORE env var or falk_project.yaml.
-    Defaults to memory store.
+    Precedence for all fields: env vars > falk_project.yaml > defaults.
     """
-    # Check env var first
-    store_type = os.getenv("SESSION_STORE", "").lower()
-    
-    # Fall back to config file
-    if not store_type:
-        try:
-            from falk.settings import load_settings
-            settings = load_settings()
-            store_type = getattr(settings.session, "store", "memory") if hasattr(settings, "session") else "memory"
-        except Exception:
-            store_type = "memory"
-    
+    session_cfg = _load_session_config()
+    store_type = (
+        (os.getenv("SESSION_STORE") or (getattr(session_cfg, "store", None) if session_cfg else None) or "memory")
+        .strip()
+        .lower()
+    )
+    ttl = _int_with_default(
+        os.getenv("SESSION_TTL"),
+        getattr(session_cfg, "ttl", 3600) if session_cfg else 3600,
+    )
+
     if store_type == "redis":
-        # Get URL from env or config
-        url = os.getenv("SESSION_URL") or os.getenv("REDIS_URL")
-        if not url:
-            try:
-                from falk.settings import load_settings
-                settings = load_settings()
-                if hasattr(settings, "session"):
-                    url = getattr(settings.session, "url", "redis://localhost:6379")
-                else:
-                    url = "redis://localhost:6379"
-            except Exception:
-                url = "redis://localhost:6379"
-        
-        ttl = int(os.getenv("SESSION_TTL", "3600"))
+        url = (
+            os.getenv("SESSION_URL")
+            or os.getenv("REDIS_URL")
+            or (getattr(session_cfg, "url", None) if session_cfg else None)
+            or "redis://localhost:6379"
+        )
         return RedisSessionStore(url=url, ttl=ttl)
-    else:
-        # Default to memory
-        maxsize = int(os.getenv("SESSION_MAXSIZE", "500"))
-        ttl = int(os.getenv("SESSION_TTL", "3600"))
-        return MemorySessionStore(maxsize=maxsize, ttl=ttl)
+
+    maxsize = _int_with_default(
+        os.getenv("SESSION_MAXSIZE"),
+        getattr(session_cfg, "maxsize", 500) if session_cfg else 500,
+    )
+    return MemorySessionStore(maxsize=maxsize, ttl=ttl)

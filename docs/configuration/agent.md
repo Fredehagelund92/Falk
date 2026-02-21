@@ -54,6 +54,11 @@ session:
   ttl: 3600
   maxsize: 500
 
+slack:
+  exports_dm_only: true
+  export_channel_allowlist: []   # optional channel IDs allowed for exports
+  export_block_message: "Export files are restricted to DMs. Ask me in DM if you need the file."
+
 paths:
   semantic_models: semantic_models.yaml
 
@@ -88,6 +93,18 @@ advanced:
 ### `session`
 - `memory` for single-process deployments.
 - `redis` for multi-worker deployments.
+- Session config precedence is: environment variables > `falk_project.yaml` > defaults.
+  - `SESSION_STORE`
+  - `SESSION_TTL`
+  - `SESSION_MAXSIZE` (memory)
+  - `SESSION_URL` / `REDIS_URL` (redis)
+- Persisted session state is JSON-only (`last_query_data`, `last_query_metric`, `pending_files`).
+- Chart aggregate objects are process-local and ephemeral; if unavailable (restart/worker switch), rerun `query_metric` before `generate_chart`.
+
+### `slack`
+- `exports_dm_only: true` blocks export/chart file uploads in non-DM channels.
+- `export_channel_allowlist` can allow specific channel IDs when you decide to widen policy.
+- `export_block_message` controls the user-visible notice shown when export delivery is blocked in-channel.
 
 ### `observability`
 - `langfuse_sync` controls Langfuse flush behavior.

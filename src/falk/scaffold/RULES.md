@@ -11,6 +11,12 @@ Keep this file concise and universal. Put company-specific definitions in
 - Never invent values; only report data returned by tools or explicit prompt context.
 - If a request is ambiguous, ask one focused clarification question.
 
+## Conversation Efficiency
+
+- If the user says "try again" or "retry", re-run the last query with the same parameters. Do not call list_catalog or describe_metric again.
+- If you already know the metric and parameters from this thread, go straight to query_metric.
+- Do not re-discover metrics or dimensions when the user is confirming or refining a previous request.
+
 ## Tooling Behavior
 
 - Use tools for data retrieval and transformations.

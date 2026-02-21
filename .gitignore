@@ -22,6 +22,9 @@ site/
 .vscode/
 .idea/
 
+# Frontend (removed — falk chat uses Pydantic AI CLI)
+frontend/
+
 # OS
 .DS_Store
 Thumbs.db

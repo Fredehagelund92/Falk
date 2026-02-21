@@ -2,7 +2,7 @@
 
 ``DataAgent`` loads BSL semantic models from YAML, connects to the warehouse,
 and provides metric/dimension discovery.  It has **no** LLM logic — that lives
-in ``llm.py``.
+in ``falk.llm``.
 
 Typical usage::
 
@@ -272,7 +272,7 @@ def _load_bsl(
 class DataAgent:
     """Core data agent — loads BSL models and provides metric/dimension discovery.
 
-    No LLM logic. The Pydantic AI agent in ``llm.py`` wraps this for
+    No LLM logic. The Pydantic AI agent in ``falk.llm`` wraps this for
     conversational use.
     """
 

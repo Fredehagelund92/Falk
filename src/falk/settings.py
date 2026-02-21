@@ -49,6 +49,7 @@ class AdvancedConfig:
     max_retries: int = 3
     retry_delay_seconds: int = 1
     log_level: str = "INFO"
+    message_history_max_messages: int | None = None  # None = no limit. N = keep last N messages (reduces tokens in long threads).
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,17 @@ class SessionConfig:
     url: str = "redis://localhost:6379"  # URL for redis store
     ttl: int = 3600  # Session TTL in seconds
     maxsize: int = 500  # Max sessions for memory store
+
+
+@dataclass(frozen=True)
+class SlackPolicyConfig:
+    """Slack-specific delivery policy controls."""
+
+    exports_dm_only: bool = True
+    export_channel_allowlist: list[str] = field(default_factory=list)
+    export_block_message: str = (
+        "Export files are restricted to DMs. Ask me in DM if you need the file."
+    )
 
 
 @dataclass(frozen=True)
@@ -112,6 +124,7 @@ class Settings:
     advanced: AdvancedConfig
     observability: ObservabilityConfig
     session: SessionConfig
+    slack: SlackPolicyConfig
     access: AccessConfig
 
     # Slack (from env)
@@ -227,6 +240,7 @@ def load_settings() -> Settings:
         max_retries=advanced_config.get("max_retries", 3),
         retry_delay_seconds=advanced_config.get("retry_delay_seconds", 1),
         log_level=advanced_config.get("log_level", "INFO"),
+        message_history_max_messages=advanced_config.get("message_history_max_messages"),
     )
     
     # 5. Parse observability config
@@ -242,6 +256,27 @@ def load_settings() -> Settings:
         url=session_config.get("url", "redis://localhost:6379"),
         ttl=session_config.get("ttl", 3600),
         maxsize=session_config.get("maxsize", 500),
+    )
+
+    # 6b. Parse slack policy config
+    slack_config = config.get("slack") or {}
+    allowlist_raw = slack_config.get("export_channel_allowlist") or []
+    if isinstance(allowlist_raw, str):
+        allowlist = [allowlist_raw]
+    elif isinstance(allowlist_raw, list):
+        allowlist = [str(v).strip() for v in allowlist_raw if str(v).strip()]
+    else:
+        allowlist = []
+    slack = SlackPolicyConfig(
+        exports_dm_only=bool(slack_config.get("exports_dm_only", True)),
+        export_channel_allowlist=allowlist,
+        export_block_message=str(
+            slack_config.get(
+                "export_block_message",
+                "Export files are restricted to DMs. Ask me in DM if you need the file.",
+            )
+        ).strip()
+        or "Export files are restricted to DMs. Ask me in DM if you need the file.",
     )
 
     # 7. Parse access control config
@@ -299,6 +334,16 @@ def load_settings() -> Settings:
         bsl_path = project_root / bsl_path
     bsl_path = bsl_path.resolve()
     
+    # Guardrails for production deployments.
+    env_name = str(os.getenv("FALK_ENV", "")).strip().lower()
+    if env_name in {"prod", "production"}:
+        has_access_policy = bool(access.roles or access.users or access.default_role)
+        if not has_access_policy:
+            raise RuntimeError(
+                "FALK_ENV=production requires access_policies in falk_project.yaml. "
+                "Configure roles/users/default_role to avoid open-access behavior."
+            )
+
     # 10. Build Settings object
     return Settings(
         project_root=project_root,
@@ -308,6 +353,7 @@ def load_settings() -> Settings:
         advanced=advanced,
         observability=observability,
         session=session,
+        slack=slack,
         access=access,
         slack_bot_token=os.getenv("SLACK_BOT_TOKEN"),
         slack_app_token=os.getenv("SLACK_APP_TOKEN"),

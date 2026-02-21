@@ -1,6 +1,6 @@
 # Web UI
 
-A local ChatGPT-like interface for testing — powered by Pydantic AI's built-in web server.
+Local web chat for testing, powered by Pydantic AI's built-in web interface.
 
 ## Run
 
@@ -8,19 +8,26 @@ A local ChatGPT-like interface for testing — powered by Pydantic AI's built-in
 falk chat
 ```
 
-Opens at [http://localhost:8000](http://localhost:8000).
+Starts the app at:
 
-Options:
+- `http://127.0.0.1:8000`
 
-```bash
-falk chat --port 3000        # Custom port
-falk chat --no-reload        # Disable auto-reload
-```
+No separate frontend is required.
 
 ## When to use
 
 - **Local development** — test queries before deploying to Slack
-- **Debugging** — see tool calls and agent reasoning
-- **Demos** — show the agent to stakeholders
+- **Debugging** — validate prompt/tool behavior in a browser flow
+- **Demos** — show the agent to stakeholders quickly
 
-> **Note:** The web UI is a thin wrapper. All logic lives in the `falk` library — the same code powers the web UI, Slack bot, and CLI.
+## Backend API (optional)
+
+Start the web app directly if needed:
+
+```bash
+uv run uvicorn app.web:app --reload
+```
+
+This starts the FastAPI app at `http://127.0.0.1:8000`. The `falk chat` command uses this same app.
+
+> **Note:** All logic lives in the `falk` library — the same code powers the CLI chat, Slack bot, and MCP server.

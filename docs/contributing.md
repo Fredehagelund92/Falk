@@ -14,7 +14,7 @@ uv sync --extra dev
 ```
 src/falk/                         ← The library (pip-installable)
 ├── agent.py                      # DataAgent core (BSL models + all data methods)
-├── llm.py                        # Pydantic AI Agent + tool definitions
+├── llm/                          # Pydantic AI Agent + tool definitions
 ├── prompt.py                     # System prompt construction
 ├── settings.py                   # Configuration loading
 ├── cli.py                        # Typer CLI

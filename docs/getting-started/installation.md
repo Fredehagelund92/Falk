@@ -22,7 +22,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-## Install from PyPI (Coming Soon)
+## Install from PyPI
 
 ```bash
 pip install falk
@@ -43,11 +43,12 @@ cp .env.example .env
 # Edit .env: OPENAI_API_KEY=sk-...
 
 # Validate
-falk test --fast
+falk validate --fast
 
-# Query
-falk metrics list
-falk query revenue --json
+# Query through one of the interfaces
+falk chat
+# or
+falk mcp
 ```
 
 ## Configure LLM Provider

@@ -31,21 +31,23 @@ falk exposes these tools via MCP:
 
 ### Discovery & Metadata
 
-- **`list_metrics`** — List all available metrics grouped by semantic model
-- **`list_dimensions`** — List all available dimensions with display names
+- **`list_catalog(entity_type)`** — List metrics and/or dimensions (entity_type: metric \| dimension \| both)
+- **`suggest_date_range(period)`** — Get common date ranges (last_7_days, this_month, etc.)
 - **`describe_metric`** — Get full description of a metric
 - **`describe_model`** — Get full description of a semantic model
 - **`describe_dimension`** — Get full description of a dimension
 - **`lookup_dimension_values`** — Look up actual values for a dimension
+- **`disambiguate(entity_type, concept)`** — Find close metric/dimension matches for clarification
 
 ### Querying
 
-- **`query_metric`** — Query a metric with optional grouping and WHERE filtering
-- **`compare_periods`** — Compare metric across time periods
-### Visualization
+- **`query_metric`** — Query metrics with optional grouping, filtering, compare_period, include_share
 
-- **`generate_chart`** — Generate bar/line/pie chart from query data
-- **`suggest_chart`** — Suggest best chart type for query results
+### Tool Name Mapping (Agent vs MCP)
+
+- Agent tool name: `lookup_values`
+- MCP tool name: `lookup_dimension_values`
+- These are equivalent capabilities exposed through different interfaces.
 
 ## Connecting from Cursor
 
@@ -75,7 +77,7 @@ falk exposes these tools via MCP:
    → Cursor calls falk's query_metric tool
    
    You: "Compare revenue this month vs last"
-   → Cursor calls falk's compare_periods tool
+   → Cursor calls falk's query_metric with compare_period="month"
    ```
 
 ## Connecting from Claude Desktop
@@ -161,7 +163,7 @@ print(result.output)
 ```python
 # MCP client calls:
 query_metric(
-    metric="revenue",
+    metrics=["revenue"],
     dimensions=["region"],
     time_grain="month",
     limit=10
@@ -175,54 +177,51 @@ query_metric(
         ...
     ],
     "row_count": 10,
-    "metric": "revenue",
+    "metrics": ["revenue"],
     "model": "sales_metrics"
 }
 ```
 
 ### Query with filters
 
-The `where` parameter supports SQL-like filtering:
+Use structured filters:
 
 ```python
 # Simple equality
 query_metric(
-    metric="revenue",
+    metrics=["revenue"],
     dimensions=["product_category"],
-    where="region = 'US'"
+    filters=[{"field": "region", "op": "=", "value": "US"}],
 )
 
 # Comparisons
 query_metric(
-    metric="revenue",
+    metrics=["revenue"],
     dimensions=["region"],
-    where="date >= '2024-01-01'"
+    filters=[{"field": "date", "op": ">=", "value": "2024-01-01"}],
 )
 
 # Multiple conditions with AND
 query_metric(
-    metric="revenue",
+    metrics=["revenue"],
     dimensions=["product_category"],
-    where="region = 'US' AND date >= '2024-01-01'"
+    filters=[
+        {"field": "region", "op": "=", "value": "US"},
+        {"field": "date", "op": ">=", "value": "2024-01-01"},
+    ],
 )
 
 # IN clause for multiple values
 query_metric(
-    metric="revenue",
+    metrics=["revenue"],
     dimensions=["product_category"],
-    where="region IN ('US', 'EU', 'APAC')"
+    filters=[{"field": "region", "op": "IN", "value": ["US", "EU", "APAC"]}],
 )
 ```
 
-**Supported operators:**
-- `=` — Equality
-- `>`, `>=`, `<`, `<=` — Comparisons
-- `IN (...)` — List membership
-- `AND` — Multiple conditions
-
 ### Compare periods
 
-Use `compare_periods` to compare a metric across current vs previous period (week, month, quarter).
+Use `query_metric` with `compare_period="week"|"month"|"quarter"` to compare a metric across current vs previous period.
 
 ## Benefits of MCP
 
@@ -236,5 +235,5 @@ Use `compare_periods` to compare a metric across current vs previous period (wee
 
 - [MCP Configuration](../configuration/mcp.md) — Advanced MCP server settings
 - [Tool Reference](../reference/mcp-tools.md) — Complete list of MCP tools
-- [Web UI](../deployment/web-ui.md) — Alternative conversational interface
+- [CLI Chat](../deployment/web-ui.md) — Interactive terminal interface
 - [Slack Bot](../deployment/slack.md) — Team collaboration interface

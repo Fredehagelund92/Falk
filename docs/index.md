@@ -2,7 +2,7 @@
 
 > **Governed AI access to your data warehouse, powered by semantic layers.**
 
-Define metrics once in YAML. Query them naturally through Slack, CLI, or web.
+Define metrics once in YAML. Query them naturally through Slack, CLI chat, or MCP.
 Same numbers everywhere. No SQL generation. No prompt engineering.
 
 ## The idea
@@ -29,7 +29,7 @@ sales_metrics:
 - **Consistent numbers** — same calculation as your BI layer
 - **Business context** — synonyms, gotchas, and rules built into the schema
 - **Automatic root cause** — ask "why did revenue increase?" and get a real answer
-- **Multi-interface** — MCP server, Slack, web UI — same data everywhere
+- **Multi-interface** — MCP server, Slack, CLI chat — same data everywhere
 
 ## Quick start
 
@@ -44,13 +44,13 @@ cd my-project
 cp .env.example .env  # edit: OPENAI_API_KEY=sk-...
 
 # Validate configuration
-falk test --fast
+falk validate --fast
 
 # Start MCP server (connect from Cursor, Claude Desktop)
 falk mcp
 
-# OR start web UI
-falk chat   # localhost:8000
+# OR start local web chat (Pydantic AI built-in UI)
+falk chat   # -> http://127.0.0.1:8000
 
 # OR start Slack bot
 falk slack
@@ -64,6 +64,15 @@ falk slack
 | [Quick Start](getting-started/quickstart.md) | Full setup walkthrough |
 | [Semantic Models](configuration/semantic-models.md) | Define your metrics |
 | [CLI Reference](cli-reference.md) | All commands |
+
+## Deployment note (0.1.0)
+
+- Recommended model: one company/workspace per deployment (single-tenant).
+- In production (`FALK_ENV=production`), configure `access_policies` to avoid open access.
+- For multi-worker deployments, prefer Redis session storage (`session.store: redis`).
+- Session config precedence is env vars > `falk_project.yaml` > defaults.
+- Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.
+- Slack exports default to DM-only delivery; optionally allow specific channels via `slack.export_channel_allowlist`.
 ---
 
 ## Inspiration & Credits

@@ -190,7 +190,8 @@ def _run_single(agent: Any, case: EvalCase, deps: DataAgent) -> EvalResult:
     result = EvalResult(case=case, passed=False)
 
     try:
-        run_result = agent.run_sync(case.question, deps=deps)
+        metadata = {"user_id": case.user_id} if case.user_id else None
+        run_result = agent.run_sync(case.question, deps=deps, metadata=metadata)
         elapsed = time.monotonic() - start
         result.duration_s = elapsed
 

@@ -2,17 +2,18 @@
 
 Validate your project configuration, semantic models, and test that your agent gives correct answers.
 
-## What does `falk test` do?
+## `falk validate` vs `falk test`
 
-The test command runs comprehensive validation:
+`falk validate` runs project/runtime checks:
 
 1. **Configuration validation** - Checks `falk_project.yaml` structure and required fields
 2. **Semantic layer validation** - Validates BSL models for errors, duplicates, missing fields
 3. **Connection test** - Verifies warehouse connectivity (optional with `--no-connection`)
 4. **Agent initialization** - Ensures agent can be built with current config
-5. **Evaluation test cases** - Runs behavior tests from `evals/` directory (if present)
 
-Every time you update `semantic_models.yaml`, `RULES.md`, or context files, run `falk test` to catch issues early.
+`falk test` runs behavior eval cases from `evals/`.
+
+Every time you update `semantic_models.yaml`, `RULES.md`, or context files, run `falk validate` first, then `falk test` for behavior checks.
 
 ## Test cases (YAML)
 
@@ -45,17 +46,23 @@ Each test case specifies:
 ## Running evals
 
 ```bash
-# Full test suite (validation + evals)
+# Validate project/runtime
+falk validate
+
+# Quick validation only (no connection test, no agent init)
+falk validate --fast
+
+# Run all evals
 falk test
 
-# Quick validation only (no connection test, no evals)
-falk test --fast
-
-# Only run evals (skip validation)
-falk test --evals-only
+# Filter eval files
+falk test --pattern "*.yaml"
 
 # Verbose output
 falk test --verbose
+
+# Filter by tags
+falk test --tags access,gotchas
 ```
 
 ## Writing good test cases

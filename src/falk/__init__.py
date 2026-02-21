@@ -3,7 +3,7 @@
 Core modules
 ------------
 agent.py              DataAgent core (BSL + all data methods)
-llm.py                Pydantic AI Agent with tool definitions
+llm/                  Pydantic AI Agent with tool definitions
 prompt.py             System prompt construction
 settings.py           Configuration (env vars, paths)
 cli.py                Project management CLI
@@ -41,9 +41,9 @@ def build_agent():  # noqa: D103
     return _build()
 
 
-def build_web_app():  # noqa: D103
+def build_web_app(*args, **kwargs):  # noqa: D103
     from falk.llm import build_web_app as _build
-    return _build()
+    return _build(*args, **kwargs)
 
 
 __all__ = [

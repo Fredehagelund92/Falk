@@ -26,7 +26,8 @@ uv sync
 | Command | What it does |
 |---------|-------------|
 | `falk init` | Create a new project with sample data |
-| `falk test` | Validate configuration and run tests |
+| `falk validate` | Validate configuration, models, and optional runtime checks |
+| `falk test` | Run eval cases from `evals/` |
 | `falk config` | Show current project configuration |
 
 ### Servers
@@ -45,7 +46,7 @@ falk init my-project
 cd my-project
 
 # Validate configuration
-falk test --fast
+falk validate --fast
 
 # Start MCP server (connect from Cursor)
 falk mcp

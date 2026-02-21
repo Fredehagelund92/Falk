@@ -27,10 +27,9 @@ You can connect falk as an MCP server to access governed data queries.
 
 ## Available Tools
 
-- `list_metrics` — List all available metrics
-- `list_dimensions` — List all available dimensions
+- `list_catalog` — List metrics and/or dimensions (entity_type: metric \| dimension \| both)
 - `query_metric` — Query metrics with filtering and grouping
-- `compare_periods` — Compare time periods
+- `query_metric` — Query metrics (use compare_period for period comparison, include_share for % breakdown)
 - `generate_chart` — Create visualizations
 - Plus more...
 

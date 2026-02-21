@@ -23,9 +23,10 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from falk.agent import DataAgent
+from falk.llm import readiness_probe, tool_error
+from falk.services.query_service import execute_query_metric
 from falk.settings import load_settings
-from falk.tools.calculations import compute_shares, period_date_ranges
-from falk.tools.warehouse import run_warehouse_query
+from falk.tools.calculations import suggest_date_range as _suggest_date_range
 
 # Load .env before initializing agent
 _env_candidates = [Path(__file__).resolve().parent.parent / ".env", Path.cwd() / ".env"]
@@ -65,24 +66,45 @@ def get_agent() -> DataAgent:
 
 
 @mcp.tool()
-def list_metrics() -> dict[str, Any]:
-    """List all available metrics.
+def list_catalog(entity_type: str = "both") -> dict[str, Any]:
+    """List metrics and/or dimensions.
     
-    Returns {"metrics": [{name, description, synonyms, gotcha}, ...]}.
-    Use this to discover what metrics are available before querying.
+    Args:
+        entity_type: 'metric' | 'dimension' | 'both' (default: both)
+        
+    Returns {"metrics": [...], "dimensions": [...]} or subset.
+    Use this to discover what metrics and dimensions are available before querying.
     """
-    return get_agent().list_metrics()
+    et = (entity_type or "both").strip().lower()
+    if et not in ("metric", "dimension", "both"):
+        return tool_error(
+            f"entity_type must be 'metric', 'dimension', or 'both', got '{entity_type}'.",
+            "INVALID_ENTITY_TYPE",
+        )
+
+    agent = get_agent()
+    result: dict[str, Any] = {}
+    if et in ("metric", "both"):
+        result["metrics"] = agent.list_metrics().get("metrics", [])
+    if et in ("dimension", "both"):
+        result["dimensions"] = agent.list_dimensions().get("dimensions", [])
+    return result
 
 
 @mcp.tool()
-def list_dimensions() -> dict[str, Any]:
-    """List all available dimensions.
+def suggest_date_range(period: str) -> dict[str, Any]:
+    """Get date range for common periods.
     
-    Returns {"dimensions": [{name, display_name, description, synonyms, gotcha}, ...]}.
-    Use display_name when showing dimensions to users.
-    Dimensions can be used to group metrics in queries.
+    Args:
+        period: One of: yesterday, today, last_7_days, last_30_days, this_week,
+                this_month, last_month, this_quarter.
+        
+    Returns {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"} or {"error": "..."}.
     """
-    return get_agent().list_dimensions()
+    try:
+        return _suggest_date_range(period)
+    except ValueError as e:
+        return tool_error(str(e), "INVALID_DATE_PERIOD")
 
 
 @mcp.tool()
@@ -172,15 +194,19 @@ def disambiguate(entity_type: str, concept: str) -> dict[str, Any]:
     et = (entity_type or "").strip().lower()
     c = (concept or "").strip()
     if not c:
-        return {"error": "Concept cannot be empty."}
+        return tool_error("Concept cannot be empty.", "INVALID_CONCEPT")
     if et not in ("metric", "dimension"):
-        return {"error": f"entity_type must be 'metric' or 'dimension', got '{entity_type}'."}
+        return tool_error(
+            f"entity_type must be 'metric' or 'dimension', got '{entity_type}'.",
+            "INVALID_ENTITY_TYPE",
+        )
 
     agent = get_agent()
+    catalog = list_catalog(entity_type=et)
     if et == "metric":
-        items = agent.list_metrics().get("metrics", [])
+        items = catalog.get("metrics", [])
     else:
-        items = agent.list_dimensions().get("dimensions", [])
+        items = catalog.get("dimensions", [])
 
     matches = [
         {
@@ -192,7 +218,7 @@ def disambiguate(entity_type: str, concept: str) -> dict[str, Any]:
         if _mcp_matches_concept(m, c)
     ]
     if not matches:
-        return {"error": f"No {et}s found for '{concept}'."}
+        return tool_error(f"No {et}s found for '{concept}'.", "NO_MATCHES")
     return {"matches": matches}
 
 
@@ -209,18 +235,22 @@ def query_metric(
     order_by: str | None = None,
     limit: int | None = None,
     time_grain: str | None = None,
+    compare_period: str | None = None,
+    include_share: bool = False,
 ) -> dict[str, Any]:
     """Query one or more metrics from the warehouse with optional grouping and filtering.
     
     This is the primary tool for retrieving metric data.
     
     Args:
-        metrics: List of metric names to query (use list_metrics to discover)
+        metrics: List of metric names to query (use list_catalog to discover)
         dimensions: Optional list of dimension names to group by
         filters: Optional list of filters, e.g. [{"field": "date", "op": ">=", "value": "2024-01-01"}, {"field": "date", "op": "<=", "value": "2024-12-31"}]
         order_by: Optional ORDER BY direction ("asc" or "desc")
         limit: Optional row limit
         time_grain: Optional time grain (day, week, month, quarter, year)
+        compare_period: Optional 'week'|'month'|'quarter' for period-over-period comparison
+        include_share: If True, add share_pct column (percentage of total)
         
     Returns dict with:
         - rows: Query results as list of dicts
@@ -228,100 +258,46 @@ def query_metric(
         - metrics: List of metric names
         - model: Semantic model name
     """
-    agent = get_agent()
-    
-    result = run_warehouse_query(
-        core=agent,
+    result = execute_query_metric(
+        core=get_agent(),
         metrics=metrics,
         dimensions=dimensions,
         filters=filters,
         order_by=order_by,
         limit=limit,
         time_grain=time_grain,
+        compare_period=compare_period,
+        include_share=include_share,
     )
-    
-    # Convert WarehouseQueryResult to dict
     if not result.ok:
-        return {"error": result.error}
-    
-    return {
+        return tool_error(
+            result.error or "Query failed.",
+            result.error_code or "QUERY_FAILED",
+        )
+
+    payload = {
         "rows": result.data,
-        "row_count": len(result.data),
-        "metrics": result.metrics,
+        "row_count": result.rows,
+        "metrics": result.metrics or metrics,
         "model": result.model,
     }
+    if result.period:
+        payload["period"] = result.period
+    return payload
 
 
 @mcp.tool()
-def compare_periods(
-    metric: str,
-    dimension: str | None = None,
-    period: str = "month",
-    limit: int = 10,
-) -> dict[str, Any]:
-    """Compare a metric across time periods (e.g. this month vs last month).
-    
-    Automatically queries both current and previous period for comparison.
-    
-    Args:
-        metric: Metric name to compare
-        dimension: Optional dimension to group by
-        period: Time period (day, week, month, quarter, year)
-        limit: Maximum rows per period
-        
-    Returns dict with current_period, previous_period, and comparison data.
-    """
-    agent = get_agent()
-    
-    # Get date ranges for current and previous period
-    current_range, previous_range = period_date_ranges(period)
-    date_filters_cur = [
-        {"field": "date", "op": ">=", "value": current_range[0]},
-        {"field": "date", "op": "<=", "value": current_range[1]},
-    ]
-    date_filters_prev = [
-        {"field": "date", "op": ">=", "value": previous_range[0]},
-        {"field": "date", "op": "<=", "value": previous_range[1]},
-    ]
-    
-    # Query both periods
-    current_result = run_warehouse_query(
-        core=agent,
-        metrics=[metric],
-        dimensions=[dimension] if dimension else [],
-        filters=date_filters_cur,
-        limit=limit,
-    )
-    
-    previous_result = run_warehouse_query(
-        core=agent,
-        metrics=[metric],
-        dimensions=[dimension] if dimension else [],
-        filters=date_filters_prev,
-        limit=limit,
-    )
-    
-    return {
-        "current_period": {
-            "range": current_range,
-            "rows": current_result.data,
-            "row_count": len(current_result.data),
-        },
-        "previous_period": {
-            "range": previous_range,
-            "rows": previous_result.data,
-            "row_count": len(previous_result.data),
-        },
-        "metric": metric,
-        "dimension": dimension,
-        "period": period,
-    }
+def health_check() -> dict[str, Any]:
+    """Return MCP runtime health status."""
+    payload = readiness_probe(get_agent())
+    payload["service"] = "mcp"
+    return payload
 
 
 # ---------------------------------------------------------------------------
 # MCP Tools - Visualization
 # ---------------------------------------------------------------------------
-# NOTE: Chart generation has been migrated to BSL's built-in charting (in llm.py).
+# NOTE: Chart generation has been migrated to BSL's built-in charting (in falk.llm).
 # MCP charting tools are disabled as they require session state and BSL aggregates.
 # Re-enable when MCP gains session state support or use llm agent directly.
 

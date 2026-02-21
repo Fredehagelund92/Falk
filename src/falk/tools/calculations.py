@@ -149,6 +149,64 @@ def period_date_ranges(
     )
 
 
+def suggest_date_range(
+    period: str,
+    reference: date | None = None,
+) -> dict[str, str]:
+    """Compute a single date range for common periods.
+
+    Args:
+        period: One of: yesterday, today, last_7_days, last_30_days, this_week,
+                this_month, last_month, this_quarter.
+        reference: Override "today" (useful for testing).
+
+    Returns:
+        {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
+    """
+    today = reference or date.today()
+
+    if period == "yesterday":
+        d = today - timedelta(days=1)
+        return {"start": d.isoformat(), "end": d.isoformat()}
+
+    if period == "today":
+        return {"start": today.isoformat(), "end": today.isoformat()}
+
+    if period == "last_7_days":
+        start = today - timedelta(days=6)
+        return {"start": start.isoformat(), "end": today.isoformat()}
+
+    if period == "last_30_days":
+        start = today - timedelta(days=29)
+        return {"start": start.isoformat(), "end": today.isoformat()}
+
+    if period == "this_week":
+        start = today - timedelta(days=today.weekday())
+        return {"start": start.isoformat(), "end": today.isoformat()}
+
+    if period == "this_month":
+        start = today.replace(day=1)
+        return {"start": start.isoformat(), "end": today.isoformat()}
+
+    if period == "last_month":
+        if today.month == 1:
+            start = today.replace(year=today.year - 1, month=12, day=1)
+        else:
+            start = today.replace(month=today.month - 1, day=1)
+        end = today.replace(day=1) - timedelta(days=1)
+        return {"start": start.isoformat(), "end": end.isoformat()}
+
+    if period == "this_quarter":
+        q_month = ((today.month - 1) // 3) * 3 + 1
+        start = today.replace(month=q_month, day=1)
+        return {"start": start.isoformat(), "end": today.isoformat()}
+
+    raise ValueError(
+        f"Unsupported period '{period}'. Use: yesterday, today, last_7_days, "
+        "last_30_days, this_week, this_month, last_month, this_quarter."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Metric decomposition and variance analysis
 # ---------------------------------------------------------------------------

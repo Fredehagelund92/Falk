@@ -28,9 +28,10 @@ falk is a data agent that queries your warehouse using **governed metrics** from
 # Install
 pip install falk
 
-# Or with optional features
-pip install "falk[slack,langfuse,charts]"
-pip install "falk[all]"  # Everything  # or: git clone + uv sync
+# Or install from source
+git clone https://github.com/Fredehagelund92/Falk.git
+cd Falk
+uv sync
 
 # Create a project with sample data
 falk init my-project
@@ -41,7 +42,7 @@ cp .env.example .env
 # Edit .env: OPENAI_API_KEY=sk-...
 
 # Validate configuration
-falk test --fast
+falk validate --fast
 
 # Option 1: Start MCP server (connect from Cursor, Claude Desktop)
 falk mcp
@@ -64,7 +65,7 @@ You: "Show me revenue by region"
 → falk uses governed metrics, returns structured data
 
 You: "Compare revenue this month vs last"
-→ falk uses compare_periods and returns current vs previous period
+→ falk uses query_metric with compare_period and returns current vs previous period
 ```
 
 No manual drilling. Instant root cause analysis. Same experience in Slack, web UI, or any MCP client.
@@ -87,6 +88,14 @@ No manual drilling. Instant root cause analysis. Same experience in Slack, web U
 - Python 3.11+
 - OpenAI, Anthropic, or Google API key
 - DuckDB (included) or Snowflake/BigQuery/PostgreSQL
+
+---
+
+## Deployment Model (0.1.0)
+
+- `0.1.0` is designed for **single-tenant deployments** (one company/workspace per deployment).
+- In production (`FALK_ENV=production`), `access_policies` must be configured in `falk_project.yaml`.
+- For multi-worker deployments, use Redis session storage (`session.store: redis`) instead of in-memory sessions.
 
 ---
 

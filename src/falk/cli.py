@@ -8,21 +8,31 @@ This CLI focuses on project setup and management:
 
 For data queries and agent interactions, use:
 - MCP server: `falk mcp` (connect from Cursor, Claude Desktop)
-- Web UI: `falk chat` (conversational interface)
+- Web chat: `falk chat` (Pydantic AI built-in web UI)
 - Slack bot: `falk slack` (team collaboration)
 """
 from __future__ import annotations
 
 import shutil
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import typer
 
-from falk.evals.cases import discover_cases, load_cases
+from falk.evals.cases import load_cases
 from falk.evals.runner import run_evals
 
 app = typer.Typer(help="falk CLI - Manage projects, run evals, start servers")
+
+
+def _print_section(title: str) -> None:
+    typer.echo(f"\n=== {title} ===")
+
+
+def _print_status(status: str, message: str, *, err: bool = False) -> None:
+    typer.echo(f"[{status}] {message}", err=err)
 
 
 # ---------------------------------------------------------------------------
@@ -166,10 +176,10 @@ def init(
         step += 1
         typer.echo(f"{step}. Edit .env with your API keys")
         step += 1
-        typer.echo(f"{step}. falk test --fast  # Validate configuration")
+        typer.echo(f"{step}. falk validate --fast  # Validate configuration")
         step += 1
         typer.echo(f"{step}. falk mcp  # Start MCP server for queries")
-        typer.echo("   OR falk chat  # Start web UI")
+        typer.echo("   OR falk chat  # Start local web UI")
         
     except Exception as e:
         typer.echo(f"\n[FAIL] Failed to initialize project: {e}", err=True)
@@ -207,10 +217,9 @@ def config(
     try:
         settings = load_settings()
         
-        typer.echo("📋 falk Configuration\n")
+        typer.echo("falk Configuration\n")
         typer.echo(f"Project root: {settings.project_root}")
         typer.echo(f"Semantic models: {settings.bsl_models_path}")
-        typer.echo(f"Profile: {settings.profile or 'default'}")
         typer.echo("")
         
         # Connection
@@ -256,12 +265,12 @@ def config(
 
 
 @app.command()
-def test(
+def validate(
     fast: bool = typer.Option(
         False,
         "--fast",
         "-f",
-        help="Skip connection test and evals (config validation only)",
+        help="Skip connection and agent initialization checks",
     ),
     no_connection: bool = typer.Option(
         False,
@@ -273,167 +282,213 @@ def test(
         "--no-agent",
         help="Skip agent initialization test",
     ),
-    evals_only: bool = typer.Option(
+    verbose: bool = typer.Option(
         False,
-        "--evals-only",
-        help="Skip validation, only run evals",
+        "--verbose",
+        "-v",
+        help="Show detailed validation output",
     ),
+) -> None:
+    """Validate project configuration, semantic models, connection, and agent startup."""
+    from falk.settings import load_settings
+    from falk.validation import validate_project
+
+    try:
+        settings = load_settings()
+        _print_section("Validate")
+        _print_status("INFO", f"Project root: {settings.project_root}")
+
+        check_connection = not no_connection and not fast
+        check_agent = not no_agent and not fast
+        summary = validate_project(
+            project_root=settings.project_root,
+            check_connection=check_connection,
+            check_agent=check_agent,
+        )
+
+        for result in summary.results:
+            if result.passed:
+                _print_status("PASS", f"{result.check_name}: {result.message}")
+            elif result.warning:
+                _print_status("WARN", f"{result.check_name}: {result.message}")
+            else:
+                _print_status("FAIL", f"{result.check_name}: {result.message}")
+
+            if verbose and result.details:
+                for detail in result.details:
+                    typer.echo(f"  - {detail}")
+
+        _print_section("Summary")
+        _print_status(
+            "INFO",
+            f"Checks: {len(summary.passed_checks)} passed, {len(summary.failed_checks)} failed, {len(summary.warnings)} warnings",
+        )
+        if not summary.passed:
+            raise typer.Exit(code=1)
+        _print_status("PASS", "Validation completed successfully.")
+    except typer.Exit:
+        raise
+    except Exception as e:
+        _print_status("FAIL", f"Validation failed: {e}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def test(
     pattern: str = typer.Option(
         "*.yaml",
         "--pattern",
         "-p",
-        help="Glob pattern for eval files",
+        help="Glob pattern for eval files in evals/",
+    ),
+    tags: str = typer.Option(
+        "",
+        "--tags",
+        help="Comma-separated tags to filter eval cases (e.g. access,gotchas)",
     ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
         "-v",
-        help="Show detailed results",
+        help="Show detailed eval output",
     ),
 ) -> None:
-    """Test project configuration, semantic models, and agent behavior.
-    
-    Runs comprehensive validation:
-    1. Configuration validation (falk_project.yaml)
-    2. Semantic layer validation (BSL models)
-    3. Warehouse connection test (optional)
-    4. Agent initialization test (optional)
-    5. Evaluation test cases (if evals/ directory exists)
-    
-    Example:
-        falk test                    # Full test suite
-        falk test --fast             # Quick validation only
-        falk test --no-connection    # Skip connection test
-        falk test --evals-only       # Only run evals
-        falk test --verbose          # Detailed output
-    """
+    """Run behavior evals from evals/ directory."""
     from falk.settings import load_settings
-    from falk.validation import validate_project
-    
+
     try:
         settings = load_settings()
         project_root = settings.project_root
-        
-        # Skip validation if evals-only mode
-        if not evals_only:
-            typer.echo("Validating project...\n")
-            
-            # Run validation with appropriate flags
-            check_connection = not no_connection and not fast
-            check_agent = not no_agent and not fast
-            
-            validation = validate_project(
-                project_root=project_root,
-                check_connection=check_connection,
-                check_agent=check_agent,
-            )
-            
-            # Print validation results
-            for result in validation.results:
-                if result.passed:
-                    typer.echo(f"[PASS] {result.check_name}: {result.message}")
-                elif result.warning:
-                    typer.echo(f"[WARN] {result.check_name}: {result.message}")
-                else:
-                    typer.echo(f"[FAIL] {result.check_name}: {result.message}")
-                
-                if verbose and result.details:
-                    for detail in result.details:
-                        typer.echo(f"       {detail}")
-            
-            typer.echo("")
-            
-            # Show summary
-            passed_checks = len(validation.passed_checks)
-            failed_checks = len(validation.failed_checks)
-            warnings = len(validation.warnings)
-            total = len(validation.results)
-            
-            if not validation.passed:
-                typer.echo(f"[FAIL] Validation failed: {passed_checks}/{total} checks passed, {failed_checks} failed")
-                if warnings > 0:
-                    typer.echo(f"[WARN] {warnings} warning(s)")
-                raise typer.Exit(code=1)
-            
-            typer.echo(f"[PASS] Validation passed: {passed_checks}/{total} checks")
-            if warnings > 0:
-                typer.echo(f"[WARN] {warnings} warning(s)")
-            typer.echo("")
-            
-            # Exit early if fast mode
-            if fast:
-                typer.echo("[OK] Fast validation complete (skipped connection test and evals)")
-                return
-        
-        # Run evaluations (if evals directory exists)
         evals_dir = project_root / "evals"
-        
+
+        _print_section("Test")
+        _print_status("INFO", f"Project root: {project_root}")
         if not evals_dir.exists():
-            if evals_only:
-                typer.echo(f"[FAIL] Evals directory not found: {evals_dir}", err=True)
-                typer.echo("       Create evals/ directory with YAML files", err=True)
-                raise typer.Exit(code=1)
-            else:
-                typer.echo("[INFO] No evals directory found (optional)")
-                typer.echo("       Create evals/ directory with test cases to enable behavior testing")
-                return
-        
-        typer.echo(f"Running evaluations from {evals_dir}\n")
-        
-        # Discover and load eval cases
-        cases = discover_cases(evals_dir)
-        if not cases:
-            if evals_only:
-                typer.echo(f"[FAIL] No eval cases found in {evals_dir}", err=True)
-                raise typer.Exit(code=1)
-            else:
-                typer.echo(f"[INFO] No eval cases found in {evals_dir}")
-                return
-        
-        typer.echo(f"Found {len(cases)} eval case(s)\n")
-        
-        # Run evaluations
-        summary = run_evals(cases, verbose=verbose)
-        
-        # Print results
-        typer.echo(f"\n[INFO] Eval Results: {summary.passed}/{summary.total} passed")
-        if summary.errors > 0:
-            typer.echo(f"[WARN] {summary.errors} error(s)")
-        typer.echo(f"[INFO] Duration: {summary.duration_s:.1f}s")
-        typer.echo(f"[OK] Pass rate: {summary.pass_rate:.1f}%")
-        
-        if verbose:
-            typer.echo("\nDetailed Results:")
-            for result in summary.results:
-                status = "[PASS]" if result.passed else "[FAIL]"
-                typer.echo(f"\n{status} {result.case.name}")
-                if result.error:
-                    typer.echo(f"       Error: {result.error}")
-                elif result.failures:
-                    typer.echo("       Failures:")
-                    for failure in result.failures:
-                        typer.echo(f"       - {failure}")
-        
-        # Exit with error if any tests failed
-        if summary.failed > 0 or summary.errors > 0:
-            typer.echo(f"\n[FAIL] Tests failed")
+            _print_status("FAIL", f"Evals directory not found: {evals_dir}", err=True)
+            _print_status("INFO", "Create evals/ directory with YAML files.", err=True)
             raise typer.Exit(code=1)
-        
-        typer.echo(f"\n[PASS] All tests passed")
-        
+
+        case_files = sorted(evals_dir.glob(pattern))
+        if not case_files:
+            _print_status("FAIL", f"No eval files matched pattern '{pattern}' in {evals_dir}", err=True)
+            raise typer.Exit(code=1)
+
+        cases = []
+        for file in case_files:
+            cases.extend(load_cases(file))
+        if not cases:
+            _print_status("FAIL", f"No eval cases found in files matching '{pattern}'", err=True)
+            raise typer.Exit(code=1)
+
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        _print_status("INFO", f"Eval files: {len(case_files)}")
+        _print_status("INFO", f"Cases loaded: {len(cases)}")
+        if tag_list:
+            _print_status("INFO", f"Tag filter: {', '.join(tag_list)}")
+
+        summary = run_evals(cases, verbose=verbose, tags=tag_list or None)
+
+        _print_section("Summary")
+        _print_status("INFO", f"Pass rate: {summary.pass_rate:.1f}%")
+        _print_status("INFO", f"Duration: {summary.duration_s:.1f}s")
+        if summary.errors:
+            _print_status("WARN", f"Errors: {summary.errors}")
+        if summary.failed or summary.errors:
+            _print_status("FAIL", "Eval suite failed.")
+            raise typer.Exit(code=1)
+        _print_status("PASS", "All eval cases passed.")
     except typer.Exit:
         raise
     except Exception as e:
-        typer.echo(f"\n[FAIL] Test failed: {e}", err=True)
-        if verbose:
-            import traceback
-            typer.echo(traceback.format_exc(), err=True)
+        _print_status("FAIL", f"Eval run failed: {e}", err=True)
         raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
 # Servers
 # ---------------------------------------------------------------------------
+
+
+@app.command("access-test")
+def access_test(
+    list_users: bool = typer.Option(
+        False,
+        "--list-users",
+        help="Show configured user IDs from access_policies",
+    ),
+    user_id: str = typer.Option(
+        None,
+        "--user",
+        "-u",
+        help="User ID (e.g. email) to run as",
+    ),
+    question: str = typer.Option(
+        "What metrics are available?",
+        "--question",
+        "-q",
+        help="Question to ask the agent",
+    ),
+) -> None:
+    """Run the agent as a specific user to test access policies.
+
+    Requires access_policies in falk_project.yaml. Use --user to simulate
+    different users (e.g. analyst@company.com, viewer@company.com).
+    Use --list-users to see configured user IDs.
+
+    Example:
+        falk access-test --user analyst@company.com
+        falk access-test --user viewer@company.com -q "Describe the orders metric"
+        falk access-test --list-users
+    """
+    from falk.access import allowed_dimensions, allowed_metrics
+    from falk.agent import DataAgent
+    from falk.llm import build_agent
+    from falk.settings import load_settings
+
+    settings = load_settings()  # Load .env from project root
+
+    if list_users:
+        users = settings.access.users
+        _print_section("Access Users")
+        if not users:
+            _print_status("WARN", "No users configured in access_policies.")
+            _print_status("INFO", "Uncomment and configure access_policies in falk_project.yaml")
+            return
+        if settings.access.default_role:
+            _print_status("INFO", f"Default role: {settings.access.default_role}")
+        _print_status("INFO", "Configured users:")
+        for u in users:
+            typer.echo(f"  - {u.user_id}  roles: {u.roles}")
+        return
+
+    if not user_id:
+        _print_status("FAIL", "--user is required (or use --list-users)", err=True)
+        raise typer.Exit(code=1)
+
+    allowed_m = allowed_metrics(user_id, settings.access)
+    allowed_d = allowed_dimensions(user_id, settings.access)
+    _print_section("Access Test")
+    _print_status("INFO", f"User: {user_id}")
+    _print_status("INFO", f"Question: {question}")
+    if allowed_m is None:
+        _print_status("INFO", "Allowed metrics: all")
+    else:
+        _print_status("INFO", f"Allowed metrics: {len(allowed_m)}")
+    if allowed_d is None:
+        _print_status("INFO", "Allowed dimensions: all")
+    else:
+        _print_status("INFO", f"Allowed dimensions: {len(allowed_d)}")
+
+    try:
+        agent = build_agent()
+        deps = DataAgent()
+        result = agent.run_sync(question, deps=deps, metadata={"user_id": user_id})
+        output = result.output if hasattr(result, "output") else str(result)
+        _print_section("Response")
+        typer.echo(output or "No response")
+    except Exception as e:
+        _print_status("FAIL", f"access-test failed: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -462,7 +517,7 @@ def mcp() -> None:
     from falk.settings import load_settings
     load_settings()  # Load .env from project root
     
-    typer.echo("🔌 Starting falk MCP server...", err=True)
+    typer.echo("Starting falk MCP server...", err=True)
     typer.echo("   Press Ctrl+C to stop", err=True)
     typer.echo("", err=True)
     
@@ -476,47 +531,51 @@ def mcp() -> None:
         raise typer.Exit(code=1)
 
 
+# #region agent log
+def _dbg_log(msg: str, data: dict | None = None, hyp: str = "") -> None:
+    import json
+    try:
+        with open(r"c:\Users\fhagelund\Documents\GitHub\data-agent\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"message": msg, "data": data or {}, "hypothesisId": hyp, "timestamp": __import__("time").time() * 1000}) + "\n")
+    except Exception:
+        pass
+# #endregion
+
+
 @app.command()
-def chat(
-    host: str = typer.Option(
-        "127.0.0.1",
-        "--host",
-        "-h",
-        help="Host to bind to",
-    ),
-    port: int = typer.Option(
-        8000,
-        "--port",
-        "-p",
-        help="Port to bind to",
-    ),
-) -> None:
-    """Start the web UI chat interface.
-    
-    Opens a browser-based chat interface for querying metrics.
-    The web UI connects to the MCP server internally.
-    
+def chat() -> None:
+    """Start local web chat with the data agent (Pydantic AI built-in UI).
+
+    Launches the FastAPI + Pydantic AI web app at http://127.0.0.1:8000.
+
     Example:
         falk chat
-        falk chat --port 8080
     """
     from falk.settings import load_settings
-    load_settings()  # Load .env from project root
-    
-    typer.echo("💬 Starting falk web UI...")
-    typer.echo(f"   URL: http://{host}:{port}")
+
+    # #region agent log
+    _dbg_log("chat_entry", {"cwd": str(Path.cwd())}, "H4")
+    # #endregion
+    load_settings()
+    s = load_settings()
+    # #region agent log
+    _dbg_log("after_load_settings", {"project_root": str(s.project_root)}, "H4")
+    # #endregion
+    typer.echo("Starting falk chat (Pydantic AI web)...")
+    typer.echo("   Open: http://127.0.0.1:8000")
     typer.echo("   Press Ctrl+C to stop")
     typer.echo("")
-    
+
     try:
-        # Import and run the web app
-        from falk.llm import build_web_app
-        import uvicorn
-        
-        app_instance = build_web_app()
-        uvicorn.run(app_instance, host=host, port=port, log_level="info")
+        subprocess.run(
+            [sys.executable, "-m", "uvicorn", "app.web:app", "--host", "127.0.0.1", "--port", "8000"],
+            check=True,
+        )
     except KeyboardInterrupt:
-        typer.echo("\n[OK] Web UI stopped")
+        typer.echo("\n[OK] Chat server stopped")
+    except Exception as e:
+        typer.echo(f"[FAIL] Failed to start chat server: {e}", err=True)
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -549,7 +608,7 @@ def slack() -> None:
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
     
-    typer.echo("💬 Starting Slack bot server...")
+    typer.echo("Starting Slack bot server...")
     typer.echo("   Press Ctrl+C to stop")
     typer.echo("")
     

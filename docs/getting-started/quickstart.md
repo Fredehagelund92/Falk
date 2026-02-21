@@ -22,15 +22,13 @@ This creates:
 ```text
 my-analytics/
 ├── RULES.md                    # Agent behavior rules
-├── knowledge/                  # Business knowledge
-│   ├── business/
-│   │   ├── glossary.md
-│   │   └── context.md
-│   ├── domains/
-│   │   ├── marketing.md
-│   │   ├── finance.md
-│   │   └── product.md
-│   └── data-quality.md
+├── knowledge/                  # Business context + known caveats
+│   ├── business.md
+│   └── gotchas.md
+├── evals/                      # Starter eval cases
+│   ├── basic.yaml
+│   ├── access.yaml
+│   └── gotchas.yaml
 ├── semantic_models.yaml       # Metrics & dimensions
 ├── falk_project.yaml          # Agent config
 ├── data/
@@ -48,7 +46,7 @@ cp .env.example .env
 ## 4. Verify
 
 ```bash
-falk test --fast
+falk validate --fast
 ```
 
 ```text
@@ -59,21 +57,15 @@ falk test --fast
 ## 5. Start querying
 
 ```bash
-# List available metrics
-falk metrics list
-
-# Query a metric
-falk query revenue --group-by region
-
-# Compare periods
-falk chat  # then ask: "Compare revenue this month vs last"
-
-# Web UI
+# Option 1: Web UI
 falk chat
 # → http://localhost:8000
+
+# Option 2: MCP server (connect from Cursor / Claude Desktop)
+falk mcp
 ```
 
-Try asking in the web UI:
+Try asking:
 
 - "What's our total revenue?"
 - "Top 5 regions by revenue"
