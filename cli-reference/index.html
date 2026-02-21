@@ -1219,6 +1219,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#falk-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        falk validate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#falk-test" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1252,10 +1263,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#falk-access-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        falk access-test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#falk-slack" class="md-nav__link">
     <span class="md-ellipsis">
       
         falk slack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
       
     </span>
   </a>
@@ -1382,6 +1415,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#falk-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        falk validate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#falk-test" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1415,10 +1459,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#falk-access-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        falk access-test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#falk-slack" class="md-nav__link">
     <span class="md-ellipsis">
       
         falk slack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
       
     </span>
   </a>
@@ -1459,27 +1525,35 @@
 <h2 id="falk-config"><code>falk config</code></h2>
 <p>Show current configuration.</p>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>falk<span class="w"> </span>config
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>falk<span class="w"> </span>config<span class="w"> </span>--json
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>falk<span class="w"> </span>config<span class="w"> </span>--all
 </code></pre></div>
 <hr />
-<h2 id="falk-test"><code>falk test</code></h2>
-<p>Validate project configuration, semantic models, and run test cases.</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w">                    </span><span class="c1"># Full test suite</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--fast<span class="w">             </span><span class="c1"># Quick validation only</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--no-connection<span class="w">    </span><span class="c1"># Skip connection test</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--evals-only<span class="w">       </span><span class="c1"># Only run evals</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--verbose<span class="w">          </span><span class="c1"># Detailed output</span>
+<h2 id="falk-validate"><code>falk validate</code></h2>
+<p>Validate project configuration, semantic models, and optional runtime checks.</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>falk<span class="w"> </span>validate<span class="w">                 </span><span class="c1"># Full validation (including connection + agent init)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>falk<span class="w"> </span>validate<span class="w"> </span>--fast<span class="w">          </span><span class="c1"># Config/semantic/knowledge checks only</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>falk<span class="w"> </span>validate<span class="w"> </span>--no-connection<span class="w"> </span><span class="c1"># Skip warehouse connection test</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>falk<span class="w"> </span>validate<span class="w"> </span>--no-agent<span class="w">      </span><span class="c1"># Skip agent initialization test</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>falk<span class="w"> </span>validate<span class="w"> </span>--verbose<span class="w">       </span><span class="c1"># Show details for each check</span>
 </code></pre></div>
-<p><strong>Validation phases:</strong>
+<p><strong>Validation phases include:</strong>
 1. Configuration validation (falk_project.yaml)
 2. Semantic layer validation (BSL models)
-3. Warehouse connection test (optional)
-4. Agent initialization test (optional)
-5. Evaluation test cases (if evals/ exists)</p>
+3. Knowledge file validation
+4. Warehouse connection test (optional)
+5. Agent initialization test (optional)</p>
+<hr />
+<h2 id="falk-test"><code>falk test</code></h2>
+<p>Run eval cases from <code>evals/</code> to verify behavior.</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w">                      </span><span class="c1"># Run all eval files (*.yaml)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--pattern<span class="w"> </span><span class="s2">&quot;*.yaml&quot;</span><span class="w">   </span><span class="c1"># Choose eval file glob</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--tags<span class="w"> </span>access,gotchas
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--verbose
+</code></pre></div>
 <hr />
 <h2 id="falk-mcp"><code>falk mcp</code></h2>
 <p>Start the MCP server.</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>falk<span class="w"> </span>mcp
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>falk<span class="w"> </span>mcp
 </code></pre></div>
 <p>Exposes tools via Model Context Protocol for use with:
 - Cursor
@@ -1488,17 +1562,45 @@
 <p>See <a href="../getting-started/mcp/">MCP Guide</a> for setup instructions.</p>
 <hr />
 <h2 id="falk-chat"><code>falk chat</code></h2>
-<p>Start the web UI server.</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>falk<span class="w"> </span>chat<span class="w">                    </span><span class="c1"># default: port 8000</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>falk<span class="w"> </span>chat<span class="w"> </span>--port<span class="w"> </span><span class="m">3000</span><span class="w">        </span><span class="c1"># custom port</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>falk<span class="w"> </span>chat<span class="w"> </span>--no-reload<span class="w">        </span><span class="c1"># disable auto-reload</span>
+<p>Start local web chat with the data agent (Pydantic AI built-in web UI).</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>falk<span class="w"> </span>chat
+</code></pre></div>
+<p><strong>Behavior:</strong>
+- Starts the local web server at <code>http://127.0.0.1:8000</code>.
+- Uses Pydantic AI's built-in web UI (no separate frontend required).</p>
+<hr />
+<h2 id="falk-access-test"><code>falk access-test</code></h2>
+<p>Run a question as a specific user identity to test access policies.</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>falk<span class="w"> </span>access-test<span class="w"> </span>--list-users
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>falk<span class="w"> </span>access-test<span class="w"> </span>--user<span class="w"> </span>analyst@company.com
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>falk<span class="w"> </span>access-test<span class="w"> </span>--user<span class="w"> </span>viewer@company.com<span class="w"> </span>--question<span class="w"> </span><span class="s2">&quot;Describe the orders metric&quot;</span>
 </code></pre></div>
 <hr />
 <h2 id="falk-slack"><code>falk slack</code></h2>
 <p>Start the Slack bot.</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>falk<span class="w"> </span>slack
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>falk<span class="w"> </span>slack
 </code></pre></div>
-<p>Requires <code>SLACK_BOT_TOKEN</code> and <code>SLACK_SIGNING_SECRET</code> in <code>.env</code>.</p>
+<p>Requires <code>SLACK_BOT_TOKEN</code> and <code>SLACK_APP_TOKEN</code> in <code>.env</code>.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>falk chat</code> — DataAgent init fails</td>
+<td>Run <code>falk validate</code> to check configuration. Ensure <code>.env</code> has required API keys (e.g. <code>OPENAI_API_KEY</code>).</td>
+</tr>
+<tr>
+<td>Warehouse connection error</td>
+<td>Check <code>falk_project.yaml</code> and <code>profiles.yml</code> for correct database connection.</td>
+</tr>
+</tbody>
+</table>
 
 
 

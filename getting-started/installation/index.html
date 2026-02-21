@@ -473,10 +473,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-from-pypi-coming-soon" class="md-nav__link">
+  <a href="#install-from-pypi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install from PyPI (Coming Soon)
+        Install from PyPI
       
     </span>
   </a>
@@ -1443,10 +1443,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-from-pypi-coming-soon" class="md-nav__link">
+  <a href="#install-from-pypi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install from PyPI (Coming Soon)
+        Install from PyPI
       
     </span>
   </a>
@@ -1587,7 +1587,7 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">  </span><span class="c1"># On Windows: .venv\Scripts\activate</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
 </code></pre></div>
-<h2 id="install-from-pypi-coming-soon">Install from PyPI (Coming Soon)</h2>
+<h2 id="install-from-pypi">Install from PyPI</h2>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>falk
 </code></pre></div>
 <h2 id="verify-installation">Verify Installation</h2>
@@ -1603,11 +1603,12 @@
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Edit .env: OPENAI_API_KEY=sk-...</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># Validate</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--fast
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>falk<span class="w"> </span>validate<span class="w"> </span>--fast
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1"># Query</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>falk<span class="w"> </span>metrics<span class="w"> </span>list
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>falk<span class="w"> </span>query<span class="w"> </span>revenue<span class="w"> </span>--json
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1"># Query through one of the interfaces</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>falk<span class="w"> </span>chat
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1"># or</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>falk<span class="w"> </span>mcp
 </code></pre></div>
 <h2 id="configure-llm-provider">Configure LLM Provider</h2>
 <p>falk supports multiple LLM providers via Pydantic AI. Set your preferred provider in <code>.env</code>:</p>

@@ -1087,10 +1087,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-does-falk-test-do" class="md-nav__link">
+  <a href="#falk-validate-vs-falk-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What does falk test do?
+        falk validate vs falk test
       
     </span>
   </a>
@@ -1410,10 +1410,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-does-falk-test-do" class="md-nav__link">
+  <a href="#falk-validate-vs-falk-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What does falk test do?
+        falk validate vs falk test
       
     </span>
   </a>
@@ -1547,16 +1547,16 @@
 
 <h1 id="testing-validation">Testing &amp; Validation</h1>
 <p>Validate your project configuration, semantic models, and test that your agent gives correct answers.</p>
-<h2 id="what-does-falk-test-do">What does <code>falk test</code> do?</h2>
-<p>The test command runs comprehensive validation:</p>
+<h2 id="falk-validate-vs-falk-test"><code>falk validate</code> vs <code>falk test</code></h2>
+<p><code>falk validate</code> runs project/runtime checks:</p>
 <ol>
 <li><strong>Configuration validation</strong> - Checks <code>falk_project.yaml</code> structure and required fields</li>
 <li><strong>Semantic layer validation</strong> - Validates BSL models for errors, duplicates, missing fields</li>
 <li><strong>Connection test</strong> - Verifies warehouse connectivity (optional with <code>--no-connection</code>)</li>
 <li><strong>Agent initialization</strong> - Ensures agent can be built with current config</li>
-<li><strong>Evaluation test cases</strong> - Runs behavior tests from <code>evals/</code> directory (if present)</li>
 </ol>
-<p>Every time you update <code>semantic_models.yaml</code>, <code>RULES.md</code>, or context files, run <code>falk test</code> to catch issues early.</p>
+<p><code>falk test</code> runs behavior eval cases from <code>evals/</code>.</p>
+<p>Every time you update <code>semantic_models.yaml</code>, <code>RULES.md</code>, or context files, run <code>falk validate</code> first, then <code>falk test</code> for behavior checks.</p>
 <h2 id="test-cases-yaml">Test cases (YAML)</h2>
 <p>Define test cases in <code>evals/</code>:</p>
 <div class="language-yaml highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># evals/basic.yaml</span>
@@ -1581,17 +1581,23 @@
 - <strong>expected_not_contains</strong> — strings that should NOT appear
 - <strong>expected_kwargs</strong> — expected arguments to tool calls</p>
 <h2 id="running-evals">Running evals</h2>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Full test suite (validation + evals)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>falk<span class="w"> </span><span class="nb">test</span>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Validate project/runtime</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>falk<span class="w"> </span>validate
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Quick validation only (no connection test, no evals)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--fast
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Quick validation only (no connection test, no agent init)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>falk<span class="w"> </span>validate<span class="w"> </span>--fast
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Only run evals (skip validation)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--evals-only
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Run all evals</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>falk<span class="w"> </span><span class="nb">test</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Verbose output</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--verbose
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Filter eval files</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--pattern<span class="w"> </span><span class="s2">&quot;*.yaml&quot;</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Verbose output</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--verbose
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># Filter by tags</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--tags<span class="w"> </span>access,gotchas
 </code></pre></div>
 <h2 id="writing-good-test-cases">Writing good test cases</h2>
 <h3 id="start-with-real-questions">Start with real questions</h3>

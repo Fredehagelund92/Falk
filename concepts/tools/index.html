@@ -701,17 +701,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#analytics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analytics
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#export" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -723,10 +712,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#date-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Date Ranges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#metadata-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
         Metadata / Discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interface-naming-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface Naming Note
       
     </span>
   </a>
@@ -1394,17 +1405,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#analytics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analytics
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#export" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1416,10 +1416,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#date-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Date Ranges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#metadata-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
         Metadata / Discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interface-naming-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface Naming Note
       
     </span>
   </a>
@@ -1470,7 +1492,7 @@
 <tbody>
 <tr>
 <td><code>query_metric</code></td>
-<td>Query a metric with optional group_by, filters, time_grain, order, limit</td>
+<td>Query metrics with optional group_by, filters, time_grain, order, limit, compare_period, include_share</td>
 </tr>
 <tr>
 <td><code>lookup_values</code></td>
@@ -1480,33 +1502,16 @@
 </table>
 <h3 id="query_metric-the-main-tool"><code>query_metric</code> — The main tool</h3>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;customer&quot;</span><span class="p">],</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">time_grain</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;dimension&quot;</span><span class="p">:</span> <span class="s2">&quot;customer&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;Acme Corp&quot;</span><span class="p">}],</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;customer&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;Acme Corp&quot;</span><span class="p">}],</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;desc&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">10</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">compare_period</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>   <span class="c1"># optional: week | month | quarter</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">include_share</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># optional: add share_pct column</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="p">)</span>
 </code></pre></div>
-<h2 id="analytics">Analytics</h2>
-<table>
-<thead>
-<tr>
-<th>Tool</th>
-<th>What it does</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>compare_periods</code></td>
-<td>Compare this vs last week/month/quarter</td>
-</tr>
-<tr>
-<td><code>compute_share</code></td>
-<td>Show % breakdown from the last query</td>
-</tr>
-</tbody>
-</table>
 <h2 id="export">Export</h2>
 <table>
 <thead>
@@ -1517,16 +1522,8 @@
 </thead>
 <tbody>
 <tr>
-<td><code>export_to_csv</code></td>
-<td>Export last result to CSV</td>
-</tr>
-<tr>
-<td><code>export_to_excel</code></td>
-<td>Export to Excel (.xlsx)</td>
-</tr>
-<tr>
-<td><code>export_to_google_sheets</code></td>
-<td>Export to Google Sheets</td>
+<td><code>export(format)</code></td>
+<td>Export last result (format: csv | excel | sheets)</td>
 </tr>
 <tr>
 <td><code>generate_chart</code></td>
@@ -1535,6 +1532,21 @@
 </tbody>
 </table>
 <p>In Slack, exported files are uploaded directly to the channel.</p>
+<h2 id="date-ranges">Date Ranges</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>suggest_date_range(period)</code></td>
+<td>Get date range for common periods: yesterday, today, last_7_days, last_30_days, this_week, this_month, last_month, this_quarter</td>
+</tr>
+</tbody>
+</table>
 <h2 id="metadata-discovery">Metadata / Discovery</h2>
 <table>
 <thead>
@@ -1545,12 +1557,8 @@
 </thead>
 <tbody>
 <tr>
-<td><code>list_metrics</code></td>
-<td>See all available metrics</td>
-</tr>
-<tr>
-<td><code>list_dimensions</code></td>
-<td>See available dimensions (filterable by domain)</td>
+<td><code>list_catalog(entity_type)</code></td>
+<td>List metrics and/or dimensions (entity_type: metric | dimension | both)</td>
 </tr>
 <tr>
 <td><code>describe_metric</code></td>
@@ -1564,8 +1572,18 @@
 <td><code>describe_dimension</code></td>
 <td>Get dimension meaning (helps with disambiguation)</td>
 </tr>
+<tr>
+<td><code>disambiguate(entity_type, concept)</code></td>
+<td>Find metrics/dimensions matching a concept; use when the user's request is ambiguous to ask a clarification question</td>
+</tr>
 </tbody>
 </table>
+<h2 id="interface-naming-note">Interface Naming Note</h2>
+<ul>
+<li>Agent interface tool: <code>lookup_values(dimension, search)</code></li>
+<li>MCP interface tool: <code>lookup_dimension_values(dimension, search)</code></li>
+<li>They expose the same lookup capability with interface-specific names.</li>
+</ul>
 <h2 id="chart-auto-detection">Chart Auto-Detection</h2>
 <p>When the user asks for a chart without specifying a type, the agent picks the best one:</p>
 <table>

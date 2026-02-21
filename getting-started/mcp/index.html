@@ -535,10 +535,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#visualization" class="md-nav__link">
+  <a href="#tool-name-mapping-agent-vs-mcp" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Visualization
+        Tool Name Mapping (Agent vs MCP)
       
     </span>
   </a>
@@ -1538,10 +1538,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#visualization" class="md-nav__link">
+  <a href="#tool-name-mapping-agent-vs-mcp" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Visualization
+        Tool Name Mapping (Agent vs MCP)
       
     </span>
   </a>
@@ -1712,22 +1712,23 @@
 <p>falk exposes these tools via MCP:</p>
 <h3 id="discovery-metadata">Discovery &amp; Metadata</h3>
 <ul>
-<li><strong><code>list_metrics</code></strong> — List all available metrics grouped by semantic model</li>
-<li><strong><code>list_dimensions</code></strong> — List all available dimensions with display names</li>
+<li><strong><code>list_catalog(entity_type)</code></strong> — List metrics and/or dimensions (entity_type: metric | dimension | both)</li>
+<li><strong><code>suggest_date_range(period)</code></strong> — Get common date ranges (last_7_days, this_month, etc.)</li>
 <li><strong><code>describe_metric</code></strong> — Get full description of a metric</li>
 <li><strong><code>describe_model</code></strong> — Get full description of a semantic model</li>
 <li><strong><code>describe_dimension</code></strong> — Get full description of a dimension</li>
 <li><strong><code>lookup_dimension_values</code></strong> — Look up actual values for a dimension</li>
+<li><strong><code>disambiguate(entity_type, concept)</code></strong> — Find close metric/dimension matches for clarification</li>
 </ul>
 <h3 id="querying">Querying</h3>
 <ul>
-<li><strong><code>query_metric</code></strong> — Query a metric with optional grouping and WHERE filtering</li>
-<li><strong><code>compare_periods</code></strong> — Compare metric across time periods</li>
+<li><strong><code>query_metric</code></strong> — Query metrics with optional grouping, filtering, compare_period, include_share</li>
 </ul>
-<h3 id="visualization">Visualization</h3>
+<h3 id="tool-name-mapping-agent-vs-mcp">Tool Name Mapping (Agent vs MCP)</h3>
 <ul>
-<li><strong><code>generate_chart</code></strong> — Generate bar/line/pie chart from query data</li>
-<li><strong><code>suggest_chart</code></strong> — Suggest best chart type for query results</li>
+<li>Agent tool name: <code>lookup_values</code></li>
+<li>MCP tool name: <code>lookup_dimension_values</code></li>
+<li>These are equivalent capabilities exposed through different interfaces.</li>
 </ul>
 <h2 id="connecting-from-cursor">Connecting from Cursor</h2>
 <ol>
@@ -1757,7 +1758,7 @@
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>→ Cursor calls falk&#39;s query_metric tool
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>You: &quot;Compare revenue this month vs last&quot;
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>→ Cursor calls falk&#39;s compare_periods tool
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>→ Cursor calls falk&#39;s query_metric with compare_period=&quot;month&quot;
 </code></pre></div></li>
 </ol>
 <h2 id="connecting-from-claude-desktop">Connecting from Claude Desktop</h2>
@@ -1836,7 +1837,7 @@
 <h3 id="query-a-metric">Query a metric</h3>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># MCP client calls:</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">dimensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">],</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">time_grain</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">10</span>
@@ -1850,47 +1851,45 @@
 <a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        <span class="o">...</span>
 <a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="p">],</span>
 <a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="s2">&quot;row_count&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    <span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
 <a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;sales_metrics&quot;</span>
 <a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="p">}</span>
 </code></pre></div>
 <h3 id="query-with-filters">Query with filters</h3>
-<p>The <code>where</code> parameter supports SQL-like filtering:</p>
+<p>Use structured filters:</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Simple equality</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">dimensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;product_category&quot;</span><span class="p">],</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">where</span><span class="o">=</span><span class="s2">&quot;region = &#39;US&#39;&quot;</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;US&quot;</span><span class="p">}],</span>
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">)</span>
 <a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
 <a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># Comparisons</span>
 <a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
 <a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">dimensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">],</span>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">where</span><span class="o">=</span><span class="s2">&quot;date &gt;= &#39;2024-01-01&#39;&quot;</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-01&quot;</span><span class="p">}],</span>
 <a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="p">)</span>
 <a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
 <a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1"># Multiple conditions with AND</span>
 <a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
 <a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="n">dimensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;product_category&quot;</span><span class="p">],</span>
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    <span class="n">where</span><span class="o">=</span><span class="s2">&quot;region = &#39;US&#39; AND date &gt;= &#39;2024-01-01&#39;&quot;</span>
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="p">)</span>
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="c1"># IN clause for multiple values</span>
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;revenue&quot;</span><span class="p">,</span>
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    <span class="n">dimensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;product_category&quot;</span><span class="p">],</span>
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    <span class="n">where</span><span class="o">=</span><span class="s2">&quot;region IN (&#39;US&#39;, &#39;EU&#39;, &#39;APAC&#39;)&quot;</span>
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="p">)</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        <span class="p">{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;US&quot;</span><span class="p">},</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>        <span class="p">{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-01&quot;</span><span class="p">},</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    <span class="p">],</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="p">)</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="c1"># IN clause for multiple values</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="n">query_metric</span><span class="p">(</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>    <span class="n">dimensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;product_category&quot;</span><span class="p">],</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;IN&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;US&quot;</span><span class="p">,</span> <span class="s2">&quot;EU&quot;</span><span class="p">,</span> <span class="s2">&quot;APAC&quot;</span><span class="p">]}],</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="p">)</span>
 </code></pre></div>
-<p><strong>Supported operators:</strong>
-- <code>=</code> — Equality
-- <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code> — Comparisons
-- <code>IN (...)</code> — List membership
-- <code>AND</code> — Multiple conditions</p>
 <h3 id="compare-periods">Compare periods</h3>
-<p>Use <code>compare_periods</code> to compare a metric across current vs previous period (week, month, quarter).</p>
+<p>Use <code>query_metric</code> with <code>compare_period="week"|"month"|"quarter"</code> to compare a metric across current vs previous period.</p>
 <h2 id="benefits-of-mcp">Benefits of MCP</h2>
 <ol>
 <li><strong>Standardized interface</strong> — Same tools work in Cursor, Claude, custom agents</li>
@@ -1903,7 +1902,7 @@
 <ul>
 <li><a href="../configuration/mcp.md">MCP Configuration</a> — Advanced MCP server settings</li>
 <li><a href="../reference/mcp-tools.md">Tool Reference</a> — Complete list of MCP tools</li>
-<li><a href="../../deployment/web-ui/">Web UI</a> — Alternative conversational interface</li>
+<li><a href="../../deployment/web-ui/">CLI Chat</a> — Interactive terminal interface</li>
 <li><a href="../../deployment/slack/">Slack Bot</a> — Team collaboration interface</li>
 </ul>
 

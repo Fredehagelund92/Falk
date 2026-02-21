@@ -362,6 +362,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deployment-note-010" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment note (0.1.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inspiration-credits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1389,6 +1400,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deployment-note-010" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment note (0.1.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inspiration-credits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1423,7 +1445,7 @@
 <blockquote>
 <p><strong>Governed AI access to your data warehouse, powered by semantic layers.</strong></p>
 </blockquote>
-<p>Define metrics once in YAML. Query them naturally through Slack, CLI, or web.
+<p>Define metrics once in YAML. Query them naturally through Slack, CLI chat, or MCP.
 Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 <h2 id="the-idea">The idea</h2>
 <p>Most AI data agents let models write raw SQL over your warehouse. That's powerful for exploration — but dangerous for production, where "revenue" needs to mean the same thing every time.</p>
@@ -1444,7 +1466,7 @@ Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 <li><strong>Consistent numbers</strong> — same calculation as your BI layer</li>
 <li><strong>Business context</strong> — synonyms, gotchas, and rules built into the schema</li>
 <li><strong>Automatic root cause</strong> — ask "why did revenue increase?" and get a real answer</li>
-<li><strong>Multi-interface</strong> — MCP server, Slack, web UI — same data everywhere</li>
+<li><strong>Multi-interface</strong> — MCP server, Slack, CLI chat — same data everywhere</li>
 </ul>
 <h2 id="quick-start">Quick start</h2>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Fredehagelund92/Falk.git
@@ -1457,13 +1479,13 @@ Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">  </span><span class="c1"># edit: OPENAI_API_KEY=sk-...</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Validate configuration</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>falk<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--fast
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>falk<span class="w"> </span>validate<span class="w"> </span>--fast
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Start MCP server (connect from Cursor, Claude Desktop)</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>falk<span class="w"> </span>mcp
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># OR start web UI</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>falk<span class="w"> </span>chat<span class="w">   </span><span class="c1"># localhost:8000</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># OR start local web chat (Pydantic AI built-in UI)</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>falk<span class="w"> </span>chat<span class="w">   </span><span class="c1"># -&gt; http://127.0.0.1:8000</span>
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
 <a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># OR start Slack bot</span>
 <a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>falk<span class="w"> </span>slack
@@ -1493,12 +1515,18 @@ Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 <td><a href="cli-reference/">CLI Reference</a></td>
 <td>All commands</td>
 </tr>
-<tr>
-<td>---</td>
-<td></td>
-</tr>
 </tbody>
 </table>
+<h2 id="deployment-note-010">Deployment note (0.1.0)</h2>
+<ul>
+<li>Recommended model: one company/workspace per deployment (single-tenant).</li>
+<li>In production (<code>FALK_ENV=production</code>), configure <code>access_policies</code> to avoid open access.</li>
+<li>For multi-worker deployments, prefer Redis session storage (<code>session.store: redis</code>).</li>
+<li>Session config precedence is env vars &gt; <code>falk_project.yaml</code> &gt; defaults.</li>
+<li>Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.</li>
+<li>Slack exports default to DM-only delivery; optionally allow specific channels via <code>slack.export_channel_allowlist</code>.</li>
+</ul>
+<hr />
 <h2 id="inspiration-credits">Inspiration &amp; Credits</h2>
 <p>falk was inspired by excellent work in the data agent space:</p>
 <ul>

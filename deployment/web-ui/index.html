@@ -998,6 +998,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#backend-api-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend API (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1337,6 +1348,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#backend-api-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend API (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1358,23 +1380,28 @@
 
 
 <h1 id="web-ui">Web UI</h1>
-<p>A local ChatGPT-like interface for testing — powered by Pydantic AI's built-in web server.</p>
+<p>Local web chat for testing, powered by Pydantic AI's built-in web interface.</p>
 <h2 id="run">Run</h2>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>falk<span class="w"> </span>chat
 </code></pre></div>
-<p>Opens at <a href="http://localhost:8000">http://localhost:8000</a>.</p>
-<p>Options:</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>falk<span class="w"> </span>chat<span class="w"> </span>--port<span class="w"> </span><span class="m">3000</span><span class="w">        </span><span class="c1"># Custom port</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>falk<span class="w"> </span>chat<span class="w"> </span>--no-reload<span class="w">        </span><span class="c1"># Disable auto-reload</span>
-</code></pre></div>
+<p>Starts the app at:</p>
+<ul>
+<li><code>http://127.0.0.1:8000</code></li>
+</ul>
+<p>No separate frontend is required.</p>
 <h2 id="when-to-use">When to use</h2>
 <ul>
 <li><strong>Local development</strong> — test queries before deploying to Slack</li>
-<li><strong>Debugging</strong> — see tool calls and agent reasoning</li>
-<li><strong>Demos</strong> — show the agent to stakeholders</li>
+<li><strong>Debugging</strong> — validate prompt/tool behavior in a browser flow</li>
+<li><strong>Demos</strong> — show the agent to stakeholders quickly</li>
 </ul>
+<h2 id="backend-api-optional">Backend API (optional)</h2>
+<p>Start the web app directly if needed:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </span>app.web:app<span class="w"> </span>--reload
+</code></pre></div>
+<p>This starts the FastAPI app at <code>http://127.0.0.1:8000</code>. The <code>falk chat</code> command uses this same app.</p>
 <blockquote>
-<p><strong>Note:</strong> The web UI is a thin wrapper. All logic lives in the <code>falk</code> library — the same code powers the web UI, Slack bot, and CLI.</p>
+<p><strong>Note:</strong> All logic lives in the <code>falk</code> library — the same code powers the CLI chat, Slack bot, and MCP server.</p>
 </blockquote>
 
 
