@@ -506,10 +506,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-langfuse-observability" class="md-nav__link">
+  <a href="#optional-logfire-observability" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional: LangFuse Observability
+        Optional: Logfire Observability
       
     </span>
   </a>
@@ -1119,14 +1119,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/langfuse/" class="md-nav__link">
+      <a href="../../deployment/logfire/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    LangFuse
+    Logfire
   
 
     
@@ -1476,10 +1476,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-langfuse-observability" class="md-nav__link">
+  <a href="#optional-logfire-observability" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional: LangFuse Observability
+        Optional: Logfire Observability
       
     </span>
   </a>
@@ -1571,6 +1571,7 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li><strong>Python 3.11 or higher</strong></li>
+<li><strong>PostgreSQL</strong> for session storage (Falk creates schema and tables automatically)</li>
 <li><strong>API key</strong> for OpenAI, Anthropic Claude, or Google Gemini</li>
 <li>(Recommended) <a href="https://github.com/astral-sh/uv">uv</a> for fast package management</li>
 </ul>
@@ -1598,9 +1599,9 @@
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>falk<span class="w"> </span>init<span class="w"> </span>my-project
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">cd</span><span class="w"> </span>my-project
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># Add API key</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># Configure environment</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Edit .env: OPENAI_API_KEY=sk-...</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Edit .env: set POSTGRES_URL and your LLM API key (e.g. OPENAI_API_KEY)</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># Validate</span>
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>falk<span class="w"> </span>validate<span class="w"> </span>--fast
@@ -1622,14 +1623,12 @@
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span>...
 </code></pre></div>
 <p>See <a href="../../configuration/llm-providers/">LLM Provider Configuration</a> for details.</p>
-<h2 id="optional-langfuse-observability">Optional: LangFuse Observability</h2>
-<p>For production monitoring, add LangFuse:</p>
+<h2 id="optional-logfire-observability">Optional: Logfire Observability</h2>
+<p>For production monitoring, add Logfire Cloud:</p>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># .env</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nv">LANGFUSE_PUBLIC_KEY</span><span class="o">=</span>pk-...
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nv">LANGFUSE_SECRET_KEY</span><span class="o">=</span>sk-...
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nv">LANGFUSE_BASE_URL</span><span class="o">=</span>https://cloud.langfuse.com
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nv">LOGFIRE_TOKEN</span><span class="o">=</span>...
 </code></pre></div>
-<p>All queries, LLM calls, and user feedback will be traced automatically.</p>
+<p>Run <code>logfire auth</code> and <code>logfire projects new</code> first. All queries, LLM calls, and user feedback will be traced automatically.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="falk-command-not-found">"falk: command not found"</h3>
 <p>Ensure the virtual environment is activated:</p>

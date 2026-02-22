@@ -1054,14 +1054,14 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/langfuse/" class="md-nav__link">
+      <a href="deployment/logfire/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    LangFuse
+    Logfire
   
 
     
@@ -1475,8 +1475,8 @@ Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>falk<span class="w"> </span>init<span class="w"> </span>my-project
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">cd</span><span class="w"> </span>my-project
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Add your API key</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">  </span><span class="c1"># edit: OPENAI_API_KEY=sk-...</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Configure environment</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">  </span><span class="c1"># edit: POSTGRES_URL and OPENAI_API_KEY</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Validate configuration</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>falk<span class="w"> </span>validate<span class="w"> </span>--fast
@@ -1519,9 +1519,10 @@ Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 </table>
 <h2 id="deployment-note-010">Deployment note (0.1.0)</h2>
 <ul>
+<li><strong>Alpha / vibe coded</strong> — not battle-tested for production yet. Use at your own risk.</li>
 <li>Recommended model: one company/workspace per deployment (single-tenant).</li>
 <li>In production (<code>FALK_ENV=production</code>), configure <code>access_policies</code> to avoid open access.</li>
-<li>For multi-worker deployments, prefer Redis session storage (<code>session.store: redis</code>).</li>
+<li>Session storage uses PostgreSQL by default (<code>session.store: postgres</code>). Set <code>POSTGRES_URL</code> in <code>.env</code>.</li>
 <li>Session config precedence is env vars &gt; <code>falk_project.yaml</code> &gt; defaults.</li>
 <li>Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.</li>
 <li>Slack exports default to DM-only delivery; optionally allow specific channels via <code>slack.export_channel_allowlist</code>.</li>

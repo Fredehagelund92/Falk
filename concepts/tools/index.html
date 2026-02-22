@@ -673,6 +673,67 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#custom-tool-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Tool Extensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Tool Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#data-querying" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1075,14 +1136,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/langfuse/" class="md-nav__link">
+      <a href="../../deployment/logfire/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    LangFuse
+    Logfire
   
 
     
@@ -1377,6 +1438,67 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#custom-tool-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Tool Extensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Tool Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#data-querying" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1481,6 +1603,46 @@
 
 <h1 id="agent-tools">Agent Tools</h1>
 <p>The agent has tools the LLM can call. Users don't see tool names — they just ask questions in natural language.</p>
+<h2 id="custom-tool-extensions">Custom Tool Extensions</h2>
+<p>You can add project-specific Python tools in your falk project and register them via <code>falk_project.yaml</code>. Tool logic stays in Python; YAML only registers which modules to load.</p>
+<h3 id="configure">Configure</h3>
+<p>In <code>falk_project.yaml</code> under <code>agent</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">agent</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">extensions</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">tools</span><span class="p">:</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_tools.customer_health</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_tools.forecasting</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_tools.alerts</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">   </span><span class="c1"># optional: disable without removing</span>
+</code></pre></div>
+<h3 id="implement">Implement</h3>
+<p>Create a Python module in your project (e.g. <code>project_tools/customer_health.py</code>) that exports a <code>FunctionToolset</code> instance as <code>toolset</code>, <code>data_tools</code>, or <code>tools</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_ai</span><span class="w"> </span><span class="kn">import</span> <span class="n">FunctionToolset</span><span class="p">,</span> <span class="n">RunContext</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">falk.agent</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataAgent</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">toolset</span> <span class="o">=</span> <span class="n">FunctionToolset</span><span class="p">()</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nd">@toolset</span><span class="o">.</span><span class="n">tool</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">customer_health_score</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">[</span><span class="n">DataAgent</span><span class="p">],</span> <span class="n">customer_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute health score for a customer.&quot;&quot;&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="c1"># Use ctx.deps for DataAgent (warehouse, metrics, etc.)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">agent</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">deps</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="c1"># ... your logic ...</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">}</span>
+</code></pre></div>
+<h3 id="runtime-behavior">Runtime behavior</h3>
+<ul>
+<li>Custom tools are loaded at startup when the agent or MCP server starts.</li>
+<li>Invalid or missing modules log warnings and are skipped; built-in tools remain available.</li>
+<li>Tools are exposed in both the agent (chat, web, Slack) and the MCP server.</li>
+</ul>
+<h3 id="testing">Testing</h3>
+<ol>
+<li><strong>Unit tests</strong>: Call each tool function directly with a mock <code>ctx</code> (e.g. <code>ctx.deps = DataAgent()</code>).</li>
+<li><strong>Integration tests</strong>: Run <code>agent.run_sync("question")</code> and assert the model uses the right tool.</li>
+<li><strong>Evals</strong>: Add <code>evals/</code> cases for user phrasing that should trigger your custom tools.</li>
+</ol>
+<p>See <a href="../../configuration/agent/">Project Config</a> for the full config schema.</p>
 <h2 id="data-querying">Data Querying</h2>
 <table>
 <thead>
@@ -1501,16 +1663,16 @@
 </tbody>
 </table>
 <h3 id="query_metric-the-main-tool"><code>query_metric</code> — The main tool</h3>
-<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">query_metric</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;customer&quot;</span><span class="p">],</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">time_grain</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;customer&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;Acme Corp&quot;</span><span class="p">}],</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;desc&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">compare_period</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>   <span class="c1"># optional: week | month | quarter</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">include_share</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># optional: add share_pct column</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">query_metric</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;revenue&quot;</span><span class="p">],</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;customer&quot;</span><span class="p">],</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">time_grain</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;customer&quot;</span><span class="p">,</span> <span class="s2">&quot;op&quot;</span><span class="p">:</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;Acme Corp&quot;</span><span class="p">}],</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;desc&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">compare_period</span><span class="o">=</span><span class="s2">&quot;month&quot;</span><span class="p">,</span>   <span class="c1"># optional: week | month | quarter</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">include_share</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># optional: add share_pct column</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">)</span>
 </code></pre></div>
 <h2 id="export">Export</h2>
 <table>

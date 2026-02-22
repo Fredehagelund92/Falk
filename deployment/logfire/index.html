@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://fredehagelund92.github.io/Falk/deployment/langfuse/">
+        <link rel="canonical" href="https://fredehagelund92.github.io/Falk/deployment/logfire/">
       
       
         <link rel="prev" href="../web-ui/">
@@ -27,7 +27,7 @@
     
     
       
-        <title>LangFuse - falk</title>
+        <title>Logfire - falk</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#langfuse-observability" class="md-skip">
+        <a href="#logfire-observability" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              LangFuse
+              Logfire
             
           </span>
         </div>
@@ -961,7 +961,7 @@
   <span class="md-ellipsis">
     
   
-    LangFuse
+    Logfire
   
 
     
@@ -979,7 +979,7 @@
   <span class="md-ellipsis">
     
   
-    LangFuse
+    Logfire
   
 
     
@@ -1005,10 +1005,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-langfuse-adds" class="md-nav__link">
+  <a href="#what-logfire-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What LangFuse Adds
+        What Logfire Adds
       
     </span>
   </a>
@@ -1028,10 +1028,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-get-langfuse-keys" class="md-nav__link">
+  <a href="#1-authenticate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Get LangFuse Keys
+        1. Authenticate
       
     </span>
   </a>
@@ -1039,10 +1039,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-configure-environment" class="md-nav__link">
+  <a href="#2-create-a-project" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Configure Environment
+        2. Create a project
       
     </span>
   </a>
@@ -1050,10 +1050,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-install-dependencies" class="md-nav__link">
+  <a href="#3-configure-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Install Dependencies
+        3. Configure environment
       
     </span>
   </a>
@@ -1088,56 +1088,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-langfuse-dashboard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using LangFuse Dashboard
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using LangFuse Dashboard">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#view-traces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Traces
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#analyze-costs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analyze Costs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaluate-prompts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Evaluate Prompts
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fallback-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1161,21 +1111,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#langfuse-env-vars-set-but-package-not-installed" class="md-nav__link">
+  <a href="#logfire-env-vars-set-but-package-not-installed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        "LangFuse env vars set but package not installed"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#failed-to-initialize-langfuse" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Failed to initialize LangFuse"
+        "Logfire env vars set but package not installed"
       
     </span>
   </a>
@@ -1195,17 +1134,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-custom-evaluations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced: Custom Evaluations
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1499,10 +1427,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-langfuse-adds" class="md-nav__link">
+  <a href="#what-logfire-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What LangFuse Adds
+        What Logfire Adds
       
     </span>
   </a>
@@ -1522,10 +1450,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-get-langfuse-keys" class="md-nav__link">
+  <a href="#1-authenticate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Get LangFuse Keys
+        1. Authenticate
       
     </span>
   </a>
@@ -1533,10 +1461,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-configure-environment" class="md-nav__link">
+  <a href="#2-create-a-project" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Configure Environment
+        2. Create a project
       
     </span>
   </a>
@@ -1544,10 +1472,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-install-dependencies" class="md-nav__link">
+  <a href="#3-configure-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Install Dependencies
+        3. Configure environment
       
     </span>
   </a>
@@ -1582,56 +1510,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-langfuse-dashboard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using LangFuse Dashboard
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using LangFuse Dashboard">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#view-traces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Traces
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#analyze-costs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analyze Costs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaluate-prompts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Evaluate Prompts
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fallback-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1655,21 +1533,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#langfuse-env-vars-set-but-package-not-installed" class="md-nav__link">
+  <a href="#logfire-env-vars-set-but-package-not-installed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        "LangFuse env vars set but package not installed"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#failed-to-initialize-langfuse" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Failed to initialize LangFuse"
+        "Logfire env vars set but package not installed"
       
     </span>
   </a>
@@ -1689,17 +1556,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-custom-evaluations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced: Custom Evaluations
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1723,15 +1579,15 @@
   
 
 
-<h1 id="langfuse-observability">LangFuse Observability</h1>
-<p>LangFuse provides full observability, cost tracking, and evaluation for your data agent.</p>
-<h2 id="what-langfuse-adds">What LangFuse Adds</h2>
+<h1 id="logfire-observability">Logfire Observability</h1>
+<p>Logfire provides tracing, cost tracking, and feedback for your data agent.</p>
+<h2 id="what-logfire-adds">What Logfire Adds</h2>
 <table>
 <thead>
 <tr>
 <th>Feature</th>
-<th>Without LangFuse</th>
-<th>With LangFuse</th>
+<th>Without Logfire</th>
+<th>With Logfire</th>
 </tr>
 </thead>
 <tbody>
@@ -1743,46 +1599,30 @@
 <tr>
 <td><strong>Observability</strong></td>
 <td>None</td>
-<td>Full traces (LLM calls, tools, chain-of-thought)</td>
+<td>Full traces (LLM calls, tools)</td>
 </tr>
 <tr>
 <td><strong>Cost tracking</strong></td>
 <td>None</td>
 <td>Token usage and API costs per query</td>
 </tr>
-<tr>
-<td><strong>Evaluation</strong></td>
-<td>None</td>
-<td>A/B testing, custom evaluations</td>
-</tr>
-<tr>
-<td><strong>Prompt versioning</strong></td>
-<td>None</td>
-<td>Track prompt changes over time</td>
-</tr>
 </tbody>
 </table>
 <h2 id="setup">Setup</h2>
-<h3 id="1-get-langfuse-keys">1. Get LangFuse Keys</h3>
-<p><strong>Option A: Cloud (recommended for most users)</strong>
-- Sign up at https://cloud.langfuse.com
-- Free tier available
-- Get your <code>LANGFUSE_SECRET_KEY</code> and <code>LANGFUSE_PUBLIC_KEY</code></p>
-<p><strong>Option B: Self-hosted</strong>
-- Deploy LangFuse on your infrastructure
-- Set <code>LANGFUSE_BASE_URL</code> to your instance URL</p>
-<h3 id="2-configure-environment">2. Configure Environment</h3>
+<h3 id="1-authenticate">1. Authenticate</h3>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>logfire<span class="w"> </span>auth
+</code></pre></div>
+<h3 id="2-create-a-project">2. Create a project</h3>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>logfire<span class="w"> </span>projects<span class="w"> </span>new
+</code></pre></div>
+<h3 id="3-configure-environment">3. Configure environment</h3>
 <p>Add to your <code>.env</code> file:</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">LANGFUSE_SECRET_KEY</span><span class="o">=</span>sk-lf-...
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">LANGFUSE_PUBLIC_KEY</span><span class="o">=</span>pk-lf-...
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nv">LANGFUSE_BASE_URL</span><span class="o">=</span>https://cloud.langfuse.com<span class="w">  </span><span class="c1"># Optional, defaults to cloud</span>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">LOGFIRE_TOKEN</span><span class="o">=</span>...
 </code></pre></div>
-<h3 id="3-install-dependencies">3. Install Dependencies</h3>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">   </span>uv<span class="w"> </span>sync
-</code></pre></div>
-<p>That's it! The agent will automatically start tracing if LangFuse is configured.</p>
+<p>(Or <code>LOGTAIL_TOKEN</code> for legacy compatibility.)</p>
+<p>That's it. The agent will automatically trace runs when Logfire is configured.</p>
 <h2 id="what-gets-traced">What Gets Traced</h2>
-<p>Every agent interaction creates a <strong>trace</strong> in LangFuse with:</p>
+<p>Every agent interaction creates a <strong>trace</strong> in Logfire with:</p>
 <ul>
 <li><strong>User query</strong> — The original question</li>
 <li><strong>Agent response</strong> — The final answer</li>
@@ -1791,77 +1631,29 @@
 <li><strong>Metadata</strong> — User ID, channel, thread (for Slack)</li>
 </ul>
 <h2 id="feedback-collection">Feedback Collection</h2>
-<p>When users react with 👍 or 👎 in Slack:</p>
+<p>When users react with thumbs up/down in Slack:</p>
 <ul>
-<li><strong>Positive (👍)</strong> → Score of <code>1.0</code> recorded in LangFuse</li>
-<li><strong>Negative (👎)</strong> → Score of <code>0.0</code> recorded in LangFuse</li>
+<li><strong>Positive (👍)</strong> — Score of <code>1.0</code> recorded in Logfire</li>
+<li><strong>Negative (👎)</strong> — Score of <code>0.0</code> recorded in Logfire</li>
 </ul>
-<p>The feedback is automatically linked to the trace, so you can see:
-- Which queries users liked/disliked
-- What tools were used for successful queries
-- Patterns in negative feedback (for improvement)</p>
-<h2 id="using-langfuse-dashboard">Using LangFuse Dashboard</h2>
-<h3 id="view-traces">View Traces</h3>
-<ol>
-<li>Go to your LangFuse dashboard</li>
-<li>Navigate to <strong>Traces</strong></li>
-<li>See all agent interactions with:</li>
-<li>Query text</li>
-<li>Response</li>
-<li>Tool calls</li>
-<li>Token usage</li>
-<li>Cost</li>
-<li>User feedback scores</li>
-</ol>
-<h3 id="analyze-costs">Analyze Costs</h3>
-<ol>
-<li>Go to <strong>Analytics</strong> → <strong>Costs</strong></li>
-<li>See:</li>
-<li>Total spend over time</li>
-<li>Cost per query</li>
-<li>Cost per user</li>
-<li>Model breakdown</li>
-</ol>
-<h3 id="evaluate-prompts">Evaluate Prompts</h3>
-<ol>
-<li>Create an <strong>Evaluation</strong> in LangFuse</li>
-<li>A/B test different prompt versions</li>
-<li>Measure quality improvements</li>
-<li>Track metrics over time</li>
-</ol>
+<p>Feedback is linked to the trace via <code>trace_id</code>.</p>
 <h2 id="fallback-behavior">Fallback Behavior</h2>
-<p>If LangFuse is <strong>not configured</strong> (env vars not set):</p>
+<p>If Logfire is <strong>not configured</strong> (LOGFIRE_TOKEN not set):</p>
 <ul>
-<li>✅ Agent works normally</li>
-<li>⚠️ Feedback is logged to console but not persisted (configure LangFuse for full tracking)</li>
-<li>❌ No traces, cost tracking, or evaluation</li>
+<li>Agent works normally</li>
+<li>Feedback is logged to console but not persisted</li>
+<li>No traces or cost tracking</li>
 </ul>
-<p>This makes LangFuse <strong>opt-in</strong> — you can use the agent without it, and add it later when needed.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="langfuse-env-vars-set-but-package-not-installed">"LangFuse env vars set but package not installed"</h3>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w">   </span>uv<span class="w"> </span>sync
+<h3 id="logfire-env-vars-set-but-package-not-installed">"Logfire env vars set but package not installed"</h3>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>uv<span class="w"> </span>sync
 </code></pre></div>
-<h3 id="failed-to-initialize-langfuse">"Failed to initialize LangFuse"</h3>
-<ul>
-<li>Check your <code>LANGFUSE_SECRET_KEY</code> and <code>LANGFUSE_PUBLIC_KEY</code></li>
-<li>Verify <code>LANGFUSE_BASE_URL</code> is correct (if self-hosting)</li>
-<li>Check network connectivity to LangFuse</li>
-</ul>
 <h3 id="no-traces-appearing">No traces appearing</h3>
 <ul>
-<li>Verify env vars are loaded (check <code>.env</code> file)</li>
-<li>Check LangFuse dashboard for errors</li>
-<li>Look for warnings in agent logs</li>
+<li>Run <code>logfire auth</code> and <code>logfire projects new</code></li>
+<li>Verify LOGFIRE_TOKEN is in <code>.env</code></li>
+<li>Check agent logs for Logfire warnings</li>
 </ul>
-<h2 id="advanced-custom-evaluations">Advanced: Custom Evaluations</h2>
-<p>You can create custom evaluation functions in LangFuse to:</p>
-<ul>
-<li>Measure response quality</li>
-<li>Check for specific patterns</li>
-<li>Compare different prompt versions</li>
-<li>Track improvements over time</li>
-</ul>
-<p>See <a href="https://langfuse.com/docs">LangFuse documentation</a> for details.</p>
 
 
 

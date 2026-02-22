@@ -909,7 +909,7 @@
   <a href="#observability" class="md-nav__link">
     <span class="md-ellipsis">
       
-        observability
+        Observability
       
     </span>
   </a>
@@ -1119,14 +1119,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/langfuse/" class="md-nav__link">
+      <a href="../../deployment/logfire/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    LangFuse
+    Logfire
   
 
     
@@ -1491,7 +1491,7 @@
   <a href="#observability" class="md-nav__link">
     <span class="md-ellipsis">
       
-        observability
+        Observability
       
     </span>
   </a>
@@ -1610,39 +1610,48 @@ and runtime limits.</p>
 <a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">    </span><span class="nt">gotchas_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">knowledge/gotchas.md</span>
 <a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">    </span><span class="nt">load_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">startup</span><span class="w">   </span><span class="c1"># startup (phase 1), on_demand reserved</span>
 <a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="nt">observability</span><span class="p">:</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">langfuse_sync</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="nt">session</span><span class="p">:</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">  </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memory</span><span class="w">          </span><span class="c1"># memory or redis</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redis://localhost:6379</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3600</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">  </span><span class="nt">maxsize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>
-<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="nt">slack</span><span class="p">:</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="w">  </span><span class="nt">exports_dm_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">export_channel_allowlist</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">   </span><span class="c1"># optional channel IDs allowed for exports</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">  </span><span class="nt">export_block_message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Export</span><span class="nv"> </span><span class="s">files</span><span class="nv"> </span><span class="s">are</span><span class="nv"> </span><span class="s">restricted</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">DMs.</span><span class="nv"> </span><span class="s">Ask</span><span class="nv"> </span><span class="s">me</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">DM</span><span class="nv"> </span><span class="s">if</span><span class="nv"> </span><span class="s">you</span><span class="nv"> </span><span class="s">need</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">file.&quot;</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>
-<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="nt">paths</span><span class="p">:</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">  </span><span class="nt">semantic_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">semantic_models.yaml</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="c1"># Custom Python tool extensions (see concepts/tools.md)</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">extensions</span><span class="p">:</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">    </span><span class="nt">tools</span><span class="p">:</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_tools.customer_health</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_tools.forecasting</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_tools.alerts</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="c1"># Observability: set LOGFIRE_TOKEN in .env for Logfire Cloud tracing (optional)</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="nt">session</span><span class="p">:</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span><span class="w">       </span><span class="c1"># postgres (default) or memory (dev fallback)</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">  </span><span class="nt">postgres_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${POSTGRES_URL}</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">  </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">falk_session</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3600</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">  </span><span class="nt">maxsize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
 <a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="nt">advanced</span><span class="p">:</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">  </span><span class="nt">auto_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                 </span><span class="c1"># reserved for future use</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4096</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">  </span><span class="nt">max_rows_per_query</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">  </span><span class="nt">query_timeout_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">       </span><span class="c1"># warehouse/tool execution</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">  </span><span class="nt">model_timeout_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span><span class="w">       </span><span class="c1"># LLM request (single turn)</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="w">  </span><span class="nt">max_retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="w">  </span><span class="nt">retry_delay_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="w">  </span><span class="nt">log_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INFO</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="nt">slack</span><span class="p">:</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">  </span><span class="nt">exports_dm_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">  </span><span class="nt">export_channel_allowlist</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">   </span><span class="c1"># optional channel IDs allowed for exports</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">  </span><span class="nt">export_block_message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Export</span><span class="nv"> </span><span class="s">files</span><span class="nv"> </span><span class="s">are</span><span class="nv"> </span><span class="s">restricted</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">DMs.</span><span class="nv"> </span><span class="s">Ask</span><span class="nv"> </span><span class="s">me</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">DM</span><span class="nv"> </span><span class="s">if</span><span class="nv"> </span><span class="s">you</span><span class="nv"> </span><span class="s">need</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">file.&quot;</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="nt">paths</span><span class="p">:</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">  </span><span class="nt">semantic_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">semantic_models.yaml</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="nt">advanced</span><span class="p">:</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="w">  </span><span class="nt">auto_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                 </span><span class="c1"># reserved for future use</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4096</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a><span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a><span class="w">  </span><span class="nt">max_rows_per_query</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a><span class="w">  </span><span class="nt">query_timeout_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">       </span><span class="c1"># warehouse/tool execution</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a><span class="w">  </span><span class="nt">model_timeout_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span><span class="w">       </span><span class="c1"># LLM request (single turn)</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a><span class="w">  </span><span class="nt">max_retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a><span class="w">  </span><span class="nt">retry_delay_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a><span class="w">  </span><span class="nt">log_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INFO</span>
 </code></pre></div>
 <h2 id="what-is-applied-at-runtime">What Is Applied at Runtime</h2>
 <h3 id="agent"><code>agent</code></h3>
 <ul>
 <li><code>context</code>, <code>examples</code>, <code>rules</code>, <code>gotchas</code>, <code>welcome</code>, and <code>custom_sections</code> are injected into prompt construction.</li>
 <li><code>knowledge.*</code> controls startup loading of <code>knowledge/business.md</code> and <code>knowledge/gotchas.md</code>.</li>
+<li><code>extensions.tools</code> registers custom Python tool modules. Each module must export a <code>FunctionToolset</code> (as <code>toolset</code>, <code>data_tools</code>, or <code>tools</code>). Tools are loaded at startup and exposed in both the agent (chat, web, Slack) and MCP server. See <a href="../../concepts/tools/#custom-tool-extensions">Custom Tool Extensions</a>.</li>
 </ul>
 <h3 id="advanced"><code>advanced</code></h3>
 <ul>
@@ -1657,13 +1666,10 @@ and runtime limits.</p>
 </ul>
 <h3 id="session"><code>session</code></h3>
 <ul>
-<li><code>memory</code> for single-process deployments.</li>
-<li><code>redis</code> for multi-worker deployments.</li>
+<li><code>postgres</code> for production (default). Requires <code>POSTGRES_URL</code> in <code>.env</code>. Falk creates schema and tables automatically.</li>
+<li><code>memory</code> for dev fallback when <code>POSTGRES_URL</code> is not set.</li>
 <li>Session config precedence is: environment variables &gt; <code>falk_project.yaml</code> &gt; defaults.</li>
-<li><code>SESSION_STORE</code></li>
-<li><code>SESSION_TTL</code></li>
-<li><code>SESSION_MAXSIZE</code> (memory)</li>
-<li><code>SESSION_URL</code> / <code>REDIS_URL</code> (redis)</li>
+<li><code>SESSION_STORE</code>, <code>POSTGRES_URL</code>, <code>SESSION_SCHEMA</code>, <code>SESSION_TTL</code>, <code>SESSION_MAXSIZE</code></li>
 <li>Persisted session state is JSON-only (<code>last_query_data</code>, <code>last_query_metric</code>, <code>pending_files</code>).</li>
 <li>Chart aggregate objects are process-local and ephemeral; if unavailable (restart/worker switch), rerun <code>query_metric</code> before <code>generate_chart</code>.</li>
 </ul>
@@ -1673,10 +1679,9 @@ and runtime limits.</p>
 <li><code>export_channel_allowlist</code> can allow specific channel IDs when you decide to widen policy.</li>
 <li><code>export_block_message</code> controls the user-visible notice shown when export delivery is blocked in-channel.</li>
 </ul>
-<h3 id="observability"><code>observability</code></h3>
+<h3 id="observability">Observability</h3>
 <ul>
-<li><code>langfuse_sync</code> controls Langfuse flush behavior.</li>
-<li>Langfuse is active when the required env vars are set.</li>
+<li>Set <code>LOGFIRE_TOKEN</code> in <code>.env</code> to enable Logfire Cloud tracing and feedback (optional).</li>
 </ul>
 <h3 id="paths"><code>paths</code></h3>
 <ul>
