@@ -2,6 +2,57 @@
 
 The agent has tools the LLM can call. Users don't see tool names — they just ask questions in natural language.
 
+## Custom Tool Extensions
+
+You can add project-specific Python tools in your falk project and register them via `falk_project.yaml`. Tool logic stays in Python; YAML only registers which modules to load.
+
+### Configure
+
+In `falk_project.yaml` under `agent`:
+
+```yaml
+agent:
+  extensions:
+    tools:
+      - module: project_tools.customer_health
+      - module: project_tools.forecasting
+      - module: project_tools.alerts
+        enabled: false   # optional: disable without removing
+```
+
+### Implement
+
+Create a Python module in your project (e.g. `project_tools/customer_health.py`) that exports a `FunctionToolset` instance as `toolset`, `data_tools`, or `tools`:
+
+```python
+from pydantic_ai import FunctionToolset, RunContext
+from falk.agent import DataAgent
+
+toolset = FunctionToolset()
+
+@toolset.tool
+def customer_health_score(ctx: RunContext[DataAgent], customer_id: str) -> dict:
+    """Compute health score for a customer."""
+    # Use ctx.deps for DataAgent (warehouse, metrics, etc.)
+    agent = ctx.deps
+    # ... your logic ...
+    return {"score": 0.85, "trend": "up"}
+```
+
+### Runtime behavior
+
+- Custom tools are loaded at startup when the agent or MCP server starts.
+- Invalid or missing modules log warnings and are skipped; built-in tools remain available.
+- Tools are exposed in both the agent (chat, web, Slack) and the MCP server.
+
+### Testing
+
+1. **Unit tests**: Call each tool function directly with a mock `ctx` (e.g. `ctx.deps = DataAgent()`).
+2. **Integration tests**: Run `agent.run_sync("question")` and assert the model uses the right tool.
+3. **Evals**: Add `evals/` cases for user phrasing that should trigger your custom tools.
+
+See [Project Config](../configuration/agent.md) for the full config schema.
+
 ## Data Querying
 
 | Tool | What it does |

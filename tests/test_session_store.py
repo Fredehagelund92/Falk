@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 
 from falk import session as session_mod
@@ -10,10 +9,13 @@ def test_create_session_store_uses_yaml_defaults_for_memory(monkeypatch):
     monkeypatch.delenv("SESSION_STORE", raising=False)
     monkeypatch.delenv("SESSION_TTL", raising=False)
     monkeypatch.delenv("SESSION_MAXSIZE", raising=False)
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
     monkeypatch.setattr(
         session_mod,
         "_load_session_config",
-        lambda: SimpleNamespace(store="memory", ttl=111, maxsize=222, url="redis://yaml"),
+        lambda: SimpleNamespace(
+            store="memory", ttl=111, maxsize=222, postgres_url="", schema="falk_session"
+        ),
     )
 
     store = session_mod.create_session_store()
@@ -30,7 +32,9 @@ def test_create_session_store_env_overrides_yaml_for_memory(monkeypatch):
     monkeypatch.setattr(
         session_mod,
         "_load_session_config",
-        lambda: SimpleNamespace(store="memory", ttl=111, maxsize=222, url="redis://yaml"),
+        lambda: SimpleNamespace(
+            store="memory", ttl=111, maxsize=222, postgres_url="", schema="falk_session"
+        ),
     )
 
     store = session_mod.create_session_store()
@@ -40,51 +44,71 @@ def test_create_session_store_env_overrides_yaml_for_memory(monkeypatch):
     assert store._cache.ttl == 333
 
 
-def test_create_session_store_uses_env_url_precedence_for_redis(monkeypatch):
-    class FakeRedisStore:
-        def __init__(self, url: str, ttl: int):
+def test_create_session_store_uses_env_url_precedence_for_postgres(monkeypatch):
+    class FakePostgresStore:
+        def __init__(self, url: str, schema: str, ttl: int):
             self.url = url
+            self.schema = schema
             self.ttl = ttl
 
-    monkeypatch.setenv("SESSION_STORE", "redis")
-    monkeypatch.setenv("SESSION_URL", "redis://session-url")
-    monkeypatch.setenv("REDIS_URL", "redis://redis-url")
+    monkeypatch.setenv("SESSION_STORE", "postgres")
+    monkeypatch.setenv("POSTGRES_URL", "postgresql://user:pass@localhost:5432/falk")
+    monkeypatch.setenv("SESSION_SCHEMA", "custom_schema")
     monkeypatch.setenv("SESSION_TTL", "42")
     monkeypatch.setattr(
         session_mod,
         "_load_session_config",
-        lambda: SimpleNamespace(store="redis", ttl=111, maxsize=222, url="redis://yaml"),
+        lambda: SimpleNamespace(
+            store="postgres",
+            ttl=111,
+            maxsize=222,
+            postgres_url="postgresql://yaml",
+            schema="falk_session",
+        ),
     )
-    monkeypatch.setattr(session_mod, "RedisSessionStore", FakeRedisStore)
+    monkeypatch.setattr(session_mod, "PostgresSessionStore", FakePostgresStore)
 
     store = session_mod.create_session_store()
 
-    assert isinstance(store, FakeRedisStore)
-    assert store.url == "redis://session-url"
+    assert isinstance(store, FakePostgresStore)
+    assert store.url == "postgresql://user:pass@localhost:5432/falk"
+    assert store.schema == "custom_schema"
     assert store.ttl == 42
 
 
-def test_redis_store_set_serializes_json_safe_payload():
-    class FakeClient:
-        def __init__(self):
-            self.last = None
+def test_create_session_store_falls_back_to_memory_when_postgres_url_empty(monkeypatch):
+    monkeypatch.setenv("SESSION_STORE", "postgres")
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
+    monkeypatch.setattr(
+        session_mod,
+        "_load_session_config",
+        lambda: SimpleNamespace(
+            store="postgres", ttl=3600, maxsize=500, postgres_url="", schema="falk_session"
+        ),
+    )
 
-        def setex(self, key, ttl, payload):
-            self.last = (key, ttl, payload)
+    store = session_mod.create_session_store()
 
-    fake_client = FakeClient()
-    store = session_mod.RedisSessionStore.__new__(session_mod.RedisSessionStore)
-    store._client = fake_client
-    store._ttl = 300
+    assert isinstance(store, session_mod.MemorySessionStore)
 
+
+def test_postgres_store_raises_when_url_empty():
+    from falk.backends.session.postgres import PostgresSessionStore
+
+    import pytest
+
+    with pytest.raises(ValueError, match="POSTGRES_URL"):
+        PostgresSessionStore(url="", schema="falk_session", ttl=3600)
+
+
+def test_memory_store_set_get_roundtrip():
+    store = session_mod.MemorySessionStore(maxsize=100, ttl=3600)
     state = {
         "last_query_data": [{"metric": 10}],
         "last_query_metric": ["revenue"],
         "pending_files": [],
     }
     store.set("s1", state)
-
-    key, ttl, payload = fake_client.last
-    assert key == "falk:session:s1"
-    assert ttl == 300
-    assert json.loads(payload) == state
+    assert store.get("s1") == state
+    store.clear("s1")
+    assert store.get("s1") is None

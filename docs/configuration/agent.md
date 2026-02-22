@@ -45,12 +45,20 @@ agent:
     gotchas_path: knowledge/gotchas.md
     load_mode: startup   # startup (phase 1), on_demand reserved
 
-observability:
-  langfuse_sync: true
+  # Custom Python tool extensions (see concepts/tools.md)
+  extensions:
+    tools:
+      - module: project_tools.customer_health
+      - module: project_tools.forecasting
+      - module: project_tools.alerts
+        enabled: false
+
+# Observability: set LOGFIRE_TOKEN in .env for Logfire Cloud tracing (optional)
 
 session:
-  store: memory          # memory or redis
-  url: redis://localhost:6379
+  store: postgres       # postgres (default) or memory (dev fallback)
+  postgres_url: ${POSTGRES_URL}
+  schema: falk_session
   ttl: 3600
   maxsize: 500
 
@@ -79,6 +87,7 @@ advanced:
 ### `agent`
 - `context`, `examples`, `rules`, `gotchas`, `welcome`, and `custom_sections` are injected into prompt construction.
 - `knowledge.*` controls startup loading of `knowledge/business.md` and `knowledge/gotchas.md`.
+- `extensions.tools` registers custom Python tool modules. Each module must export a `FunctionToolset` (as `toolset`, `data_tools`, or `tools`). Tools are loaded at startup and exposed in both the agent (chat, web, Slack) and MCP server. See [Custom Tool Extensions](../concepts/tools.md#custom-tool-extensions).
 
 ### `advanced`
 - `max_tokens`, `temperature`, `model_timeout_seconds`, and `max_retries` are applied to model execution (LLM request timeout).
@@ -91,13 +100,10 @@ advanced:
 - `auto_run` is reserved for future use.
 
 ### `session`
-- `memory` for single-process deployments.
-- `redis` for multi-worker deployments.
+- `postgres` for production (default). Requires `POSTGRES_URL` in `.env`. Falk creates schema and tables automatically.
+- `memory` for dev fallback when `POSTGRES_URL` is not set.
 - Session config precedence is: environment variables > `falk_project.yaml` > defaults.
-  - `SESSION_STORE`
-  - `SESSION_TTL`
-  - `SESSION_MAXSIZE` (memory)
-  - `SESSION_URL` / `REDIS_URL` (redis)
+  - `SESSION_STORE`, `POSTGRES_URL`, `SESSION_SCHEMA`, `SESSION_TTL`, `SESSION_MAXSIZE`
 - Persisted session state is JSON-only (`last_query_data`, `last_query_metric`, `pending_files`).
 - Chart aggregate objects are process-local and ephemeral; if unavailable (restart/worker switch), rerun `query_metric` before `generate_chart`.
 
@@ -106,9 +112,8 @@ advanced:
 - `export_channel_allowlist` can allow specific channel IDs when you decide to widen policy.
 - `export_block_message` controls the user-visible notice shown when export delivery is blocked in-channel.
 
-### `observability`
-- `langfuse_sync` controls Langfuse flush behavior.
-- Langfuse is active when the required env vars are set.
+### Observability
+- Set `LOGFIRE_TOKEN` in `.env` to enable Logfire Cloud tracing and feedback (optional).
 
 ### `paths`
 - `paths.semantic_models` controls semantic model file resolution.

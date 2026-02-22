@@ -61,7 +61,7 @@ nav:
   - Deployment:
       - Slack Bot: deployment/slack.md
       - Web UI: deployment/web-ui.md
-      - LangFuse: deployment/langfuse.md
+      - Logfire: deployment/logfire.md
   - Advanced:
       - Evaluation: concepts/evals.md
       - Knowledge & Feedback: concepts/learning.md

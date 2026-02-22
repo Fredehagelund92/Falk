@@ -143,4 +143,4 @@ For production, use LangFuse's LLM-as-a-judge evaluations:
 - Evals (YAML) → local testing, CI, regression catching
 - LangFuse → production monitoring, feedback analysis, prompt evaluation
 
-See [LangFuse Observability](../deployment/langfuse.md) for setup.
+See [Logfire Observability](../deployment/logfire.md) for setup.

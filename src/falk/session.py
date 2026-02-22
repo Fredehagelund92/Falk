@@ -1,36 +1,32 @@
 """Session state storage for multi-user support.
 
-Provides pluggable storage backends (memory, Redis) for session state.
+Provides pluggable storage backends (postgres, memory) for session state.
 
 Usage:
-    # Memory store (default, single process)
+    # Postgres store (default, production)
+    session:
+      store: postgres
+      postgres_url: ${POSTGRES_URL}
+      schema: falk_session
+      ttl: 3600
+
+    # Memory store (dev fallback, single process)
     session:
       store: memory
       maxsize: 500
       ttl: 3600
-    
-    # Redis store (multi-worker)
-    session:
-      store: redis
-      url: redis://localhost:6379
-      ttl: 3600
-    
-    # Or via environment variables
-    SESSION_STORE=redis
-    SESSION_URL=redis://localhost:6379
-    SESSION_TTL=3600
 
-Install Redis support:
-    uv add redis
-    # or: uv sync --extra redis
+    # Or via environment variables
+    SESSION_STORE=postgres
+    POSTGRES_URL=postgresql://user:pass@host:5432/db
+    SESSION_TTL=3600
 """
 from __future__ import annotations
 
-import json
 import os
 from typing import Any, Protocol
 
-from cachetools import TTLCache
+from falk.backends.session import MemorySessionStore, PostgresSessionStore
 
 
 class SessionStore(Protocol):
@@ -47,58 +43,6 @@ class SessionStore(Protocol):
     def clear(self, session_id: str) -> None:
         """Clear session state."""
         ...
-
-
-class MemorySessionStore:
-    """In-memory session store using cachetools TTLCache.
-    
-    Suitable for single-process deployments or development.
-    """
-
-    def __init__(self, maxsize: int = 500, ttl: int = 3600):
-        self._cache: TTLCache = TTLCache(maxsize=maxsize, ttl=ttl)
-
-    def get(self, session_id: str) -> dict[str, Any] | None:
-        return self._cache.get(session_id)
-
-    def set(self, session_id: str, state: dict[str, Any]) -> None:
-        self._cache[session_id] = state
-
-    def clear(self, session_id: str) -> None:
-        self._cache.pop(session_id, None)
-
-
-class RedisSessionStore:
-    """Redis-backed session store.
-    
-    Suitable for multi-worker deployments with shared state.
-    """
-
-    def __init__(self, url: str = "redis://localhost:6379", ttl: int = 3600):
-        try:
-            import redis
-        except ImportError:
-            raise ImportError(
-                "Redis session store requires redis package. Install with: uv add redis"
-            )
-        self._client = redis.from_url(url, decode_responses=True)
-        self._ttl = ttl
-
-    def get(self, session_id: str) -> dict[str, Any] | None:
-        data = self._client.get(f"falk:session:{session_id}")
-        if not data:
-            return None
-        try:
-            return json.loads(data)
-        except json.JSONDecodeError:
-            return None
-
-    def set(self, session_id: str, state: dict[str, Any]) -> None:
-        key = f"falk:session:{session_id}"
-        self._client.setex(key, self._ttl, json.dumps(state))
-
-    def clear(self, session_id: str) -> None:
-        self._client.delete(f"falk:session:{session_id}")
 
 
 def _load_session_config() -> Any | None:
@@ -121,12 +65,12 @@ def _int_with_default(value: str | None, default: int) -> int:
 
 def create_session_store() -> SessionStore:
     """Factory to create session store based on config.
-    
+
     Precedence for all fields: env vars > falk_project.yaml > defaults.
     """
     session_cfg = _load_session_config()
     store_type = (
-        (os.getenv("SESSION_STORE") or (getattr(session_cfg, "store", None) if session_cfg else None) or "memory")
+        (os.getenv("SESSION_STORE") or (getattr(session_cfg, "store", None) if session_cfg else None) or "postgres")
         .strip()
         .lower()
     )
@@ -135,14 +79,25 @@ def create_session_store() -> SessionStore:
         getattr(session_cfg, "ttl", 3600) if session_cfg else 3600,
     )
 
-    if store_type == "redis":
-        url = (
-            os.getenv("SESSION_URL")
-            or os.getenv("REDIS_URL")
-            or (getattr(session_cfg, "url", None) if session_cfg else None)
-            or "redis://localhost:6379"
+    if store_type == "postgres":
+        postgres_url = (
+            os.getenv("POSTGRES_URL")
+            or (getattr(session_cfg, "postgres_url", None) if session_cfg else None)
+            or ""
         )
-        return RedisSessionStore(url=url, ttl=ttl)
+        if not postgres_url or not postgres_url.strip():
+            import logging
+            logging.getLogger(__name__).warning(
+                "session.store=postgres but POSTGRES_URL not set; falling back to memory. "
+                "Set POSTGRES_URL in .env for production."
+            )
+        else:
+            schema = (
+                os.getenv("SESSION_SCHEMA")
+                or (getattr(session_cfg, "schema", None) if session_cfg else None)
+                or "falk_session"
+            )
+            return PostgresSessionStore(url=postgres_url, schema=schema, ttl=ttl)
 
     maxsize = _int_with_default(
         os.getenv("SESSION_MAXSIZE"),

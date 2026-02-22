@@ -8,7 +8,7 @@ prompt.py             System prompt construction
 settings.py           Configuration (env vars, paths)
 cli.py                Project management CLI
 validation.py         Project validation and testing
-observability/        LangFuse tracing and feedback
+observability/        Logfire tracing and feedback
 tools/                Core functionality (warehouse, semantic, charts, calculations)
 evals/                Test framework for agent validation
 
@@ -29,7 +29,7 @@ from falk.agent import DataAgent, SemanticMetadata
 from falk.session import (
     SessionStore,
     MemorySessionStore,
-    RedisSessionStore,
+    PostgresSessionStore,
     create_session_store,
 )
 
@@ -53,6 +53,6 @@ __all__ = [
     "build_web_app",
     "SessionStore",
     "MemorySessionStore",
-    "RedisSessionStore",
+    "PostgresSessionStore",
     "create_session_store",
 ]

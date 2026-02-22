@@ -20,8 +20,14 @@ src/falk/                         ← The library (pip-installable)
 ├── cli.py                        # Typer CLI
 ├── validation.py                 # Project validation and testing
 ├── observability/                # Tracing and feedback
-│   ├── langfuse.py               # LangFuse integration
 │   └── feedback.py               # Feedback recording
+├── backends/                     # Pluggable backends
+│   ├── memory/                   # Memory (hindsight)
+│   ├── observability/            # Logfire
+│   └── session/                  # Postgres + memory session stores
+├── slack/                        # Slack formatting and policy
+│   ├── formatting.py
+│   └── policy.py
 ├── tools/                        # Core functionality
 │   ├── warehouse.py              # Query execution via BSL
 │   ├── semantic.py               # Semantic model lookups

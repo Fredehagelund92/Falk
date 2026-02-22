@@ -40,8 +40,8 @@ cd falk && uv venv && uv sync
 falk init my-project
 cd my-project
 
-# Add your API key
-cp .env.example .env  # edit: OPENAI_API_KEY=sk-...
+# Configure environment
+cp .env.example .env  # edit: POSTGRES_URL and OPENAI_API_KEY
 
 # Validate configuration
 falk validate --fast
@@ -67,9 +67,10 @@ falk slack
 
 ## Deployment note (0.1.0)
 
+- **Alpha / vibe coded** — not battle-tested for production yet. Use at your own risk.
 - Recommended model: one company/workspace per deployment (single-tenant).
 - In production (`FALK_ENV=production`), configure `access_policies` to avoid open access.
-- For multi-worker deployments, prefer Redis session storage (`session.store: redis`).
+- Session storage uses PostgreSQL by default (`session.store: postgres`). Set `POSTGRES_URL` in `.env`.
 - Session config precedence is env vars > `falk_project.yaml` > defaults.
 - Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.
 - Slack exports default to DM-only delivery; optionally allow specific channels via `slack.export_channel_allowlist`.

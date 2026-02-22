@@ -70,3 +70,86 @@ def test_load_settings_parses_slack_policy(monkeypatch, tmp_path: Path):
     assert settings.slack.exports_dm_only is True
     assert settings.slack.export_channel_allowlist == ["C123", "G123"]
     assert settings.slack.export_block_message == "Use DM for exports."
+
+
+def test_load_settings_parses_memory_config(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {
+            "agent": {"provider": "openai", "model": "gpt-5-mini"},
+            "memory": {"enabled": True, "provider": "hindsight"},
+        },
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert settings.memory.enabled is True
+    assert settings.memory.provider == "hindsight"
+
+
+def test_load_settings_parses_extensions_tools(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {
+            "agent": {
+                "provider": "openai",
+                "model": "gpt-5-mini",
+                "extensions": {
+                    "tools": [
+                        "project_tools.customer_health",
+                        {"module": "project_tools.forecasting", "enabled": True},
+                        {"module": "project_tools.alerts", "enabled": False},
+                    ],
+                },
+            },
+        },
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert len(settings.agent.extensions_tools) == 3
+    assert settings.agent.extensions_tools[0].module == "project_tools.customer_health"
+    assert settings.agent.extensions_tools[0].enabled is True
+    assert settings.agent.extensions_tools[1].module == "project_tools.forecasting"
+    assert settings.agent.extensions_tools[1].enabled is True
+    assert settings.agent.extensions_tools[2].module == "project_tools.alerts"
+    assert settings.agent.extensions_tools[2].enabled is False
+
+
+def test_load_settings_extensions_tools_default_empty(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {"agent": {"provider": "openai", "model": "gpt-5-mini"}},
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert settings.agent.extensions_tools == []
+
+
+def test_load_settings_parses_session_config(monkeypatch, tmp_path: Path):
+    _write_project(
+        tmp_path,
+        {
+            "agent": {"provider": "openai", "model": "gpt-5-mini"},
+            "session": {
+                "store": "postgres",
+                "postgres_url": "postgresql://local:5432/db",
+                "schema": "falk_session",
+                "ttl": 7200,
+                "maxsize": 100,
+            },
+        },
+    )
+    monkeypatch.setattr("falk.settings._find_project_root", lambda: tmp_path)
+
+    settings = load_settings()
+
+    assert settings.session.store == "postgres"
+    assert settings.session.postgres_url == "postgresql://local:5432/db"
+    assert settings.session.schema == "falk_session"
+    assert settings.session.ttl == 7200
+    assert settings.session.maxsize == 100

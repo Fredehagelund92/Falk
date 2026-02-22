@@ -60,10 +60,13 @@ dependencies = [
   # Chart generation (Plotly)
   "plotly>=6.1.1",
   "kaleido>=0.2.1,!=0.2.1.post1", # For PNG export
-  # LangFuse observability and evaluation
-  "langfuse>=2.50.0",
+  # Pydantic Logfire observability (tracing, feedback)
+  "logfire>=0.54.0",
   # Pydantic Evals — evaluation framework for agent testing
   "pydantic-evals>=0.1.0",
+  # Postgres session store
+  "sqlalchemy>=2.0.0",
+  "psycopg[binary]>=3.1.0",
   # CLI framework
   "typer>=0.12.0",
   # MCP (Model Context Protocol) server via FastMCP
@@ -79,8 +82,6 @@ Issues = "https://github.com/Fredehagelund92/Falk/issues"
 Changelog = "https://github.com/Fredehagelund92/Falk/releases"
 
 [project.optional-dependencies]
-# Redis session store for multi-worker deployments
-redis = ["redis>=5.0.0"]
 # Optional: Documentation site (only needed for building docs)
 docs = [
   "mkdocs-material>=9.5.0",

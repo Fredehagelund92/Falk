@@ -45,10 +45,10 @@ from pydantic_ai import UsageLimitExceeded, UsageLimits  # noqa: E402
 from falk import build_agent  # noqa: E402
 from falk.agent import DataAgent  # noqa: E402
 from falk.llm import get_pending_files_for_session, clear_pending_files_for_session  # noqa: E402
-from falk.observability import record_feedback  # noqa: E402
-from falk.slack_policy import can_deliver_exports  # noqa: E402
+from falk.llm.memory import retain_interaction_sync  # noqa: E402
+from falk.observability import get_trace_id_from_context, record_feedback  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
-from falk.slack_formatting import format_reply_for_slack  # noqa: E402
+from falk.slack import can_deliver_exports, format_reply_for_slack  # noqa: E402
 
 APP_SETTINGS = load_settings()
 QUERY_TIMEOUT = max(5, int(APP_SETTINGS.advanced.slack_run_timeout_seconds))
@@ -85,7 +85,7 @@ agent = build_agent()
 # like "break that down by country" work naturally.
 #
 # Scaling note: this is in-memory, fine for a single process.
-# For multi-process deployments, swap this for Redis.
+# Session state (last query, pending files) uses Postgres when POSTGRES_URL is set.
 
 MAX_THREADS = 200
 
@@ -249,31 +249,32 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
     history = _thread_history.get(thread_ts) if thread_ts else None
 
     tool_calls: list[dict[str, Any]] = []
-    langfuse_trace_id: str | None = None
-    langfuse_sync: bool = APP_SETTINGS.observability.langfuse_sync
+    trace_id: str | None = None
+
+    def _run_and_capture_trace():
+        result = agent.run_sync(
+            text,
+            message_history=history or None,
+            deps=core_agent,
+            usage_limits=UsageLimits(
+                request_limit=APP_SETTINGS.advanced.request_limit,
+                tool_calls_limit=APP_SETTINGS.advanced.tool_calls_limit,
+            ),
+            metadata={
+                "interface": "slack",
+                "user_id": identity,
+                "thread_ts": thread_ts,
+                "channel": channel,
+            },
+        )
+        tid = get_trace_id_from_context()
+        return result, tid
+
     try:
         with ThreadPoolExecutor(max_workers=1) as ex:
-            future = ex.submit(
-                agent.run_sync,
-                text,
-                message_history=history or None,
-                deps=core_agent,  # Reuse the shared DataAgent
-                usage_limits=UsageLimits(
-                    request_limit=APP_SETTINGS.advanced.request_limit,
-                    tool_calls_limit=APP_SETTINGS.advanced.tool_calls_limit,
-                ),
-                metadata={
-                    "interface": "slack",
-                    # identity is the email when resolved, raw Slack ID otherwise.
-                    # Tools in falk.llm read this as ctx.metadata["user_id"] and
-                    # match it against access_policies in falk_project.yaml.
-                    "user_id": identity,
-                    "thread_ts": thread_ts,
-                    "channel": channel,
-                },
-            )
+            future = ex.submit(_run_and_capture_trace)
             try:
-                result = future.result(timeout=QUERY_TIMEOUT)
+                result, trace_id = future.result(timeout=QUERY_TIMEOUT)
             except FuturesTimeoutError:
                 reply = (
                     "That request took too long. Try a simpler question or try again in a moment. "
@@ -282,18 +283,18 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
             else:
                 reply = result.output or "I couldn't generate a response — try rephrasing?"
                 tool_calls = _extract_tool_calls(result.all_messages())
-                # Create LangFuse trace when enabled (auto-detected from env vars)
-                # Check if Langfuse is configured (via env vars)
-                if os.getenv("LANGFUSE_PUBLIC_KEY"):
-                    from falk.observability import trace_agent_run
-
-                    trace = trace_agent_run(text, result, user_id=identity, sync=langfuse_sync)
-                    if trace and hasattr(trace, "id"):
-                        langfuse_trace_id = trace.id
-
-                # Persist conversation for follow-ups
                 if thread_ts:
                     _store_history(thread_ts, result.all_messages())
+                sid = thread_ts or (f"{channel}:{user_id}" if user_id else "default")
+                retain_interaction_sync(
+                    session_id=sid,
+                    user_id=identity,
+                    query=text,
+                    response=reply,
+                    tool_calls=tool_calls,
+                    enabled=APP_SETTINGS.memory.enabled,
+                    provider=APP_SETTINGS.memory.provider,
+                )
     except FuturesTimeoutError:
         reply = (
             "That request took too long. Try a simpler question or try again in a moment. "
@@ -372,8 +373,7 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
                 "user_id": identity,
                 "channel": channel,
                 "thread_ts": thread_ts,
-                "langfuse_trace_id": langfuse_trace_id,
-                "langfuse_sync": langfuse_sync,
+                "trace_id": trace_id,
             }
             if len(_message_context) > 1000:
                 oldest = min(_message_context.keys())
@@ -469,8 +469,7 @@ def handle_reaction(event):
         channel=context.get("channel"),
         thread_ts=context.get("thread_ts"),
         tool_calls=context.get("tool_calls"),
-        langfuse_trace_id=context.get("langfuse_trace_id"),
-        langfuse_sync=context.get("langfuse_sync", True),
+        trace_id=context.get("trace_id"),
     )
 
     logger.info("Recorded %s feedback from user %s", feedback_type, user_id)

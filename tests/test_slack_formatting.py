@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from falk.slack_formatting import (
+from falk.slack.formatting import (
     _build_slack_blocks,
     _markdown_to_mrkdwn,
     format_reply_for_slack,

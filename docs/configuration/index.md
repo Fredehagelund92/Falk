@@ -20,6 +20,7 @@ falk uses **files, not databases**. All configuration is version-controlled and 
 **"Revenue delayed 24h"** → `knowledge/gotchas.md`  
 **"Be conversational, not robotic"** → `RULES.md`  
 **Example questions** → `falk_project.yaml`  
+**Custom project tools** → `falk_project.yaml` (`agent.extensions.tools`) + Python modules  
 
 See [Context Engineering](../concepts/context-engineering.md) for detailed guidance.
 
@@ -39,6 +40,7 @@ Update any config file and the agent picks up the changes automatically — no p
 ## Reference
 
 - [Semantic Models](semantic-models.md) — metrics, dimensions, synonyms, gotchas
-- [Project Config](agent.md) — LLM provider, session store, runtime settings
+- [Project Config](agent.md) — LLM provider, session store, extensions, runtime settings
+- [Agent Tools](../concepts/tools.md) — built-in tools and custom extensions
 - [Metric Relationships](metric-relationships.md) — define how metrics relate
 - [LLM Providers](llm-providers.md) — OpenAI, Anthropic, Gemini setup

@@ -13,6 +13,7 @@ For data queries and agent interactions, use:
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -124,6 +125,11 @@ def init(
         evals_src = scaffold_path / "evals"
         if evals_src.exists():
             _copy_scaffold_dir(evals_src, project_dir / "evals")
+
+        # Project tools (demo extension)
+        project_tools_src = scaffold_path / "project_tools"
+        if project_tools_src.exists():
+            _copy_scaffold_dir(project_tools_src, project_dir / "project_tools")
         
         typer.echo("[OK] Copied configuration files")
         
@@ -174,7 +180,7 @@ def init(
             step += 1
         typer.echo(f"{step}. cp .env.example .env")
         step += 1
-        typer.echo(f"{step}. Edit .env with your API keys")
+        typer.echo(f"{step}. Edit .env: set POSTGRES_URL and your LLM API key")
         step += 1
         typer.echo(f"{step}. falk validate --fast  # Validate configuration")
         step += 1
@@ -239,20 +245,23 @@ def config(
             typer.echo(f"  Rules: {len(settings.agent.rules)}")
         typer.echo("")
         
-        # LangFuse
-        typer.echo("[LangFuse]")
-        typer.echo(f"  Enabled: {settings.langfuse.enabled}")
-        if settings.langfuse.enabled or show_all:
-            typer.echo(f"  Host: {settings.langfuse.host}")
-            typer.echo(f"  Project: {settings.langfuse.project_name}")
+        # Session
+        typer.echo("[Session]")
+        typer.echo(f"  Store: {settings.session.store}")
+        if settings.session.store == "postgres":
+            typer.echo(f"  Postgres URL: {'Set' if settings.session.postgres_url else 'Not set (set POSTGRES_URL)'}")
+        typer.echo("")
+
+        # Observability (Logfire)
+        logfire_configured = bool(os.getenv("LOGFIRE_TOKEN") or os.getenv("LOGTAIL_TOKEN"))
+        typer.echo("[Observability]")
+        typer.echo(f"  Logfire: {'Configured' if logfire_configured else 'Not configured (set LOGFIRE_TOKEN)'}")
         typer.echo("")
         
         # Slack
         typer.echo("[Slack]")
-        typer.echo(f"  Enabled: {settings.slack.enabled}")
-        if settings.slack.enabled or show_all:
-            typer.echo(f"  Bot token: {'Set' if settings.slack.bot_token else 'Not set'}")
-            typer.echo(f"  App token: {'Set' if settings.slack.app_token else 'Not set'}")
+        typer.echo(f"  Bot token: {'Set' if settings.slack_bot_token else 'Not set'}")
+        typer.echo(f"  App token: {'Set' if settings.slack_app_token else 'Not set'}")
         
     except Exception as e:
         typer.echo(f"[FAIL] Failed to load configuration: {e}", err=True)

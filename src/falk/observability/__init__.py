@@ -1,13 +1,16 @@
 """Observability and feedback collection for the agent.
 
-This module provides optional tracing and feedback functionality through LangFuse.
-All functions are no-ops if LangFuse is not configured.
+Uses Logfire when configured (LOGFIRE_TOKEN or LOGTAIL_TOKEN).
+All functions are no-ops or log-only when not configured.
 """
 from falk.observability.feedback import record_feedback
-from falk.observability.langfuse import get_langfuse_client, trace_agent_run
+from falk.backends.observability.logfire import (
+    configure as configure_observability,
+    get_trace_id_from_context,
+)
 
 __all__ = [
-    "get_langfuse_client",
-    "trace_agent_run",
+    "configure_observability",
+    "get_trace_id_from_context",
     "record_feedback",
 ]

@@ -17,6 +17,13 @@ from dotenv import load_dotenv
 
 
 @dataclass(frozen=True)
+class ToolExtensionConfig:
+    """Single custom tool extension (module path + optional enabled flag)."""
+    module: str
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
 class AgentConfig:
     """Agent behavior configuration."""
     provider: str = "openai"
@@ -32,6 +39,7 @@ class AgentConfig:
     knowledge_gotchas_path: str = "knowledge/gotchas.md"
     knowledge_load_mode: str = "startup"
     include_semantic_metadata_in_prompt: bool = True  # False = omit vocabulary + gotchas; use tools
+    extensions_tools: list[ToolExtensionConfig] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -54,15 +62,23 @@ class AdvancedConfig:
 
 @dataclass(frozen=True)
 class ObservabilityConfig:
-    """Observability configuration."""
-    langfuse_sync: bool = True  # Flush after each trace
+    """Observability configuration. Logfire is configured via LOGFIRE_TOKEN env."""
+
+
+@dataclass(frozen=True)
+class MemoryConfig:
+    """Long-term memory configuration. Disabled by default."""
+
+    enabled: bool = False
+    provider: str | None = None  # e.g. "hindsight"
 
 
 @dataclass(frozen=True)
 class SessionConfig:
     """Session state storage configuration."""
-    store: str = "memory"  # "memory" or "redis"
-    url: str = "redis://localhost:6379"  # URL for redis store
+    store: str = "postgres"  # "postgres" (default) or "memory" (dev fallback)
+    postgres_url: str = ""  # PostgreSQL URL (required for postgres store)
+    schema: str = "falk_session"  # Schema for Falk-owned tables
     ttl: int = 3600  # Session TTL in seconds
     maxsize: int = 500  # Max sessions for memory store
 
@@ -123,6 +139,7 @@ class Settings:
     agent: AgentConfig
     advanced: AdvancedConfig
     observability: ObservabilityConfig
+    memory: MemoryConfig
     session: SessionConfig
     slack: SlackPolicyConfig
     access: AccessConfig
@@ -209,6 +226,20 @@ def load_settings() -> Settings:
     if knowledge_load_mode not in {"startup", "on_demand"}:
         knowledge_load_mode = "startup"
 
+    # Parse agent.extensions.tools
+    extensions_config = agent_config.get("extensions") or {}
+    tools_raw = extensions_config.get("tools") or []
+    extensions_tools: list[ToolExtensionConfig] = []
+    if isinstance(tools_raw, list):
+        for entry in tools_raw:
+            if isinstance(entry, str) and entry.strip():
+                extensions_tools.append(ToolExtensionConfig(module=entry.strip(), enabled=True))
+            elif isinstance(entry, dict):
+                mod = str(entry.get("module") or "").strip()
+                if mod:
+                    enabled = bool(entry.get("enabled", True))
+                    extensions_tools.append(ToolExtensionConfig(module=mod, enabled=enabled))
+
     agent = AgentConfig(
         provider=agent_config.get("provider", "openai"),
         model=agent_config.get("model", "gpt-5-mini"),
@@ -223,6 +254,7 @@ def load_settings() -> Settings:
         knowledge_gotchas_path=str(knowledge_config.get("gotchas_path") or "knowledge/gotchas.md"),
         include_semantic_metadata_in_prompt=bool(agent_config.get("include_semantic_metadata_in_prompt", True)),
         knowledge_load_mode=knowledge_load_mode,
+        extensions_tools=extensions_tools,
     )
 
     # 4b. Parse advanced config (technical settings)
@@ -244,16 +276,26 @@ def load_settings() -> Settings:
     )
     
     # 5. Parse observability config
-    observability_config = config.get("observability") or {}
-    observability = ObservabilityConfig(
-        langfuse_sync=observability_config.get("langfuse_sync", True),
+    observability = ObservabilityConfig()
+
+    # 5b. Parse memory config
+    memory_config = config.get("memory") or {}
+    memory = MemoryConfig(
+        enabled=bool(memory_config.get("enabled", False)),
+        provider=memory_config.get("provider"),
     )
-    
+
     # 6. Parse session config
     session_config = config.get("session") or {}
+    postgres_url = (
+        os.getenv("POSTGRES_URL")
+        or session_config.get("postgres_url")
+        or ""
+    )
     session = SessionConfig(
-        store=session_config.get("store", "memory"),
-        url=session_config.get("url", "redis://localhost:6379"),
+        store=session_config.get("store", "postgres"),
+        postgres_url=postgres_url,
+        schema=session_config.get("schema", "falk_session"),
         ttl=session_config.get("ttl", 3600),
         maxsize=session_config.get("maxsize", 500),
     )
@@ -352,6 +394,7 @@ def load_settings() -> Settings:
         agent=agent,
         advanced=advanced,
         observability=observability,
+        memory=memory,
         session=session,
         slack=slack,
         access=access,

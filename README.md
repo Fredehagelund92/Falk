@@ -17,10 +17,10 @@ falk is a data agent that queries your warehouse using **governed metrics** from
 - **Governed access** — Only approved metrics, not raw SQL
 - **MCP server** — Standard protocol for AI tools (Cursor, Claude Desktop, any MCP client)
 - **Multi-interface** — MCP server, Slack bot, web UI
-- **Observable** — LangFuse tracing, feedback collection, YAML-based evals
+- **Observable** — Logfire tracing, feedback collection, YAML-based evals
 - **Multi-LLM** — OpenAI, Anthropic, Gemini (via Pydantic AI)
 
-**Status:** Alpha / early-stage. 0.1.0 is designed for single-tenant deployments. MCP, web UI, and Slack are supported; multi-tenant and chart export via MCP are not yet available.
+**Status:** Alpha / early-stage. Heavily vibe coded — not battle-tested for production yet. 0.1.0 is designed for single-tenant deployments. MCP, web UI, and Slack are supported; multi-tenant and chart export via MCP are not yet available.
 
 ---
 
@@ -97,7 +97,7 @@ No manual drilling. Instant root cause analysis. Same experience in Slack, web U
 
 - `0.1.0` is designed for **single-tenant deployments** (one company/workspace per deployment).
 - In production (`FALK_ENV=production`), `access_policies` must be configured in `falk_project.yaml`.
-- For multi-worker deployments, use Redis session storage (`session.store: redis`) instead of in-memory sessions.
+- Session storage uses PostgreSQL by default (`session.store: postgres`). Set `POSTGRES_URL` in `.env`.
 
 ---
 
@@ -119,7 +119,7 @@ falk was inspired by:
 
 ## Built With
 
-[Pydantic AI](https://github.com/pydantic/pydantic-ai) · [Boring Semantic Layer](https://github.com/boringdata/boring-semantic-layer) · [DuckDB](https://duckdb.org/) · [LangFuse](https://langfuse.com/)
+[Pydantic AI](https://github.com/pydantic/pydantic-ai) · [Boring Semantic Layer](https://github.com/boringdata/boring-semantic-layer) · [DuckDB](https://duckdb.org/) · [Logfire](https://logfire.pydantic.dev/)
 
 ---
 

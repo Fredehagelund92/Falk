@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from falk.settings import SlackPolicyConfig
-from falk.slack_policy import can_deliver_exports, is_dm_channel
+from falk.slack.policy import can_deliver_exports, is_dm_channel
 
 
 def test_is_dm_channel_detects_dm_prefix():

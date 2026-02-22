@@ -6,7 +6,8 @@ from pathlib import Path
 from pydantic_ai import Agent, ModelSettings
 
 from falk.agent import DataAgent
-from falk.llm.tools import data_tools, readiness_probe
+from falk.observability import configure_observability
+from falk.llm.tools import data_tools, load_custom_toolsets, readiness_probe
 from falk.prompt import build_system_prompt
 
 
@@ -37,6 +38,7 @@ def build_agent() -> Agent[DataAgent, str]:
     """Build the Pydantic AI agent with DataAgent as deps."""
     from falk.settings import load_settings
 
+    configure_observability()
     core = DataAgent()
     s = load_settings()
     system_prompt = build_system_prompt(
@@ -47,10 +49,11 @@ def build_agent() -> Agent[DataAgent, str]:
     )
     max_msgs = s.advanced.message_history_max_messages
     history_processors = [_make_history_processor(max_msgs)] if (max_msgs and max_msgs > 0) else []
+    custom_toolsets = load_custom_toolsets(s.project_root, s.agent.extensions_tools)
     return Agent(
         model=_get_model(),
         deps_type=DataAgent,
-        toolsets=[data_tools],
+        toolsets=[data_tools, *custom_toolsets],
         system_prompt=system_prompt,
         output_type=str,
         model_settings=ModelSettings(

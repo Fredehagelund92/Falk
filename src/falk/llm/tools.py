@@ -1,12 +1,20 @@
 """Toolset definitions used by the Pydantic AI agent."""
 from __future__ import annotations
 
+import importlib.util
+import logging
 import re
+import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import FunctionToolset, RunContext
+
+if TYPE_CHECKING:
+    from falk.settings import ToolExtensionConfig
+
+logger = logging.getLogger(__name__)
 
 from falk.access import (
     allowed_dimensions,
@@ -20,11 +28,9 @@ from falk.agent import DataAgent
 from falk.llm.results import tool_error
 from falk.llm.state import (
     access_cfg,
-    get_session_aggregate,
-    get_session_state,
-    get_session_store,
+    get_runtime_state,
+    save_runtime_state,
     session_id,
-    set_session_aggregate,
     user_id,
 )
 from falk.services.query_service import execute_query_metric
@@ -32,6 +38,64 @@ from falk.tools.calculations import suggest_date_range as _suggest_date_range
 from falk.tools.semantic import get_semantic_model_info
 
 data_tools = FunctionToolset()
+
+_TOOLSET_ATTR_NAMES = ("toolset", "data_tools", "tools")
+
+
+def load_custom_toolsets(
+    project_root: Path,
+    extensions: list[ToolExtensionConfig],
+) -> list[FunctionToolset]:
+    """Load custom tool modules from project and return validated FunctionToolset instances.
+
+    Each module must export a FunctionToolset (as 'toolset', 'data_tools', or 'tools').
+    Invalid or missing modules log warnings and are skipped; built-in tools remain available.
+    """
+    if not extensions:
+        return []
+
+    project_root = project_root.resolve()
+    root_str = str(project_root)
+    if root_str not in sys.path:
+        sys.path.insert(0, root_str)
+
+    result: list[FunctionToolset] = []
+    for ext in extensions:
+        if not ext.enabled:
+            continue
+        mod_name = ext.module.strip()
+        if not mod_name:
+            continue
+        try:
+            spec = importlib.util.find_spec(mod_name)
+            if spec is None or spec.origin is None:
+                logger.warning("Extension module not found: %s", mod_name)
+                continue
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        except Exception as e:
+            logger.warning("Failed to load extension module %s: %s", mod_name, e)
+            continue
+
+        toolset = None
+        for attr in _TOOLSET_ATTR_NAMES:
+            obj = getattr(mod, attr, None)
+            if isinstance(obj, FunctionToolset):
+                toolset = obj
+                break
+        if toolset is None:
+            for name, obj in vars(mod).items():
+                if isinstance(obj, FunctionToolset):
+                    toolset = obj
+                    break
+        if toolset is None:
+            logger.warning(
+                "Extension module %s has no FunctionToolset (expected toolset, data_tools, or tools)",
+                mod_name,
+            )
+            continue
+        result.append(toolset)
+    return result
 
 
 @data_tools.tool
@@ -203,7 +267,7 @@ def disambiguate(
     return {"matches": matches}
 
 
-@data_tools.tool
+@data_tools.tool(sequential=True)
 def query_metric(
     ctx: RunContext[DataAgent],
     metrics: list[str],
@@ -239,7 +303,7 @@ def query_metric(
                 "FILTER_DIMENSION_NOT_ALLOWED",
             )
 
-    state = get_session_state(ctx)
+    state = get_runtime_state(ctx)
     result = execute_query_metric(
         core=ctx.deps,
         metrics=metrics,
@@ -257,11 +321,20 @@ def query_metric(
             result.error_code or "QUERY_FAILED",
         )
 
-    state["last_query_data"] = result.data
-    state["last_query_metric"] = result.metrics or metrics
-    sid = session_id(ctx)
-    set_session_aggregate(sid, result.aggregate if not compare_period else None)
-    get_session_store().set(sid, state)
+    state.last_query_data = result.data
+    state.last_query_metric = result.metrics or metrics
+    if not compare_period:
+        state.last_query_params = {
+            "metrics": metrics,
+            "group_by": group_by,
+            "filters": filters,
+            "order": order,
+            "limit": limit,
+            "time_grain": time_grain,
+        }
+    else:
+        state.last_query_params = None
+    save_runtime_state(ctx, state)
 
     payload: dict[str, Any] = {"ok": True, "data": result.data, "rows": result.rows}
     if result.period:
@@ -296,11 +369,11 @@ def _cleanup_exports(max_files: int = 200, max_age_days: int = 14) -> None:
             continue
 
 
-@data_tools.tool
+@data_tools.tool(sequential=True)
 def export(ctx: RunContext[DataAgent], format: str = "csv") -> str | dict[str, Any]:
     """Export the last query result. format: csv | excel | sheets."""
-    state = get_session_state(ctx)
-    if not state["last_query_data"]:
+    state = get_runtime_state(ctx)
+    if not state.last_query_data:
         return tool_error("No data to export. Run query_metric first.", "NO_EXPORT_DATA")
     _cleanup_exports()
     fmt = (format or "csv").strip().lower()
@@ -314,12 +387,12 @@ def export(ctx: RunContext[DataAgent], format: str = "csv") -> str | dict[str, A
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             path = export_dir / f"export_{ts}.csv"
             with open(path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=list(state["last_query_data"][0].keys()))
+                writer = csv.DictWriter(f, fieldnames=list(state.last_query_data[0].keys()))
                 writer.writeheader()
-                writer.writerows(state["last_query_data"])
-            state["pending_files"].append({"path": str(path), "title": path.name})
-            get_session_store().set(session_id(ctx), state)
-            return f"Exported {len(state['last_query_data'])} rows to {path}"
+                writer.writerows(state.last_query_data)
+            state.pending_files.append({"path": str(path), "title": path.name})
+            save_runtime_state(ctx, state)
+            return f"Exported {len(state.last_query_data)} rows to {path}"
         except Exception as e:
             return tool_error(f"Export failed: {e}", "EXPORT_FAILED")
     if fmt == "excel":
@@ -331,11 +404,11 @@ def export(ctx: RunContext[DataAgent], format: str = "csv") -> str | dict[str, A
             export_dir.mkdir(parents=True, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             path = export_dir / f"export_{ts}.xlsx"
-            df = pd.DataFrame(state["last_query_data"])
+            df = pd.DataFrame(state.last_query_data)
             df.to_excel(path, index=False)
-            state["pending_files"].append({"path": str(path), "title": path.name})
-            get_session_store().set(session_id(ctx), state)
-            return f"Exported {len(state['last_query_data'])} rows to {path}"
+            state.pending_files.append({"path": str(path), "title": path.name})
+            save_runtime_state(ctx, state)
+            return f"Exported {len(state.last_query_data)} rows to {path}"
         except ImportError:
             return tool_error("Excel export requires openpyxl. Install with: uv sync", "MISSING_DEPENDENCY")
         except Exception as e:
@@ -348,35 +421,46 @@ def export(ctx: RunContext[DataAgent], format: str = "csv") -> str | dict[str, A
     return tool_error(f"Unknown format '{format}'. Use csv, excel, or sheets.", "INVALID_EXPORT_FORMAT")
 
 
-@data_tools.tool
+@data_tools.tool(sequential=True)
 def generate_chart(ctx: RunContext[DataAgent]) -> str | dict[str, Any]:
     """Generate a chart from the last query result using BSL's auto-detection."""
-    state = get_session_state(ctx)
-    sid = session_id(ctx)
-    if not state["last_query_data"] or not state["last_query_metric"]:
+    state = get_runtime_state(ctx)
+    if not state.last_query_data or not state.last_query_metric:
         return tool_error("No data to chart. Run query_metric first.", "NO_CHART_DATA")
-    aggregate = get_session_aggregate(sid)
-    if not aggregate:
+    if not state.last_query_params:
         return tool_error("No BSL aggregate available. Run query_metric with group_by first.", "NO_AGGREGATE")
     _cleanup_exports()
+
+    params = state.last_query_params
+    result = execute_query_metric(
+        core=ctx.deps,
+        metrics=params.get("metrics") or [],
+        dimensions=params.get("group_by"),
+        filters=params.get("filters"),
+        order_by=params.get("order"),
+        limit=params.get("limit"),
+        time_grain=params.get("time_grain"),
+    )
+    if not result.ok or not result.aggregate:
+        return tool_error("No BSL aggregate available. Run query_metric with group_by first.", "NO_AGGREGATE")
 
     try:
         from datetime import datetime
 
-        chart_bytes = aggregate.chart(backend="plotly", format="png")
+        chart_bytes = result.aggregate.chart(backend="plotly", format="png")
         if not chart_bytes:
             return tool_error("No dimension to chart. Run query_metric with group_by first.", "NO_DIMENSION_FOR_CHART")
 
         export_dir = Path.cwd() / "exports" / "charts"
         export_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        metric_ref = state["last_query_metric"]
+        metric_ref = state.last_query_metric
         display_metric = metric_ref[0] if isinstance(metric_ref, list) else metric_ref
         path = export_dir / f"{display_metric}_{ts}.png"
         path.write_bytes(chart_bytes)
 
-        state["pending_files"].append({"path": str(path), "title": path.name})
-        get_session_store().set(sid, state)
+        state.pending_files.append({"path": str(path), "title": path.name})
+        save_runtime_state(ctx, state)
 
         if ctx.metadata and ctx.metadata.get("interface") == "slack":
             return f"Here's your chart for {display_metric}."

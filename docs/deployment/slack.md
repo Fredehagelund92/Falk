@@ -77,4 +77,4 @@ When users react to the bot's messages:
 | 👍 | Positive score sent to LangFuse (if configured) |
 | 👎 | Negative score sent to LangFuse (if configured) |
 
-Data stewards review feedback in the LangFuse dashboard, add corrections, and update config files. See [LangFuse Observability](langfuse.md).
+Data stewards review feedback in the Logfire dashboard, add corrections, and update config files. See [Logfire Observability](logfire.md).

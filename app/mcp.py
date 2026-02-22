@@ -15,15 +15,17 @@ Usage:
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from falk.agent import DataAgent
-from falk.llm import readiness_probe, tool_error
+from falk.llm import load_custom_toolsets, readiness_probe, tool_error
 from falk.services.query_service import execute_query_metric
 from falk.settings import load_settings
 from falk.tools.calculations import suggest_date_range as _suggest_date_range
@@ -48,6 +50,19 @@ mcp = FastMCP("falk")
 
 # Initialize DataAgent (shared across all tool calls)
 _agent: DataAgent | None = None
+
+# Built-in MCP tool names (skip when registering extensions to avoid collisions)
+_BUILTIN_MCP_TOOLS = frozenset({
+    "list_catalog",
+    "suggest_date_range",
+    "describe_metric",
+    "describe_model",
+    "describe_dimension",
+    "lookup_dimension_values",
+    "disambiguate",
+    "query_metric",
+    "health_check",
+})
 
 
 def get_agent() -> DataAgent:
@@ -300,6 +315,77 @@ def health_check() -> dict[str, Any]:
 # NOTE: Chart generation has been migrated to BSL's built-in charting (in falk.llm).
 # MCP charting tools are disabled as they require session state and BSL aggregates.
 # Re-enable when MCP gains session state support or use llm agent directly.
+
+
+# ---------------------------------------------------------------------------
+# Custom tool extensions (from agent.extensions.tools)
+# ---------------------------------------------------------------------------
+
+
+def _make_mcp_ctx() -> SimpleNamespace:
+    """Build minimal RunContext-like object for extension tools."""
+    ctx = SimpleNamespace()
+    ctx.deps = get_agent()
+    ctx.metadata = {}
+    return ctx
+
+
+def _register_custom_tools() -> None:
+    """Load and register custom tool extensions from falk_project.yaml."""
+    settings = load_settings()
+    if not settings.agent.extensions_tools:
+        return
+    custom_toolsets = load_custom_toolsets(
+        settings.project_root,
+        settings.agent.extensions_tools,
+    )
+    for toolset in custom_toolsets:
+        for name, tool in toolset.tools.items():
+            if name in _BUILTIN_MCP_TOOLS:
+                logger.warning("Custom tool '%s' shadows built-in; skipping", name)
+                continue
+            if not tool.takes_ctx:
+                logger.warning(
+                    "Custom tool '%s' does not take ctx; MCP requires RunContext, skipping",
+                    name,
+                )
+                continue
+            try:
+                sig = inspect.signature(tool.function)
+                params = list(sig.parameters.values())
+                if not params or params[0].name not in ("ctx", "context"):
+                    logger.warning(
+                        "Custom tool '%s' has unexpected first param; skipping",
+                        name,
+                    )
+                    continue
+                bound_params = list(params[1:])
+
+                def _make_wrapper(
+                    tool_name: str,
+                    tool_func: Any,
+                    tool_sig: inspect.Signature,
+                    tool_bound_params: list[inspect.Parameter],
+                ):
+                    def wrapper(**kwargs: Any) -> Any:
+                        ctx = _make_mcp_ctx()
+                        return tool_func(ctx, **kwargs)
+
+                    wrapper.__name__ = tool_name
+                    wrapper.__doc__ = getattr(tool, "description", None) or tool_func.__doc__
+                    wrapper.__signature__ = tool_sig.replace(  # type: ignore[attr-defined]
+                        parameters=tool_bound_params
+                    )
+                    return wrapper
+
+                wrapper = _make_wrapper(name, tool.function, sig, bound_params)
+                mcp.tool()(wrapper)
+                logger.info("Registered custom MCP tool: %s", name)
+            except Exception as e:
+                logger.warning("Failed to register custom tool '%s': %s", name, e)
+
+
+_register_custom_tools()
 
 
 # ---------------------------------------------------------------------------

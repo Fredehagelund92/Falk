@@ -70,27 +70,36 @@ agent:
   # include_semantic_metadata_in_prompt: true   # true = synonyms + gotchas in prompt (default)
   # false = smaller prompt; agent uses list_catalog/describe_metric for discovery
 
-# Observability (optional - auto-enabled if env vars are set)
-# Set LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST in .env to enable
-observability:
-  langfuse_sync: true  # Flush after each trace (ensures data sent before process exit)
+  # Custom Python tool extensions (project modules with FunctionToolset)
+  # extensions:
+  #   tools:
+  #     - module: project_tools.customer_health
+  #     - module: project_tools.forecasting
+  #     - module: project_tools.alerts
+  #       enabled: false
+
+# Observability: set LOGFIRE_TOKEN in .env to enable Logfire tracing
+
+# Long-term memory (optional, disabled by default)
+# memory:
+#   enabled: false
+#   provider: hindsight  # requires hindsight package + HINDSIGHT_API_KEY
 
 # Paths (relative to project root)
 paths:
   semantic_models: semantic_models.yaml  # BSL file
 
-# Session State Storage (for multi-user deployments)
+# Session State Storage
 session:
-  store: memory  # "memory" (single process) or "redis" (multi-worker)
-  url: redis://localhost:6379  # Redis URL (only used if store=redis)
+  store: postgres  # postgres (default) or memory (dev fallback)
+  postgres_url: ${POSTGRES_URL}  # Required for postgres; set in .env
+  schema: falk_session
   ttl: 3600  # Session TTL in seconds (1 hour)
-  maxsize: 500  # Max sessions for memory store
+  maxsize: 500  # Max sessions for memory store (when store=memory)
 
-# Slack policy controls
+# Slack policy (optional — defaults to DM-only exports)
 slack:
   exports_dm_only: true
-  export_channel_allowlist: []  # Future-safe allowlist for channels that may receive exports
-  export_block_message: "Export files are restricted to DMs. Ask me in DM if you need the file."
 
 # Advanced Settings (technical — hidden from analyst config)
 advanced:

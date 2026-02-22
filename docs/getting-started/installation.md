@@ -3,6 +3,7 @@
 ## Prerequisites
 
 - **Python 3.11 or higher**
+- **PostgreSQL** for session storage (Falk creates schema and tables automatically)
 - **API key** for OpenAI, Anthropic Claude, or Google Gemini
 - (Recommended) [uv](https://github.com/astral-sh/uv) for fast package management
 
@@ -38,9 +39,9 @@ falk --help
 falk init my-project
 cd my-project
 
-# Add API key
+# Configure environment
 cp .env.example .env
-# Edit .env: OPENAI_API_KEY=sk-...
+# Edit .env: set POSTGRES_URL and your LLM API key (e.g. OPENAI_API_KEY)
 
 # Validate
 falk validate --fast
@@ -68,18 +69,16 @@ GOOGLE_API_KEY=...
 
 See [LLM Provider Configuration](../configuration/llm-providers.md) for details.
 
-## Optional: LangFuse Observability
+## Optional: Logfire Observability
 
-For production monitoring, add LangFuse:
+For production monitoring, add Logfire Cloud:
 
 ```bash
 # .env
-LANGFUSE_PUBLIC_KEY=pk-...
-LANGFUSE_SECRET_KEY=sk-...
-LANGFUSE_BASE_URL=https://cloud.langfuse.com
+LOGFIRE_TOKEN=...
 ```
 
-All queries, LLM calls, and user feedback will be traced automatically.
+Run `logfire auth` and `logfire projects new` first. All queries, LLM calls, and user feedback will be traced automatically.
 
 ## Troubleshooting
 
