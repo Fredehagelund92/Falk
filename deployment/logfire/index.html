@@ -1028,10 +1028,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-authenticate" class="md-nav__link">
+  <a href="#development-recommended-for-local-use" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Authenticate
+        Development (recommended for local use)
       
     </span>
   </a>
@@ -1039,21 +1039,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-create-a-project" class="md-nav__link">
+  <a href="#production" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create a project
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-configure-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Configure environment
+        Production
       
     </span>
   </a>
@@ -1450,10 +1439,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-authenticate" class="md-nav__link">
+  <a href="#development-recommended-for-local-use" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Authenticate
+        Development (recommended for local use)
       
     </span>
   </a>
@@ -1461,21 +1450,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-create-a-project" class="md-nav__link">
+  <a href="#production" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create a project
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-configure-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Configure environment
+        Production
       
     </span>
   </a>
@@ -1609,14 +1587,30 @@
 </tbody>
 </table>
 <h2 id="setup">Setup</h2>
-<h3 id="1-authenticate">1. Authenticate</h3>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>logfire<span class="w"> </span>auth
+<h3 id="development-recommended-for-local-use">Development (recommended for local use)</h3>
+<p>No environment variable needed. Credentials are stored locally in <code>.logfire/</code>.</p>
+<ol>
+<li>Authenticate:</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>run<span class="w"> </span>logfire<span class="w"> </span>auth
 </code></pre></div>
-<h3 id="2-create-a-project">2. Create a project</h3>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>logfire<span class="w"> </span>projects<span class="w"> </span>new
+<ol>
+<li>
+<p>Create a project in the Logfire UI (or use an existing one).</p>
+</li>
+<li>
+<p>From your project root, set the Logfire project:</p>
+</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>logfire<span class="w"> </span>projects<span class="w"> </span>use<span class="w"> </span>&lt;project-name&gt;
 </code></pre></div>
-<h3 id="3-configure-environment">3. Configure environment</h3>
-<p>Add to your <code>.env</code> file:</p>
+<p>This creates a <code>.logfire/</code> directory and stores your token locally. Run from the directory where you start <code>falk chat</code>, <code>falk mcp</code>, or <code>falk slack</code>.</p>
+<h3 id="production">Production</h3>
+<p>For deployed applications, use a write token:</p>
+<ol>
+<li>Create a write token in the Logfire UI (Project Settings → Write Tokens).</li>
+<li>Add to your <code>.env</code>:</li>
+</ol>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">LOGFIRE_TOKEN</span><span class="o">=</span>...
 </code></pre></div>
 <p>(Or <code>LOGTAIL_TOKEN</code> for legacy compatibility.)</p>
@@ -1638,7 +1632,7 @@
 </ul>
 <p>Feedback is linked to the trace via <code>trace_id</code>.</p>
 <h2 id="fallback-behavior">Fallback Behavior</h2>
-<p>If Logfire is <strong>not configured</strong> (LOGFIRE_TOKEN not set):</p>
+<p>If Logfire is <strong>not configured</strong> (no <code>LOGFIRE_TOKEN</code>, no <code>.logfire/</code> from <code>logfire projects use</code>):</p>
 <ul>
 <li>Agent works normally</li>
 <li>Feedback is logged to console but not persisted</li>
@@ -1650,9 +1644,9 @@
 </code></pre></div>
 <h3 id="no-traces-appearing">No traces appearing</h3>
 <ul>
-<li>Run <code>logfire auth</code> and <code>logfire projects new</code></li>
-<li>Verify LOGFIRE_TOKEN is in <code>.env</code></li>
-<li>Check agent logs for Logfire warnings</li>
+<li><strong>Development:</strong> Run <code>uv run logfire auth</code> then <code>uv run logfire projects use &lt;project-name&gt;</code> from your project root.</li>
+<li><strong>Production:</strong> Verify <code>LOGFIRE_TOKEN</code> is in <code>.env</code>.</li>
+<li>Check agent logs for Logfire warnings.</li>
 </ul>
 
 

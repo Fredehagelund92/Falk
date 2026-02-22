@@ -1621,7 +1621,7 @@ and runtime limits.</p>
 <a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="c1"># Observability: set LOGFIRE_TOKEN in .env for Logfire Cloud tracing (optional)</span>
 <a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>
 <a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="nt">session</span><span class="p">:</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span><span class="w">       </span><span class="c1"># postgres (default) or memory (dev fallback)</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memory</span><span class="w">         </span><span class="c1"># memory (default) or postgres (production)</span>
 <a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">  </span><span class="nt">postgres_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${POSTGRES_URL}</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">  </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">falk_session</span>
 <a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3600</span>
@@ -1666,8 +1666,8 @@ and runtime limits.</p>
 </ul>
 <h3 id="session"><code>session</code></h3>
 <ul>
-<li><code>postgres</code> for production (default). Requires <code>POSTGRES_URL</code> in <code>.env</code>. Falk creates schema and tables automatically.</li>
-<li><code>memory</code> for dev fallback when <code>POSTGRES_URL</code> is not set.</li>
+<li><code>memory</code> (default) — works out of the box for local development.</li>
+<li><code>postgres</code> for production — requires <code>POSTGRES_URL</code> in <code>.env</code>. Falk creates schema and tables automatically. Server fails at startup if postgres is configured but URL is invalid.</li>
 <li>Session config precedence is: environment variables &gt; <code>falk_project.yaml</code> &gt; defaults.</li>
 <li><code>SESSION_STORE</code>, <code>POSTGRES_URL</code>, <code>SESSION_SCHEMA</code>, <code>SESSION_TTL</code>, <code>SESSION_MAXSIZE</code></li>
 <li>Persisted session state is JSON-only (<code>last_query_data</code>, <code>last_query_metric</code>, <code>pending_files</code>).</li>

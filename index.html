@@ -1522,7 +1522,7 @@ Same numbers everywhere. No SQL generation. No prompt engineering.</p>
 <li><strong>Alpha / vibe coded</strong> — not battle-tested for production yet. Use at your own risk.</li>
 <li>Recommended model: one company/workspace per deployment (single-tenant).</li>
 <li>In production (<code>FALK_ENV=production</code>), configure <code>access_policies</code> to avoid open access.</li>
-<li>Session storage uses PostgreSQL by default (<code>session.store: postgres</code>). Set <code>POSTGRES_URL</code> in <code>.env</code>.</li>
+<li>Session storage defaults to memory (works out of the box). For production, set <code>session.store: postgres</code> and <code>POSTGRES_URL</code> in <code>.env</code>.</li>
 <li>Session config precedence is env vars &gt; <code>falk_project.yaml</code> &gt; defaults.</li>
 <li>Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.</li>
 <li>Slack exports default to DM-only delivery; optionally allow specific channels via <code>slack.export_channel_allowlist</code>.</li>
