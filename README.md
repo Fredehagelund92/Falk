@@ -97,13 +97,15 @@ No manual drilling. Instant root cause analysis. Same experience in Slack, web U
 
 - `0.1.0` is designed for **single-tenant deployments** (one company/workspace per deployment).
 - In production (`FALK_ENV=production`), `access_policies` must be configured in `falk_project.yaml`.
-- Session storage uses PostgreSQL by default (`session.store: postgres`). Set `POSTGRES_URL` in `.env`.
+- Session storage defaults to memory (works out of the box). For production, set `session.store: postgres` and `POSTGRES_URL` in `.env`.
 
 ---
 
 ## Contributing
 
 See [Contributing Guide](https://fredehagelund92.github.io/Falk/contributing/) for guidelines.
+
+**AI agents:** [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md) provide guidance for coding assistants working on this repo.
 
 ---
 

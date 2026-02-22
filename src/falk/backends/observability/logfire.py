@@ -6,7 +6,6 @@ If Logfire is not configured, all functions are no-ops.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -22,12 +21,6 @@ def configure() -> bool:
     global _configured
     if _configured:
         return True
-
-    # Logfire requires auth; if not configured, skip
-    if not os.getenv("LOGFIRE_TOKEN") and not os.getenv("LOGTAIL_TOKEN"):
-        logger.debug("Logfire not configured (LOGFIRE_TOKEN or LOGTAIL_TOKEN not set)")
-        _configured = True  # Mark as checked
-        return False
 
     try:
         import logfire

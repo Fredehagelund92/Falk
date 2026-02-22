@@ -70,7 +70,7 @@ falk slack
 - **Alpha / vibe coded** — not battle-tested for production yet. Use at your own risk.
 - Recommended model: one company/workspace per deployment (single-tenant).
 - In production (`FALK_ENV=production`), configure `access_policies` to avoid open access.
-- Session storage uses PostgreSQL by default (`session.store: postgres`). Set `POSTGRES_URL` in `.env`.
+- Session storage defaults to memory (works out of the box). For production, set `session.store: postgres` and `POSTGRES_URL` in `.env`.
 - Session config precedence is env vars > `falk_project.yaml` > defaults.
 - Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.
 - Slack exports default to DM-only delivery; optionally allow specific channels via `slack.export_channel_allowlist`.

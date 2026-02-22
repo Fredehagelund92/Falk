@@ -76,7 +76,7 @@ class MemoryConfig:
 @dataclass(frozen=True)
 class SessionConfig:
     """Session state storage configuration."""
-    store: str = "postgres"  # "postgres" (default) or "memory" (dev fallback)
+    store: str = "memory"  # "memory" (default) or "postgres" (production)
     postgres_url: str = ""  # PostgreSQL URL (required for postgres store)
     schema: str = "falk_session"  # Schema for Falk-owned tables
     ttl: int = 3600  # Session TTL in seconds
@@ -293,7 +293,7 @@ def load_settings() -> Settings:
         or ""
     )
     session = SessionConfig(
-        store=session_config.get("store", "postgres"),
+        store=session_config.get("store", "memory"),
         postgres_url=postgres_url,
         schema=session_config.get("schema", "falk_session"),
         ttl=session_config.get("ttl", 3600),

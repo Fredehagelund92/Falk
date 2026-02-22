@@ -26,6 +26,7 @@ from fastmcp import FastMCP
 
 from falk.agent import DataAgent
 from falk.llm import load_custom_toolsets, readiness_probe, tool_error
+from falk.observability import configure_observability
 from falk.services.query_service import execute_query_metric
 from falk.settings import load_settings
 from falk.tools.calculations import suggest_date_range as _suggest_date_range
@@ -44,6 +45,9 @@ _settings = load_settings()
 _log_level = str(_settings.advanced.log_level).upper()
 logging.basicConfig(level=getattr(logging, _log_level, logging.INFO))
 logger = logging.getLogger(__name__)
+
+# Observability (Logfire tracing)
+configure_observability()
 
 # Initialize FastMCP server
 mcp = FastMCP("falk")

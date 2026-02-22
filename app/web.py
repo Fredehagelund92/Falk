@@ -30,7 +30,8 @@ else:
 def _get_app():
     from falk import build_web_app
     from falk.agent import DataAgent
-    
+    from falk.llm.state import get_session_store
+
     # Initialize DataAgent once and pass to web app
     try:
         core = DataAgent()
@@ -39,7 +40,16 @@ def _get_app():
             f"Cannot start web UI - DataAgent initialization failed: {e}\n"
             "Check your falk_project.yaml, semantic_models.yaml, and database connection."
         ) from e
-    
+
+    # Validate session config at startup (fail fast if postgres misconfigured)
+    try:
+        get_session_store()
+    except ValueError as e:
+        raise RuntimeError(
+            f"Cannot start web UI - session config invalid: {e}\n"
+            "Set session.store=memory in falk_project.yaml, or set POSTGRES_URL in .env for postgres."
+        ) from e
+
     return build_web_app(core=core)
 
 # ASGI app — delegates to the library's PydanticAI agent.

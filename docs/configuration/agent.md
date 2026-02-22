@@ -56,7 +56,7 @@ agent:
 # Observability: set LOGFIRE_TOKEN in .env for Logfire Cloud tracing (optional)
 
 session:
-  store: postgres       # postgres (default) or memory (dev fallback)
+  store: memory         # memory (default) or postgres (production)
   postgres_url: ${POSTGRES_URL}
   schema: falk_session
   ttl: 3600
@@ -100,8 +100,8 @@ advanced:
 - `auto_run` is reserved for future use.
 
 ### `session`
-- `postgres` for production (default). Requires `POSTGRES_URL` in `.env`. Falk creates schema and tables automatically.
-- `memory` for dev fallback when `POSTGRES_URL` is not set.
+- `memory` (default) — works out of the box for local development.
+- `postgres` for production — requires `POSTGRES_URL` in `.env`. Falk creates schema and tables automatically. Server fails at startup if postgres is configured but URL is invalid.
 - Session config precedence is: environment variables > `falk_project.yaml` > defaults.
   - `SESSION_STORE`, `POSTGRES_URL`, `SESSION_SCHEMA`, `SESSION_TTL`, `SESSION_MAXSIZE`
 - Persisted session state is JSON-only (`last_query_data`, `last_query_metric`, `pending_files`).

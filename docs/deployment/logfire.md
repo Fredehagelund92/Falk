@@ -12,21 +12,32 @@ Logfire provides tracing, cost tracking, and feedback for your data agent.
 
 ## Setup
 
-### 1. Authenticate
+### Development (recommended for local use)
+
+No environment variable needed. Credentials are stored locally in `.logfire/`.
+
+1. Authenticate:
 
 ```bash
-logfire auth
+uv run logfire auth
 ```
 
-### 2. Create a project
+2. Create a project in the Logfire UI (or use an existing one).
+
+3. From your project root, set the Logfire project:
 
 ```bash
-logfire projects new
+uv run logfire projects use <project-name>
 ```
 
-### 3. Configure environment
+This creates a `.logfire/` directory and stores your token locally. Run from the directory where you start `falk chat`, `falk mcp`, or `falk slack`.
 
-Add to your `.env` file:
+### Production
+
+For deployed applications, use a write token:
+
+1. Create a write token in the Logfire UI (Project Settings → Write Tokens).
+2. Add to your `.env`:
 
 ```bash
 LOGFIRE_TOKEN=...
@@ -57,7 +68,7 @@ Feedback is linked to the trace via `trace_id`.
 
 ## Fallback Behavior
 
-If Logfire is **not configured** (LOGFIRE_TOKEN not set):
+If Logfire is **not configured** (no `LOGFIRE_TOKEN`, no `.logfire/` from `logfire projects use`):
 
 - Agent works normally
 - Feedback is logged to console but not persisted
@@ -73,6 +84,6 @@ uv sync
 
 ### No traces appearing
 
-- Run `logfire auth` and `logfire projects new`
-- Verify LOGFIRE_TOKEN is in `.env`
-- Check agent logs for Logfire warnings
+- **Development:** Run `uv run logfire auth` then `uv run logfire projects use <project-name>` from your project root.
+- **Production:** Verify `LOGFIRE_TOKEN` is in `.env`.
+- Check agent logs for Logfire warnings.

@@ -5,6 +5,17 @@ from types import SimpleNamespace
 from falk import session as session_mod
 
 
+def test_create_session_store_defaults_to_memory_when_not_configured(monkeypatch):
+    """Default to memory when no session config (works out of the box)."""
+    monkeypatch.delenv("SESSION_STORE", raising=False)
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
+    monkeypatch.setattr(session_mod, "_load_session_config", lambda: None)
+
+    store = session_mod.create_session_store()
+
+    assert isinstance(store, session_mod.MemorySessionStore)
+
+
 def test_create_session_store_uses_yaml_defaults_for_memory(monkeypatch):
     monkeypatch.delenv("SESSION_STORE", raising=False)
     monkeypatch.delenv("SESSION_TTL", raising=False)
@@ -76,7 +87,8 @@ def test_create_session_store_uses_env_url_precedence_for_postgres(monkeypatch):
     assert store.ttl == 42
 
 
-def test_create_session_store_falls_back_to_memory_when_postgres_url_empty(monkeypatch):
+def test_create_session_store_raises_when_postgres_url_empty(monkeypatch):
+    """Fail fast when postgres is configured but POSTGRES_URL is missing."""
     monkeypatch.setenv("SESSION_STORE", "postgres")
     monkeypatch.delenv("POSTGRES_URL", raising=False)
     monkeypatch.setattr(
@@ -87,9 +99,32 @@ def test_create_session_store_falls_back_to_memory_when_postgres_url_empty(monke
         ),
     )
 
-    store = session_mod.create_session_store()
+    import pytest
 
-    assert isinstance(store, session_mod.MemorySessionStore)
+    with pytest.raises(ValueError, match="POSTGRES_URL"):
+        session_mod.create_session_store()
+
+
+def test_create_session_store_raises_when_postgres_url_unresolved(monkeypatch):
+    """Fail fast when postgres_url is literal ${POSTGRES_URL} and env unset."""
+    monkeypatch.setenv("SESSION_STORE", "postgres")
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
+    monkeypatch.setattr(
+        session_mod,
+        "_load_session_config",
+        lambda: SimpleNamespace(
+            store="postgres",
+            ttl=3600,
+            maxsize=500,
+            postgres_url="${POSTGRES_URL}",
+            schema="falk_session",
+        ),
+    )
+
+    import pytest
+
+    with pytest.raises(ValueError, match="POSTGRES_URL"):
+        session_mod.create_session_store()
 
 
 def test_postgres_store_raises_when_url_empty():

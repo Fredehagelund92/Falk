@@ -91,7 +91,7 @@ paths:
 
 # Session State Storage
 session:
-  store: postgres  # postgres (default) or memory (dev fallback)
+  store: memory  # memory (default) or postgres (production)
   postgres_url: ${POSTGRES_URL}  # Required for postgres; set in .env
   schema: falk_session
   ttl: 3600  # Session TTL in seconds (1 hour)

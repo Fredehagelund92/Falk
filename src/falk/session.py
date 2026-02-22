@@ -3,17 +3,16 @@
 Provides pluggable storage backends (postgres, memory) for session state.
 
 Usage:
-    # Postgres store (default, production)
+    # Memory store (default, works out of the box)
+    session:
+      store: memory
+      maxsize: 500
+
+    # Postgres store (production, multi-worker)
     session:
       store: postgres
       postgres_url: ${POSTGRES_URL}
       schema: falk_session
-      ttl: 3600
-
-    # Memory store (dev fallback, single process)
-    session:
-      store: memory
-      maxsize: 500
       ttl: 3600
 
     # Or via environment variables
@@ -70,7 +69,7 @@ def create_session_store() -> SessionStore:
     """
     session_cfg = _load_session_config()
     store_type = (
-        (os.getenv("SESSION_STORE") or (getattr(session_cfg, "store", None) if session_cfg else None) or "postgres")
+        (os.getenv("SESSION_STORE") or (getattr(session_cfg, "store", None) if session_cfg else None) or "memory")
         .strip()
         .lower()
     )
@@ -85,19 +84,20 @@ def create_session_store() -> SessionStore:
             or (getattr(session_cfg, "postgres_url", None) if session_cfg else None)
             or ""
         )
+        if postgres_url and "${" in postgres_url and "}" in postgres_url:
+            postgres_url = ""  # Unresolved env var
         if not postgres_url or not postgres_url.strip():
-            import logging
-            logging.getLogger(__name__).warning(
-                "session.store=postgres but POSTGRES_URL not set; falling back to memory. "
-                "Set POSTGRES_URL in .env for production."
+            raise ValueError(
+                "session.store=postgres requires a valid POSTGRES_URL. "
+                "Set POSTGRES_URL in .env (e.g. postgresql://user:pass@host:5432/db), "
+                "or use session.store=memory for local development."
             )
-        else:
-            schema = (
-                os.getenv("SESSION_SCHEMA")
-                or (getattr(session_cfg, "schema", None) if session_cfg else None)
-                or "falk_session"
-            )
-            return PostgresSessionStore(url=postgres_url, schema=schema, ttl=ttl)
+        schema = (
+            os.getenv("SESSION_SCHEMA")
+            or (getattr(session_cfg, "schema", None) if session_cfg else None)
+            or "falk_session"
+        )
+        return PostgresSessionStore(url=postgres_url, schema=schema, ttl=ttl)
 
     maxsize = _int_with_default(
         os.getenv("SESSION_MAXSIZE"),

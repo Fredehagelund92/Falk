@@ -186,7 +186,8 @@ def init(
         step += 1
         typer.echo(f"{step}. falk mcp  # Start MCP server for queries")
         typer.echo("   OR falk chat  # Start local web UI")
-        
+        typer.echo("   Optional: uv run logfire auth && uv run logfire projects use <project-name>  # Enable observability")
+
     except Exception as e:
         typer.echo(f"\n[FAIL] Failed to initialize project: {e}", err=True)
         # Clean up on failure only if we created a new directory (not init .)
@@ -253,9 +254,14 @@ def config(
         typer.echo("")
 
         # Observability (Logfire)
-        logfire_configured = bool(os.getenv("LOGFIRE_TOKEN") or os.getenv("LOGTAIL_TOKEN"))
+        logfire_configured = (
+            bool(os.getenv("LOGFIRE_TOKEN") or os.getenv("LOGTAIL_TOKEN"))
+            or (settings.project_root / ".logfire").exists()
+        )
         typer.echo("[Observability]")
-        typer.echo(f"  Logfire: {'Configured' if logfire_configured else 'Not configured (set LOGFIRE_TOKEN)'}")
+        typer.echo(
+            f"  Logfire: {'Configured' if logfire_configured else 'Not configured (run: uv run logfire auth && uv run logfire projects use <name>)'}"
+        )
         typer.echo("")
         
         # Slack

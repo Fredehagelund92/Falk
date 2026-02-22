@@ -45,6 +45,7 @@ from pydantic_ai import UsageLimitExceeded, UsageLimits  # noqa: E402
 from falk import build_agent  # noqa: E402
 from falk.agent import DataAgent  # noqa: E402
 from falk.llm import get_pending_files_for_session, clear_pending_files_for_session  # noqa: E402
+from falk.llm.state import get_session_store  # noqa: E402
 from falk.llm.memory import retain_interaction_sync  # noqa: E402
 from falk.observability import get_trace_id_from_context, record_feedback  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
@@ -74,6 +75,15 @@ except Exception as e:
     raise RuntimeError(
         f"Cannot start Slack bot - DataAgent initialization failed: {e}\n"
         "Check your falk_project.yaml, semantic_models.yaml, and database connection."
+    ) from e
+
+# Validate session config at startup (fail fast if postgres misconfigured)
+try:
+    get_session_store()
+except ValueError as e:
+    raise RuntimeError(
+        f"Cannot start Slack bot - session config invalid: {e}\n"
+        "Set session.store=memory in falk_project.yaml, or set POSTGRES_URL in .env for postgres."
     ) from e
 
 agent = build_agent()
