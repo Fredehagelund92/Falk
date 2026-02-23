@@ -17,23 +17,21 @@ import os
 import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import typer
 
+from falk.cli.format import (
+    print_check,
+    print_info,
+    print_section,
+    print_status,
+    print_summary,
+)
 from falk.evals.cases import load_cases
 from falk.evals.runner import run_evals
 
 app = typer.Typer(help="falk CLI - Manage projects, run evals, start servers")
-
-
-def _print_section(title: str) -> None:
-    typer.echo(f"\n=== {title} ===")
-
-
-def _print_status(status: str, message: str, *, err: bool = False) -> None:
-    typer.echo(f"[{status}] {message}", err=err)
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +72,7 @@ def init(
     ),
 ) -> None:
     """Initialize a new falk project.
-    
+
     Creates a new directory with:
     - falk_project.yaml (configuration)
     - semantic_models.yaml (metrics definitions)
@@ -82,7 +80,7 @@ def init(
     - knowledge/ (business context)
     - .env.example (environment variables template)
     - Optional sample data (DuckDB)
-    
+
     Example:
         falk init my-project
         falk init .                    # scaffold into current directory
@@ -90,7 +88,7 @@ def init(
     """
     # Import here to avoid circular dependency
     import importlib.resources
-    
+
     init_in_place = project_name.strip() == "."
     if init_in_place:
         project_dir = Path.cwd().resolve()
@@ -104,23 +102,23 @@ def init(
             raise typer.Exit(code=1)
         project_dir.mkdir(parents=True)
         typer.echo(f"[OK] Created project directory: {project_dir}")
-    
+
     # Copy scaffold files
     try:
         # Get scaffold path using importlib.resources (Python 3.11+)
         scaffold_path = importlib.resources.files("falk").joinpath("scaffold")  # type: ignore
-        
+
         # Core files
         _copy_scaffold(scaffold_path / "falk_project.yaml", project_dir / "falk_project.yaml")
         _copy_scaffold(scaffold_path / "semantic_models.yaml", project_dir / "semantic_models.yaml")
         _copy_scaffold(scaffold_path / "RULES.md", project_dir / "RULES.md")
         _copy_scaffold(scaffold_path / ".env.example", project_dir / ".env.example")
-        
+
         # Knowledge directory (business context and gotchas)
         knowledge_src = scaffold_path / "knowledge"
         if knowledge_src.exists():
             _copy_scaffold_dir(knowledge_src, project_dir / "knowledge")
-        
+
         # Evals directory (test cases)
         evals_src = scaffold_path / "evals"
         if evals_src.exists():
@@ -130,31 +128,28 @@ def init(
         project_tools_src = scaffold_path / "project_tools"
         if project_tools_src.exists():
             _copy_scaffold_dir(project_tools_src, project_dir / "project_tools")
-        
+
         typer.echo("[OK] Copied configuration files")
-        
+
         # Update project name in falk_project.yaml
         config_path = project_dir / "falk_project.yaml"
         config_text = config_path.read_text(encoding="utf-8")
         config_text = config_text.replace("name: my-falk-project", f"name: {display_name}")
         config_path.write_text(config_text, encoding="utf-8")
-        
+
         # Sample data (DuckDB only) - generate using seed script
         if warehouse == "duckdb" and sample_data:
             typer.echo("Generating sample data...")
             try:
-                # Import and use the seed_data function
-                from importlib.resources import files
-                import sys
                 import importlib.util
-                
+
                 # Load seed_data.py from scaffold
                 seed_script = scaffold_path / "seed_data.py"
                 spec = importlib.util.spec_from_file_location("seed_data", seed_script)
                 if spec and spec.loader:
                     seed_module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(seed_module)
-                    
+
                     # Create database with sample data
                     db_path = project_dir / "data" / "warehouse.duckdb"
                     seed_module.create_example_database(db_path)
@@ -162,7 +157,7 @@ def init(
             except Exception as e:
                 typer.echo(f"[WARN] Could not generate sample data: {e}", err=True)
                 typer.echo("      You can create it later by running the seed script")
-        
+
         # Update warehouse config in falk_project.yaml if not duckdb
         if warehouse != "duckdb":
             config_path = project_dir / "falk_project.yaml"
@@ -171,7 +166,7 @@ def init(
             config_text = config_text.replace('type: duckdb', f'type: {warehouse}')
             config_path.write_text(config_text)
             typer.echo(f"[OK] Configured for {warehouse} warehouse")
-        
+
         typer.echo(f"\n[PASS] Project initialized: {project_dir}")
         typer.echo("\nNext steps:")
         step = 1
@@ -206,7 +201,7 @@ def config(
     ),
 ) -> None:
     """Show current falk configuration.
-    
+
     Displays:
     - Project root
     - Semantic models path
@@ -214,28 +209,28 @@ def config(
     - Agent provider/model
     - LangFuse settings
     - Slack settings
-    
+
     Example:
         falk config
         falk config --all
     """
     from falk.settings import load_settings
-    
+
     try:
         settings = load_settings()
-        
+
         typer.echo("falk Configuration\n")
         typer.echo(f"Project root: {settings.project_root}")
         typer.echo(f"Semantic models: {settings.bsl_models_path}")
         typer.echo("")
-        
+
         # Connection
         conn = settings.connection
         typer.echo("[Connection]")
         typer.echo(f"  Type: {conn.get('type', '?')}")
         typer.echo(f"  Database: {conn.get('database', conn.get('project_id', '—'))}")
         typer.echo("")
-        
+
         # Agent
         typer.echo("[Agent]")
         typer.echo(f"  Provider: {settings.agent.provider}")
@@ -245,7 +240,7 @@ def config(
             typer.echo(f"  Examples: {len(settings.agent.examples)}")
             typer.echo(f"  Rules: {len(settings.agent.rules)}")
         typer.echo("")
-        
+
         # Session
         typer.echo("[Session]")
         typer.echo(f"  Store: {settings.session.store}")
@@ -263,12 +258,12 @@ def config(
             f"  Logfire: {'Configured' if logfire_configured else 'Not configured (run: uv run logfire auth && uv run logfire projects use <name>)'}"
         )
         typer.echo("")
-        
+
         # Slack
         typer.echo("[Slack]")
         typer.echo(f"  Bot token: {'Set' if settings.slack_bot_token else 'Not set'}")
         typer.echo(f"  App token: {'Set' if settings.slack_app_token else 'Not set'}")
-        
+
     except Exception as e:
         typer.echo(f"[FAIL] Failed to load configuration: {e}", err=True)
         raise typer.Exit(code=1)
@@ -310,8 +305,8 @@ def validate(
 
     try:
         settings = load_settings()
-        _print_section("Validate")
-        _print_status("INFO", f"Project root: {settings.project_root}")
+        print_section("Validate")
+        print_info(f"Project root: {settings.project_root}")
 
         check_connection = not no_connection and not fast
         check_agent = not no_agent and not fast
@@ -322,29 +317,21 @@ def validate(
         )
 
         for result in summary.results:
-            if result.passed:
-                _print_status("PASS", f"{result.check_name}: {result.message}")
-            elif result.warning:
-                _print_status("WARN", f"{result.check_name}: {result.message}")
-            else:
-                _print_status("FAIL", f"{result.check_name}: {result.message}")
+            print_check(result, verbose=verbose)
 
-            if verbose and result.details:
-                for detail in result.details:
-                    typer.echo(f"  - {detail}")
-
-        _print_section("Summary")
-        _print_status(
-            "INFO",
-            f"Checks: {len(summary.passed_checks)} passed, {len(summary.failed_checks)} failed, {len(summary.warnings)} warnings",
+        print_section("Summary")
+        print_summary(
+            len(summary.passed_checks),
+            len(summary.failed_checks),
+            len(summary.warnings),
         )
         if not summary.passed:
             raise typer.Exit(code=1)
-        _print_status("PASS", "Validation completed successfully.")
+        print_status("PASS", "Validation completed successfully.")
     except typer.Exit:
         raise
     except Exception as e:
-        _print_status("FAIL", f"Validation failed: {e}", err=True)
+        print_status("FAIL", f"Validation failed: {e}", err=True)
         raise typer.Exit(code=1)
 
 
@@ -376,46 +363,46 @@ def test(
         project_root = settings.project_root
         evals_dir = project_root / "evals"
 
-        _print_section("Test")
-        _print_status("INFO", f"Project root: {project_root}")
+        print_section("Test")
+        print_info(f"Project root: {project_root}")
         if not evals_dir.exists():
-            _print_status("FAIL", f"Evals directory not found: {evals_dir}", err=True)
-            _print_status("INFO", "Create evals/ directory with YAML files.", err=True)
+            print_status("FAIL", f"Evals directory not found: {evals_dir}", err=True)
+            print_info("Create evals/ directory with YAML files.")
             raise typer.Exit(code=1)
 
         case_files = sorted(evals_dir.glob(pattern))
         if not case_files:
-            _print_status("FAIL", f"No eval files matched pattern '{pattern}' in {evals_dir}", err=True)
+            print_status("FAIL", f"No eval files matched pattern '{pattern}' in {evals_dir}", err=True)
             raise typer.Exit(code=1)
 
         cases = []
         for file in case_files:
             cases.extend(load_cases(file))
         if not cases:
-            _print_status("FAIL", f"No eval cases found in files matching '{pattern}'", err=True)
+            print_status("FAIL", f"No eval cases found in files matching '{pattern}'", err=True)
             raise typer.Exit(code=1)
 
         tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-        _print_status("INFO", f"Eval files: {len(case_files)}")
-        _print_status("INFO", f"Cases loaded: {len(cases)}")
+        print_info(f"Eval files: {len(case_files)}")
+        print_info(f"Cases loaded: {len(cases)}")
         if tag_list:
-            _print_status("INFO", f"Tag filter: {', '.join(tag_list)}")
+            print_info(f"Tag filter: {', '.join(tag_list)}")
 
         summary = run_evals(cases, verbose=verbose, tags=tag_list or None)
 
-        _print_section("Summary")
-        _print_status("INFO", f"Pass rate: {summary.pass_rate:.1f}%")
-        _print_status("INFO", f"Duration: {summary.duration_s:.1f}s")
+        print_section("Summary")
+        print_info(f"Pass rate: {summary.pass_rate:.1f}%")
+        print_info(f"Duration: {summary.duration_s:.1f}s")
         if summary.errors:
-            _print_status("WARN", f"Errors: {summary.errors}")
+            print_status("WARN", f"Errors: {summary.errors}")
         if summary.failed or summary.errors:
-            _print_status("FAIL", "Eval suite failed.")
+            print_status("FAIL", "Eval suite failed.")
             raise typer.Exit(code=1)
-        _print_status("PASS", "All eval cases passed.")
+        print_status("PASS", "All eval cases passed.")
     except typer.Exit:
         raise
     except Exception as e:
-        _print_status("FAIL", f"Eval run failed: {e}", err=True)
+        print_status("FAIL", f"Eval run failed: {e}", err=True)
         raise typer.Exit(code=1)
 
 
@@ -464,61 +451,81 @@ def access_test(
 
     if list_users:
         users = settings.access.users
-        _print_section("Access Users")
+        print_section("Access Users")
         if not users:
-            _print_status("WARN", "No users configured in access_policies.")
-            _print_status("INFO", "Uncomment and configure access_policies in falk_project.yaml")
+            print_status("WARN", "No users configured in access_policies.")
+            print_info("Uncomment and configure access_policies in falk_project.yaml")
             return
         if settings.access.default_role:
-            _print_status("INFO", f"Default role: {settings.access.default_role}")
-        _print_status("INFO", "Configured users:")
+            print_info(f"Default role: {settings.access.default_role}")
+        print_info("Configured users:")
         for u in users:
             typer.echo(f"  - {u.user_id}  roles: {u.roles}")
         return
 
     if not user_id:
-        _print_status("FAIL", "--user is required (or use --list-users)", err=True)
+        print_status("FAIL", "--user is required (or use --list-users)", err=True)
         raise typer.Exit(code=1)
 
     allowed_m = allowed_metrics(user_id, settings.access)
     allowed_d = allowed_dimensions(user_id, settings.access)
-    _print_section("Access Test")
-    _print_status("INFO", f"User: {user_id}")
-    _print_status("INFO", f"Question: {question}")
+    print_section("Access Test")
+    print_info(f"User: {user_id}")
+    print_info(f"Question: {question}")
     if allowed_m is None:
-        _print_status("INFO", "Allowed metrics: all")
+        print_info("Allowed metrics: all")
     else:
-        _print_status("INFO", f"Allowed metrics: {len(allowed_m)}")
+        print_info(f"Allowed metrics: {len(allowed_m)}")
     if allowed_d is None:
-        _print_status("INFO", "Allowed dimensions: all")
+        print_info("Allowed dimensions: all")
     else:
-        _print_status("INFO", f"Allowed dimensions: {len(allowed_d)}")
+        print_info(f"Allowed dimensions: {len(allowed_d)}")
 
     try:
         agent = build_agent()
         deps = DataAgent()
         result = agent.run_sync(question, deps=deps, metadata={"user_id": user_id})
         output = result.output if hasattr(result, "output") else str(result)
-        _print_section("Response")
+        print_section("Response")
         typer.echo(output or "No response")
     except Exception as e:
-        _print_status("FAIL", f"access-test failed: {e}", err=True)
+        print_status("FAIL", f"access-test failed: {e}", err=True)
         raise typer.Exit(code=1)
 
 
 @app.command()
-def mcp() -> None:
+def mcp(
+    transport: str = typer.Option(
+        "stdio",
+        "--transport",
+        "-t",
+        help="Transport: stdio (local Cursor/Claude) or http (shared server)",
+    ),
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        help="Bind host for HTTP transport (ignored for stdio)",
+    ),
+    port: int = typer.Option(
+        8000,
+        "--port",
+        "-p",
+        help="Bind port for HTTP transport (ignored for stdio)",
+    ),
+) -> None:
     """Start the MCP (Model Context Protocol) server.
-    
+
     The MCP server exposes falk's data agent tools so any MCP client
     (Cursor, Claude Desktop, other Pydantic AI agents) can query governed metrics.
-    
-    The server uses stdio transport for compatibility with standard MCP clients.
-    
+
+    Uses stdio transport by default (for Cursor/Claude spawn). Use --transport http
+    for shared server deployments.
+
     Example:
         falk mcp
-    
-    To connect from Cursor, add to your MCP config:
+        falk mcp --transport http --host 0.0.0.0 --port 8000
+
+    To connect from Cursor (stdio), add to your MCP config:
         {
           "mcpServers": {
             "falk": {
@@ -530,15 +537,20 @@ def mcp() -> None:
         }
     """
     from falk.settings import load_settings
+
     load_settings()  # Load .env from project root
-    
+
     typer.echo("Starting falk MCP server...", err=True)
-    typer.echo("   Press Ctrl+C to stop", err=True)
+    if transport == "http":
+        typer.echo(f"   HTTP: http://{host}:{port}/mcp", err=True)
+    else:
+        typer.echo("   Press Ctrl+C to stop", err=True)
     typer.echo("", err=True)
-    
+
     try:
         from app.mcp import run_server
-        run_server()
+
+        run_server(transport=transport, host=host, port=port)
     except KeyboardInterrupt:
         typer.echo("\n[OK] MCP server stopped", err=True)
     except Exception as e:
@@ -578,37 +590,38 @@ def chat() -> None:
 @app.command()
 def slack() -> None:
     """Start the Slack bot server.
-    
+
     Requires environment variables:
     - SLACK_BOT_TOKEN
     - SLACK_APP_TOKEN
-    
+
     The Slack bot connects to the MCP server internally.
-    
+
     Example:
         falk slack
     """
-    import subprocess
     import os
-    
+    import subprocess
+
     from falk.settings import load_settings
+
     load_settings()  # Load .env from project root
-    
+
     # Check required env vars
     if not os.getenv("SLACK_BOT_TOKEN"):
         typer.echo("[FAIL] SLACK_BOT_TOKEN not set in environment", err=True)
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
-    
+
     if not os.getenv("SLACK_APP_TOKEN"):
         typer.echo("[FAIL] SLACK_APP_TOKEN not set in environment", err=True)
         typer.echo("   Add it to your .env file or export it", err=True)
         raise typer.Exit(code=1)
-    
+
     typer.echo("Starting Slack bot server...")
     typer.echo("   Press Ctrl+C to stop")
     typer.echo("")
-    
+
     try:
         subprocess.run([sys.executable, "-m", "app.slack"], check=True)
     except subprocess.CalledProcessError as e:

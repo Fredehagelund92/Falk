@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -40,10 +41,13 @@ for _p in _env_candidates:
 else:
     load_dotenv(override=True)
 
-# Configure logging from project settings
+# Configure logging to stderr only (MCP uses stdout for JSON-RPC in stdio mode)
 _settings = load_settings()
 _log_level = str(_settings.advanced.log_level).upper()
-logging.basicConfig(level=getattr(logging, _log_level, logging.INFO))
+logging.basicConfig(
+    level=getattr(logging, _log_level, logging.INFO),
+    stream=sys.stderr,
+)
 logger = logging.getLogger(__name__)
 
 # Observability (Logfire tracing)
@@ -397,10 +401,24 @@ _register_custom_tools()
 # ---------------------------------------------------------------------------
 
 
-def run_server() -> None:
-    """Run the MCP server with stdio transport (default)."""
-    logger.info("Starting falk MCP server...")
-    mcp.run()
+def run_server(
+    transport: str = "stdio",
+    host: str = "127.0.0.1",
+    port: int = 8000,
+) -> None:
+    """Run the MCP server with stdio (default) or HTTP transport.
+
+    Args:
+        transport: 'stdio' for local Cursor/Claude, 'http' for shared server.
+        host: Bind host for HTTP mode (ignored in stdio).
+        port: Bind port for HTTP mode (ignored in stdio).
+    """
+    if transport == "http":
+        logger.info("Starting falk MCP server (HTTP) at http://%s:%s/mcp", host, port)
+        mcp.run(transport="http", host=host, port=port)
+    else:
+        logger.info("Starting falk MCP server (stdio)...")
+        mcp.run(show_banner=False)
 
 
 if __name__ == "__main__":

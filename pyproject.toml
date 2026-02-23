@@ -69,6 +69,7 @@ dependencies = [
   "psycopg[binary]>=3.1.0",
   # CLI framework
   "typer>=0.12.0",
+  "rich>=14.0.0",
   # MCP (Model Context Protocol) server via FastMCP
   # Pinned to < 3 for stability (FastMCP 3.0 has breaking changes)
   "fastmcp>=0.5.0,<3",

@@ -282,19 +282,21 @@ def _validate_semantic_models(project_root: Path) -> ValidationResult:
                 issues.append(f"Model missing 'name' field")
                 continue
             
-            if "model" not in model:
-                issues.append(f"Model '{model_name}' missing 'model' field (SQL table/view)")
+            # BSL uses 'table', validator historically used 'model' — accept both
+            if "model" not in model and "table" not in model:
+                issues.append(f"Model '{model_name}' missing 'model' or 'table' field (SQL table/view)")
             
-            # Count metrics
-            metrics = model.get("metrics", [])
+            # BSL uses 'measures', validator historically used 'metrics' — accept both
+            metrics = model.get("metrics", model.get("measures", []))
             metric_count += len(metrics)
             
             for metric in metrics:
                 metric_name = metric.get("name", "unnamed")
                 if "name" not in metric:
                     issues.append(f"Metric in model '{model_name}' missing 'name'")
-                if "type" not in metric:
-                    issues.append(f"Metric '{metric_name}' missing 'type'")
+                # BSL measures use 'expr', other formats may use 'type'
+                if "type" not in metric and "expr" not in metric:
+                    issues.append(f"Metric '{metric_name}' missing 'type' or 'expr'")
                 if "description" not in metric:
                     warnings.append(f"Metric '{metric_name}' missing description")
             

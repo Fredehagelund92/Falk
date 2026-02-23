@@ -5,6 +5,7 @@ If Logfire is not configured, all functions are no-ops.
 """
 from __future__ import annotations
 
+import os
 import logging
 from typing import Any
 
@@ -16,16 +17,23 @@ _configured: bool = False
 def configure() -> bool:
     """Configure Logfire and instrument Pydantic AI. Call once at process startup.
 
+    Skips configuration when no token is present to avoid interactive prompts
+    (e.g. in MCP stdio contexts where stdin is used for JSON-RPC).
+
     Returns True if Logfire was configured, False otherwise (no-op).
     """
     global _configured
     if _configured:
         return True
 
+    if not (os.getenv("LOGFIRE_TOKEN") or os.getenv("LOGTAIL_TOKEN")):
+        _configured = True
+        return False
+
     try:
         import logfire
 
-        logfire.configure()
+        logfire.configure(send_to_logfire="if-token-present")
         logfire.instrument_pydantic_ai()
         logger.info("Logfire configured and Pydantic AI instrumented")
         _configured = True

@@ -16,14 +16,19 @@ With falk's MCP server, you can:
 ## Starting the MCP Server
 
 ```bash
-# Start the MCP server
+# Stdio mode (default) — for local Cursor/Claude
 falk mcp
+
+# HTTP mode — for shared server deployments
+falk mcp --transport http --host 127.0.0.1 --port 8000
 ```
 
 The MCP server will:
 1. Load your project configuration from `falk_project.yaml`
 2. Connect to your semantic models
 3. Expose tools for querying metrics
+
+**Logfire** (observability) is optional. If `LOGFIRE_TOKEN` is not set, the server runs without tracing; startup is never blocked.
 
 ## Available MCP Tools
 
@@ -49,14 +54,9 @@ falk exposes these tools via MCP:
 - MCP tool name: `lookup_dimension_values`
 - These are equivalent capabilities exposed through different interfaces.
 
-## Connecting from Cursor
+## Connecting from Cursor (stdio)
 
-1. **Start the MCP server:**
-   ```bash
-   falk mcp
-   ```
-
-2. **Configure Cursor** to connect to falk:
+1. **Configure Cursor** to connect to falk (Cursor spawns the server automatically):
    
    Open Cursor settings and add falk as an MCP server:
    ```json
@@ -71,7 +71,9 @@ falk exposes these tools via MCP:
    }
    ```
 
-3. **Query naturally in Cursor:**
+   **Important:** `cwd` must point at your falk project root (where `falk_project.yaml` and `.env` live). Cursor uses this as the working directory when spawning the process.
+
+2. **Query naturally in Cursor:**
    ```
    You: "Show me revenue by region"
    → Cursor calls falk's query_metric tool
@@ -95,12 +97,28 @@ falk exposes these tools via MCP:
    }
    ```
 
-2. **Restart Claude Desktop** to load the new MCP server
+2. **Restart Claude Desktop** to load the new MCP server. Ensure `cwd` points at your falk project root.
 
 3. **Ask questions in Claude Desktop:**
    - "List available metrics"
    - "Show revenue trends by product"
    - "Why did sales drop last quarter?"
+
+## Shared Server (HTTP) Deployment
+
+For company deployments where multiple users connect to one MCP server:
+
+```bash
+# Bind to all interfaces (use only on trusted networks)
+falk mcp --transport http --host 0.0.0.0 --port 8000
+
+# Bind to localhost only (for local reverse proxy)
+falk mcp --transport http --host 127.0.0.1 --port 8000
+```
+
+**Security:** When using `--host 0.0.0.0`, the server is reachable from the network. Use a reverse proxy (nginx, Caddy) with TLS and authentication in production. Avoid exposing the MCP endpoint directly to the internet without access controls.
+
+Clients that support HTTP transport can connect to `http://<server>:8000/mcp`.
 
 ## Using from Other Agents
 

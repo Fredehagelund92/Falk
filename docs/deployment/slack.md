@@ -61,12 +61,19 @@ SLACK_APP_TOKEN=xapp-...   # Basic Information → App-Level Tokens
 falk slack
 ```
 
+## Production Deployment
+
+- **Tokens** — Set `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN` via environment variables (never hardcode).
+- **Session state** — Set `POSTGRES_URL` in `.env` for persistent session state across restarts. Without it, session state uses in-memory storage.
+- **Logging** — All logs go to stderr for consistency with process managers and containers.
+- **Single process** — Socket Mode is intended for a single active bot process. Thread memory is process-local; do not run multiple instances unless you add external coordinator or shared state.
+
 ## Features
 
 - **Slash command** — `/falk What is our revenue?` works without @mentioning the bot
 - **Thread memory** — follow-up questions in the same thread preserve context
 - **File uploads** — CSV, Excel, and chart files are uploaded directly to the channel
-- **Feedback** — 👍/👎 reactions are sent to LangFuse as scores
+- **Feedback** — 👍/👎 reactions are sent to Logfire as scores (if configured)
 
 ## How feedback works
 
@@ -74,7 +81,15 @@ When users react to the bot's messages:
 
 | Reaction | What happens |
 |----------|--------------|
-| 👍 | Positive score sent to LangFuse (if configured) |
-| 👎 | Negative score sent to LangFuse (if configured) |
+| 👍 | Positive score sent to Logfire (if configured) |
+| 👎 | Negative score sent to Logfire (if configured) |
 
 Data stewards review feedback in the Logfire dashboard, add corrections, and update config files. See [Logfire Observability](logfire.md).
+
+## Troubleshooting
+
+| Startup failure | Cause | Fix |
+|-----------------|-------|-----|
+| `SLACK_BOT_TOKEN` / `SLACK_APP_TOKEN` missing | Tokens not set in `.env` | Add both tokens to `.env` |
+| `Cannot start Slack bot - session config invalid` | Session store misconfigured | Set `session.store=memory` in `falk_project.yaml`, or set `POSTGRES_URL` in `.env` for Postgres |
+| `DataAgent initialization failed` | Invalid project config or warehouse | Check `falk_project.yaml`, `semantic_models.yaml`, and database connection |

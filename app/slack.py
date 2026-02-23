@@ -21,8 +21,10 @@ from __future__ import annotations
 import logging
 import os
 import re
+import sys
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from pathlib import Path
 from typing import Any
 
@@ -37,16 +39,15 @@ for _p in _env_candidates:
 else:
     load_dotenv(override=True)
 
+from pydantic_ai import UsageLimitExceeded, UsageLimits  # noqa: E402
 from slack_bolt import App  # noqa: E402
 from slack_bolt.adapter.socket_mode import SocketModeHandler  # noqa: E402
 
-from pydantic_ai import UsageLimitExceeded, UsageLimits  # noqa: E402
-
 from falk import build_agent  # noqa: E402
 from falk.agent import DataAgent  # noqa: E402
-from falk.llm import get_pending_files_for_session, clear_pending_files_for_session  # noqa: E402
-from falk.llm.state import get_session_store  # noqa: E402
+from falk.llm import clear_pending_files_for_session, get_pending_files_for_session  # noqa: E402
 from falk.llm.memory import retain_interaction_sync  # noqa: E402
+from falk.llm.state import get_session_store  # noqa: E402
 from falk.observability import get_trace_id_from_context, record_feedback  # noqa: E402
 from falk.settings import load_settings  # noqa: E402
 from falk.slack import can_deliver_exports, format_reply_for_slack  # noqa: E402
@@ -57,6 +58,7 @@ _LOG_LEVEL = str(APP_SETTINGS.advanced.log_level).upper()
 logging.basicConfig(
     level=getattr(logging, _LOG_LEVEL, logging.INFO),
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    stream=sys.stderr,
 )
 logger = logging.getLogger("falk.slack")
 
@@ -152,13 +154,25 @@ def _resolve_user_email(client, slack_user_id: str) -> str | None:
 def _identity(client, slack_user_id: str | None) -> str | None:
     """Return the access-control identity for a Slack user.
 
-    Prefers the user's email address (matches falk_project.yaml access_policies).
-    Falls back to the raw Slack user_id so that policies using legacy Slack IDs
-    continue to work.  Returns None if no user is known.
+    Chooses the identity that matches access_policies (backward compatible):
+    1. If slack_user_id matches a configured user_id (legacy) → use it.
+    2. Else if resolved email matches a configured user_id → use email.
+    3. Else use email if available (for new configs), else slack_user_id.
+    Returns None if no user is known.
     """
     if not slack_user_id:
         return None
-    return _resolve_user_email(client, slack_user_id) or slack_user_id
+    access = APP_SETTINGS.access
+    configured_ids = {m.user_id for m in access.users}
+    if not configured_ids:
+        # No access policies: prefer email for consistency, fallback to slack_id
+        return _resolve_user_email(client, slack_user_id) or slack_user_id
+    email = _resolve_user_email(client, slack_user_id)
+    if slack_user_id in configured_ids:
+        return slack_user_id
+    if email and email in configured_ids:
+        return email
+    return email or slack_user_id
 
 
 def _store_history(thread_ts: str, messages: list):
@@ -230,7 +244,12 @@ def _upload_pending_files(client, channel: str, thread_ts: str | None, session_i
     return "uploaded"
 
 
-def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str | None = None, channel: str | None = None):
+def _handle(
+    text: str, say, client,
+    thread_ts: str | None = None,
+    user_id: str | None = None,
+    channel: str | None = None,
+):
     """Run the agent and post the reply."""
     if not text:
         say("Hey! Ask me a data question :wave:", thread_ts=thread_ts)
@@ -280,36 +299,36 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
         tid = get_trace_id_from_context()
         return result, tid
 
+    ex = ThreadPoolExecutor(max_workers=1)
+    timed_out = False
     try:
-        with ThreadPoolExecutor(max_workers=1) as ex:
-            future = ex.submit(_run_and_capture_trace)
-            try:
-                result, trace_id = future.result(timeout=QUERY_TIMEOUT)
-            except FuturesTimeoutError:
-                reply = (
-                    "That request took too long. Try a simpler question or try again in a moment. "
-                    "If this happens often, ask your admin to increase the timeout settings."
-                )
-            else:
-                reply = result.output or "I couldn't generate a response — try rephrasing?"
-                tool_calls = _extract_tool_calls(result.all_messages())
-                if thread_ts:
-                    _store_history(thread_ts, result.all_messages())
-                sid = thread_ts or (f"{channel}:{user_id}" if user_id else "default")
-                retain_interaction_sync(
-                    session_id=sid,
-                    user_id=identity,
-                    query=text,
-                    response=reply,
-                    tool_calls=tool_calls,
-                    enabled=APP_SETTINGS.memory.enabled,
-                    provider=APP_SETTINGS.memory.provider,
-                )
-    except FuturesTimeoutError:
-        reply = (
-            "That request took too long. Try a simpler question or try again in a moment. "
-            "If this happens often, ask your admin to increase the timeout settings."
-        )
+        future = ex.submit(_run_and_capture_trace)
+        try:
+            result, trace_id = future.result(timeout=QUERY_TIMEOUT)
+        except FuturesTimeoutError:
+            timed_out = True
+            reply = (
+                "That request took too long. Try a simpler question or try again in a moment. "
+                "If this happens often, ask your admin to increase the timeout settings."
+            )
+        else:
+            reply = result.output or "I couldn't generate a response — try rephrasing?"
+            tool_calls = _extract_tool_calls(result.all_messages())
+            if thread_ts:
+                _store_history(thread_ts, result.all_messages())
+            sid = (
+                thread_ts
+                or (f"{channel}:{identity}" if (channel and identity) else (identity or "default"))
+            )
+            retain_interaction_sync(
+                session_id=sid,
+                user_id=identity,
+                query=text,
+                response=reply,
+                tool_calls=tool_calls,
+                enabled=APP_SETTINGS.memory.enabled,
+                provider=APP_SETTINGS.memory.provider,
+            )
     except UsageLimitExceeded:
         reply = (
             "That query used too many steps. Try a simpler or more focused question."
@@ -317,6 +336,8 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
     except Exception:
         logger.exception("Agent error")
         reply = "Something went wrong — please try again in a moment."
+    finally:
+        ex.shutdown(wait=not timed_out)
 
     # Format reply and update the Thinking message (or post new if update fails)
     reply_formatted, blocks = format_reply_for_slack(
@@ -366,7 +387,10 @@ def _handle(text: str, say, client, thread_ts: str | None = None, user_id: str |
 
         # Upload any files the agent produced (CSV, Excel, charts)
         if channel:
-            session_id = thread_ts or f"{channel}:{user_id}" if user_id else "default"
+            session_id = (
+                thread_ts
+                or (f"{channel}:{identity}" if (channel and identity) else (identity or "default"))
+            )
             upload_state = _upload_pending_files(client, channel, thread_ts, session_id)
             if upload_state == "blocked":
                 client.chat_postMessage(
@@ -491,6 +515,6 @@ def handle_reaction(event):
 
 if __name__ == "__main__":
     handler = SocketModeHandler(bolt, os.environ["SLACK_APP_TOKEN"])
-    print("Data Agent is running in Slack (socket mode)")
-    print("   Press Ctrl+C to stop\n")
+    logger.info("Data Agent is running in Slack (socket mode)")
+    logger.info("Press Ctrl+C to stop")
     handler.start()
