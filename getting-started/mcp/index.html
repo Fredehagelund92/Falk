@@ -551,10 +551,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#connecting-from-cursor" class="md-nav__link">
+  <a href="#connecting-from-cursor-stdio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Connecting from Cursor
+        Connecting from Cursor (stdio)
       
     </span>
   </a>
@@ -566,6 +566,17 @@
     <span class="md-ellipsis">
       
         Connecting from Claude Desktop
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared-server-http-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared Server (HTTP) Deployment
       
     </span>
   </a>
@@ -1554,10 +1565,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#connecting-from-cursor" class="md-nav__link">
+  <a href="#connecting-from-cursor-stdio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Connecting from Cursor
+        Connecting from Cursor (stdio)
       
     </span>
   </a>
@@ -1569,6 +1580,17 @@
     <span class="md-ellipsis">
       
         Connecting from Claude Desktop
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared-server-http-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared Server (HTTP) Deployment
       
     </span>
   </a>
@@ -1701,13 +1723,17 @@
 <li>Chain falk with other MCP servers for complex workflows</li>
 </ul>
 <h2 id="starting-the-mcp-server">Starting the MCP Server</h2>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Start the MCP server</span>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Stdio mode (default) — for local Cursor/Claude</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>falk<span class="w"> </span>mcp
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># HTTP mode — for shared server deployments</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>falk<span class="w"> </span>mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
 </code></pre></div>
 <p>The MCP server will:
 1. Load your project configuration from <code>falk_project.yaml</code>
 2. Connect to your semantic models
 3. Expose tools for querying metrics</p>
+<p><strong>Logfire</strong> (observability) is optional. If <code>LOGFIRE_TOKEN</code> is not set, the server runs without tracing; startup is never blocked.</p>
 <h2 id="available-mcp-tools">Available MCP Tools</h2>
 <p>falk exposes these tools via MCP:</p>
 <h3 id="discovery-metadata">Discovery &amp; Metadata</h3>
@@ -1730,54 +1756,48 @@
 <li>MCP tool name: <code>lookup_dimension_values</code></li>
 <li>These are equivalent capabilities exposed through different interfaces.</li>
 </ul>
-<h2 id="connecting-from-cursor">Connecting from Cursor</h2>
+<h2 id="connecting-from-cursor-stdio">Connecting from Cursor (stdio)</h2>
 <ol>
-<li>
-<p><strong>Start the MCP server:</strong>
-   <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>falk<span class="w"> </span>mcp
-</code></pre></div></p>
-</li>
-<li>
-<p><strong>Configure Cursor</strong> to connect to falk:</p>
-</li>
+<li><strong>Configure Cursor</strong> to connect to falk (Cursor spawns the server automatically):</li>
 </ol>
 <p>Open Cursor settings and add falk as an MCP server:
-   <div class="language-json highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">&quot;falk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;falk&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;mcp&quot;</span><span class="p">],</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/your/falk-project&quot;</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">}</span>
+   <div class="language-json highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">&quot;falk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;falk&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;mcp&quot;</span><span class="p">],</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">      </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/your/falk-project&quot;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">}</span>
 </code></pre></div></p>
+<p><strong>Important:</strong> <code>cwd</code> must point at your falk project root (where <code>falk_project.yaml</code> and <code>.env</code> live). Cursor uses this as the working directory when spawning the process.</p>
 <ol>
 <li><strong>Query naturally in Cursor:</strong>
-   <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>You: &quot;Show me revenue by region&quot;
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>→ Cursor calls falk&#39;s query_metric tool
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>You: &quot;Compare revenue this month vs last&quot;
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>→ Cursor calls falk&#39;s query_metric with compare_period=&quot;month&quot;
+   <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>You: &quot;Show me revenue by region&quot;
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>→ Cursor calls falk&#39;s query_metric tool
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>You: &quot;Compare revenue this month vs last&quot;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>→ Cursor calls falk&#39;s query_metric with compare_period=&quot;month&quot;
 </code></pre></div></li>
 </ol>
 <h2 id="connecting-from-claude-desktop">Connecting from Claude Desktop</h2>
 <ol>
 <li>
 <p><strong>Configure Claude Desktop</strong> in <code>claude_desktop_config.json</code>:
-   <div class="language-json highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">&quot;falk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;falk&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;mcp&quot;</span><span class="p">],</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/your/falk-project&quot;</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="p">}</span>
+   <div class="language-json highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">&quot;falk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;falk&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;mcp&quot;</span><span class="p">],</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/your/falk-project&quot;</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">}</span>
 </code></pre></div></p>
 </li>
 <li>
-<p><strong>Restart Claude Desktop</strong> to load the new MCP server</p>
+<p><strong>Restart Claude Desktop</strong> to load the new MCP server. Ensure <code>cwd</code> points at your falk project root.</p>
 </li>
 <li>
 <p><strong>Ask questions in Claude Desktop:</strong></p>
@@ -1786,6 +1806,16 @@
 <li>"Show revenue trends by product"</li>
 <li>"Why did sales drop last quarter?"</li>
 </ol>
+<h2 id="shared-server-http-deployment">Shared Server (HTTP) Deployment</h2>
+<p>For company deployments where multiple users connect to one MCP server:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Bind to all interfaces (use only on trusted networks)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>falk<span class="w"> </span>mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Bind to localhost only (for local reverse proxy)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>falk<span class="w"> </span>mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+</code></pre></div>
+<p><strong>Security:</strong> When using <code>--host 0.0.0.0</code>, the server is reachable from the network. Use a reverse proxy (nginx, Caddy) with TLS and authentication in production. Avoid exposing the MCP endpoint directly to the internet without access controls.</p>
+<p>Clients that support HTTP transport can connect to <code>http://&lt;server&gt;:8000/mcp</code>.</p>
 <h2 id="using-from-other-agents">Using from Other Agents</h2>
 <p>If you're building your own Pydantic AI agent, you can connect to falk's MCP server using FastMCP:</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_ai</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span>

@@ -1043,6 +1043,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Deployment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1058,6 +1069,17 @@
     <span class="md-ellipsis">
       
         How feedback works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
       
     </span>
   </a>
@@ -1504,6 +1526,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Deployment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1519,6 +1552,17 @@
     <span class="md-ellipsis">
       
         How feedback works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
       
     </span>
   </a>
@@ -1620,12 +1664,19 @@
 <h3 id="7-run">7. Run</h3>
 <div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>falk<span class="w"> </span>slack
 </code></pre></div>
+<h2 id="production-deployment">Production Deployment</h2>
+<ul>
+<li><strong>Tokens</strong> — Set <code>SLACK_BOT_TOKEN</code> and <code>SLACK_APP_TOKEN</code> via environment variables (never hardcode).</li>
+<li><strong>Session state</strong> — Set <code>POSTGRES_URL</code> in <code>.env</code> for persistent session state across restarts. Without it, session state uses in-memory storage.</li>
+<li><strong>Logging</strong> — All logs go to stderr for consistency with process managers and containers.</li>
+<li><strong>Single process</strong> — Socket Mode is intended for a single active bot process. Thread memory is process-local; do not run multiple instances unless you add external coordinator or shared state.</li>
+</ul>
 <h2 id="features">Features</h2>
 <ul>
 <li><strong>Slash command</strong> — <code>/falk What is our revenue?</code> works without @mentioning the bot</li>
 <li><strong>Thread memory</strong> — follow-up questions in the same thread preserve context</li>
 <li><strong>File uploads</strong> — CSV, Excel, and chart files are uploaded directly to the channel</li>
-<li><strong>Feedback</strong> — 👍/👎 reactions are sent to LangFuse as scores</li>
+<li><strong>Feedback</strong> — 👍/👎 reactions are sent to Logfire as scores (if configured)</li>
 </ul>
 <h2 id="how-feedback-works">How feedback works</h2>
 <p>When users react to the bot's messages:</p>
@@ -1639,15 +1690,42 @@
 <tbody>
 <tr>
 <td>👍</td>
-<td>Positive score sent to LangFuse (if configured)</td>
+<td>Positive score sent to Logfire (if configured)</td>
 </tr>
 <tr>
 <td>👎</td>
-<td>Negative score sent to LangFuse (if configured)</td>
+<td>Negative score sent to Logfire (if configured)</td>
 </tr>
 </tbody>
 </table>
 <p>Data stewards review feedback in the Logfire dashboard, add corrections, and update config files. See <a href="../logfire/">Logfire Observability</a>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Startup failure</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SLACK_BOT_TOKEN</code> / <code>SLACK_APP_TOKEN</code> missing</td>
+<td>Tokens not set in <code>.env</code></td>
+<td>Add both tokens to <code>.env</code></td>
+</tr>
+<tr>
+<td><code>Cannot start Slack bot - session config invalid</code></td>
+<td>Session store misconfigured</td>
+<td>Set <code>session.store=memory</code> in <code>falk_project.yaml</code>, or set <code>POSTGRES_URL</code> in <code>.env</code> for Postgres</td>
+</tr>
+<tr>
+<td><code>DataAgent initialization failed</code></td>
+<td>Invalid project config or warehouse</td>
+<td>Check <code>falk_project.yaml</code>, <code>semantic_models.yaml</code>, and database connection</td>
+</tr>
+</tbody>
+</table>
 
 
 
