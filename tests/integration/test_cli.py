@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from typer.testing import CliRunner
 
 from falk.cli import app
@@ -22,7 +24,10 @@ def test_cli_has_test_command():
 def test_cli_has_access_test_command():
     result = runner.invoke(app, ["access-test", "--help"])
     assert result.exit_code == 0
-    assert "list-users" in result.output
+    # Help formatting can vary by environment (ANSI styles, hard wraps).
+    plain_output = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    normalized = re.sub(r"list-\s*users", "list-users", plain_output, flags=re.IGNORECASE)
+    assert "list-users" in normalized.lower()
 
 
 def test_cli_chat_command():
