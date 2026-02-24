@@ -27,9 +27,9 @@ Public API
 
 from falk.agent import DataAgent, SemanticMetadata
 from falk.session import (
-    SessionStore,
     MemorySessionStore,
     PostgresSessionStore,
+    SessionStore,
     create_session_store,
 )
 
@@ -38,11 +38,13 @@ from falk.session import (
 
 def build_agent():  # noqa: D103
     from falk.llm import build_agent as _build
+
     return _build()
 
 
 def build_web_app(*args, **kwargs):  # noqa: D103
     from falk.llm import build_web_app as _build
+
     return _build(*args, **kwargs)
 
 

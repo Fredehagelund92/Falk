@@ -14,12 +14,12 @@ the previous hand-built-SQL approach this eliminates:
 The ``WarehouseQueryResult`` dataclass exposes ``metrics`` (list) so
 downstream code can use the same BSL engine regardless of single vs multiple measures.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Time-grain mapping: agent-friendly names → BSL constants
@@ -38,9 +38,11 @@ _TIME_GRAIN_MAP: dict[str, str] = {
 # Result dataclass (unchanged from the old implementation)
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class WarehouseQueryResult:
     """Result of a warehouse query."""
+
     ok: bool
     data: list[dict[str, Any]]
     error: str | None = None
@@ -76,6 +78,7 @@ def _extract_sql_from_query(query_result: Any) -> str | None:
 # Main query function
 # ---------------------------------------------------------------------------
 
+
 def run_warehouse_query(
     core: Any = None,
     bsl_models: dict[str, Any] | None = None,
@@ -94,7 +97,8 @@ def run_warehouse_query(
     Args:
         core:       DataAgent instance (provides BSL models).
         bsl_models: BSL models dict (alternative to core).
-        metrics:    List of metric names (e.g., ``["clicks"]`` or ``["revenue", "clicks"]``). At least one required; all must be from the same semantic model.
+        metrics:    List of metric names (e.g., ``["clicks"]`` or ``["revenue", "clicks"]``).
+            At least one required; all must be from the same semantic model.
         dimensions: List of dimension names (e.g., ``["platform", "country"]``).
         filters:    List of filters (e.g. ``[{"field": "date", "op": ">=", "value": "2024-01-01"}, ...]``).
         time_grain: Optional time grain (``"day"``, ``"week"``, ``"month"``, ``"quarter"``, ``"year"``).
@@ -150,7 +154,9 @@ def run_warehouse_query(
             )
 
         # 2) Ensure all metrics are in the same model
-        model_measures = model.measures if hasattr(model, "measures") else (model.get("measures") or {})
+        model_measures = (
+            model.measures if hasattr(model, "measures") else (model.get("measures") or {})
+        )
         for m in metrics:
             if m not in model_measures:
                 return WarehouseQueryResult(
@@ -224,7 +230,7 @@ def _agent_filters_to_bsl(
 ) -> list[dict[str, Any]] | None:
     """Convert agent filter list to BSL where clauses.
 
-    Agent list: [{"field": "date", "op": ">=", "value": "2024-01-01"}, {"field": "date", "op": "<=", "value": "2024-12-31"}]
+    Agent list: [{"field": "date", "op": ">=", "value": "2024-01-01"}, ...]
     BSL: [{"field": "date", "operator": ">=", "value": "..."}, ...]
     """
     if not filters or not isinstance(filters, list):
@@ -286,7 +292,13 @@ def lookup_dimension_values(
     model_name = None
     model = None
     for name, m in bsl_models.items():
-        dims = m.get_dimensions() if hasattr(m, "get_dimensions") else {name: getattr(m, name) for name in m.dimensions} if hasattr(m, "dimensions") else (m.get("dimensions") or {})
+        dims = (
+            m.get_dimensions()
+            if hasattr(m, "get_dimensions")
+            else {name: getattr(m, name) for name in m.dimensions}
+            if hasattr(m, "dimensions")
+            else (m.get("dimensions") or {})
+        )
         if dimension in dims:
             model_name = name
             model = m
@@ -345,5 +357,3 @@ def _parse_order_by(
     if direction in ("asc", "desc"):
         return [(metric, direction)]
     return None
-
-

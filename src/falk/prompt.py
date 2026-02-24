@@ -25,14 +25,13 @@ Extension points
 
 ``build_system_prompt()`` is the only function the rest of the codebase calls.
 """
+
 from __future__ import annotations
 
-from datetime import date
 import logging
+from datetime import date
 from pathlib import Path
 from typing import Any
-
-import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -175,104 +174,103 @@ If the user says hello or asks a vague question, welcome them:
 # Database type detection
 # ---------------------------------------------------------------------------
 
+
 def _detect_database_type(bsl_models: dict[str, Any]) -> str | None:
     """Detect database type from BSL models.
-    
+
     BSL uses Ibis which supports:
     athena, bigquery, clickhouse, databricks, datafusion, druid, duckdb,
     exasol, flink, impala, materialize, mssql, mysql, oracle, polars,
     postgres, pyspark, risingwave, singlestoredb, snowflake, sqlite, trino
-    
+
     Returns:
         Database type name (e.g., "snowflake", "bigquery") or None if unknown
     """
     for model in bsl_models.values():
         # Try to get connection info from BSL model
-        if hasattr(model, 'connection') and model.connection:
+        if hasattr(model, "connection") and model.connection:
             conn = model.connection
             # Ibis connections have a backend name
-            if hasattr(conn, 'name'):
+            if hasattr(conn, "name"):
                 return conn.name.lower()
             # Check class name as fallback
             conn_type = type(conn).__name__.lower()
-            if 'snowflake' in conn_type:
-                return 'snowflake'
-            elif 'bigquery' in conn_type:
-                return 'bigquery'
-            elif 'postgres' in conn_type:
-                return 'postgres'
-            elif 'duckdb' in conn_type:
-                return 'duckdb'
-            elif 'athena' in conn_type:
-                return 'athena'
-            elif 'databricks' in conn_type:
-                return 'databricks'
+            if "snowflake" in conn_type:
+                return "snowflake"
+            elif "bigquery" in conn_type:
+                return "bigquery"
+            elif "postgres" in conn_type:
+                return "postgres"
+            elif "duckdb" in conn_type:
+                return "duckdb"
+            elif "athena" in conn_type:
+                return "athena"
+            elif "databricks" in conn_type:
+                return "databricks"
     return None
 
 
 def _build_database_info(bsl_models: dict[str, Any]) -> str:
     """Build database info string for prompt.
-    
+
     Returns empty string or formatted database type info.
     """
     db_type = _detect_database_type(bsl_models)
     if not db_type:
         return ""
-    
+
     # Capitalize for display
     db_display = {
-        'bigquery': 'BigQuery',
-        'snowflake': 'Snowflake',
-        'postgres': 'PostgreSQL',
-        'duckdb': 'DuckDB',
-        'athena': 'Amazon Athena',
-        'databricks': 'Databricks',
-        'clickhouse': 'ClickHouse',
-        'mssql': 'SQL Server',
-        'mysql': 'MySQL',
-        'oracle': 'Oracle',
-        'redshift': 'Amazon Redshift',
-        'trino': 'Trino',
+        "bigquery": "BigQuery",
+        "snowflake": "Snowflake",
+        "postgres": "PostgreSQL",
+        "duckdb": "DuckDB",
+        "athena": "Amazon Athena",
+        "databricks": "Databricks",
+        "clickhouse": "ClickHouse",
+        "mssql": "SQL Server",
+        "mysql": "MySQL",
+        "oracle": "Oracle",
+        "redshift": "Amazon Redshift",
+        "trino": "Trino",
     }.get(db_type, db_type.title())
-    
+
     return f"\nData source: {db_display} warehouse"
 
 
 def _load_rules_content(project_root: Path | None = None) -> str:
     """Load RULES.md content if it exists.
-    
+
     Args:
         project_root: Project root directory
-        
+
     Returns:
         Formatted rules content or empty string
     """
     if not project_root:
         return ""
-    
+
     rules_file = project_root / "RULES.md"
     if not rules_file.exists():
         return ""
-    
+
     try:
-        with open(rules_file, "r", encoding="utf-8") as f:
+        with open(rules_file, encoding="utf-8") as f:
             content = f.read().strip()
             # Remove the title and intro comment if present
-            lines = content.split('\n')
+            lines = content.split("\n")
             filtered = []
             skip_intro = True
             for line in lines:
                 # Skip title and blockquote intro
                 if skip_intro:
-                    if line.startswith('# ') or line.startswith('> '):
-                        continue
-                    elif line.strip() == '':
+                    if line.startswith("# ") or line.startswith("> ") or line.strip() == "":
                         continue
                     else:
                         skip_intro = False
                 filtered.append(line)
-            
-            result = '\n'.join(filtered).strip()
+
+            result = "\n".join(filtered).strip()
             return f"\n{result}\n" if result else ""
     except Exception:
         return ""
@@ -281,6 +279,7 @@ def _load_rules_content(project_root: Path | None = None) -> str:
 # ---------------------------------------------------------------------------
 # Public builder
 # ---------------------------------------------------------------------------
+
 
 def build_system_prompt(
     bsl_models: dict[str, Any],
@@ -315,20 +314,26 @@ def build_system_prompt(
         database_info=_build_database_info(bsl_models),
         company_context=_build_company_context(config),
         business_context=_build_business_context(
-            bsl_models, model_descriptions, dimension_descriptions,
+            bsl_models,
+            model_descriptions,
+            dimension_descriptions,
         ),
         knowledge_business=_load_knowledge_business(config, project_root),
         knowledge_gotchas=_load_knowledge_gotchas(config, project_root),
         examples=_build_examples(bsl_models, config),
         dimension_glossary=_build_dimension_glossary(
-            bsl_models, dimension_descriptions, dimension_display_names,
+            bsl_models,
+            dimension_descriptions,
+            dimension_display_names,
         ),
         vocabulary=_build_vocabulary(metric_synonyms, dimension_synonyms)
         if config.get("include_semantic_metadata_in_prompt", True)
         else "",
         rules_content=_load_rules_content(project_root),
         gotchas=_build_gotchas(
-            metric_gotchas, dimension_gotchas, config.get("gotchas"),
+            metric_gotchas,
+            dimension_gotchas,
+            config.get("gotchas"),
         )
         if config.get("include_semantic_metadata_in_prompt", True)
         else "",
@@ -342,9 +347,10 @@ def build_system_prompt(
 # Agent config loader
 # ---------------------------------------------------------------------------
 
+
 def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
     """Convert AgentConfig from falk_project.yaml to dict format for prompt building.
-    
+
     Converts the new falk_project.yaml structure to the format expected by
     the prompt building functions.
     """
@@ -367,10 +373,19 @@ def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
             "gotchas": list(agent_config.get("gotchas") or []),
             "custom_sections": list(agent_config.get("custom_sections") or []),
             "knowledge_enabled": bool((agent_config.get("knowledge") or {}).get("enabled", True)),
-            "knowledge_business_path": str((agent_config.get("knowledge") or {}).get("business_path") or "knowledge/business.md"),
-            "knowledge_gotchas_path": str((agent_config.get("knowledge") or {}).get("gotchas_path") or "knowledge/gotchas.md"),
-            "knowledge_load_mode": str((agent_config.get("knowledge") or {}).get("load_mode") or "startup").lower(),
-            "include_semantic_metadata_in_prompt": bool(agent_config.get("include_semantic_metadata_in_prompt", True)),
+            "knowledge_business_path": str(
+                (agent_config.get("knowledge") or {}).get("business_path")
+                or "knowledge/business.md"
+            ),
+            "knowledge_gotchas_path": str(
+                (agent_config.get("knowledge") or {}).get("gotchas_path") or "knowledge/gotchas.md"
+            ),
+            "knowledge_load_mode": str(
+                (agent_config.get("knowledge") or {}).get("load_mode") or "startup"
+            ).lower(),
+            "include_semantic_metadata_in_prompt": bool(
+                agent_config.get("include_semantic_metadata_in_prompt", True)
+            ),
         }
 
     return {
@@ -381,16 +396,27 @@ def _agent_config_to_dict(agent_config: Any) -> dict[str, Any]:
         "gotchas": list(getattr(agent_config, "gotchas", []) or []),
         "custom_sections": list(getattr(agent_config, "custom_sections", []) or []),
         "knowledge_enabled": bool(getattr(agent_config, "knowledge_enabled", True)),
-        "knowledge_business_path": str(getattr(agent_config, "knowledge_business_path", "knowledge/business.md") or "knowledge/business.md"),
-        "knowledge_gotchas_path": str(getattr(agent_config, "knowledge_gotchas_path", "knowledge/gotchas.md") or "knowledge/gotchas.md"),
-        "knowledge_load_mode": str(getattr(agent_config, "knowledge_load_mode", "startup") or "startup").lower(),
-        "include_semantic_metadata_in_prompt": bool(getattr(agent_config, "include_semantic_metadata_in_prompt", True)),
+        "knowledge_business_path": str(
+            getattr(agent_config, "knowledge_business_path", "knowledge/business.md")
+            or "knowledge/business.md"
+        ),
+        "knowledge_gotchas_path": str(
+            getattr(agent_config, "knowledge_gotchas_path", "knowledge/gotchas.md")
+            or "knowledge/gotchas.md"
+        ),
+        "knowledge_load_mode": str(
+            getattr(agent_config, "knowledge_load_mode", "startup") or "startup"
+        ).lower(),
+        "include_semantic_metadata_in_prompt": bool(
+            getattr(agent_config, "include_semantic_metadata_in_prompt", True)
+        ),
     }
 
 
 # ---------------------------------------------------------------------------
 # Company context
 # ---------------------------------------------------------------------------
+
 
 def _build_company_context(config: dict[str, Any]) -> str:
     desc = str(config.get("context") or "").strip()
@@ -406,6 +432,7 @@ def _build_company_context(config: dict[str, Any]) -> str:
 # Auto-generated examples from BSL models
 # ---------------------------------------------------------------------------
 
+
 def _build_examples(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     """Build the Examples section from BSL model metadata + user overrides.
 
@@ -419,15 +446,16 @@ def _build_examples(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     sample_model_measures: list[str] = []
     for _model_name, model in bsl_models.items():
         if not sample_metric:
-            measures = list(model.measures) if hasattr(model, "measures") else list(model.get("measures", {}).keys())
+            measures = (
+                list(model.measures)
+                if hasattr(model, "measures")
+                else list(model.get("measures", {}).keys())
+            )
             if measures:
                 sample_metric = measures[0]
                 sample_model_measures = measures
         if not sample_dimension:
-            dims = [
-                d for d in model.get_dimensions().keys()
-                if d != "date"
-            ]
+            dims = [d for d in model.get_dimensions() if d != "date"]
             if dims:
                 sample_dimension = dims[0]
         if sample_metric and sample_dimension:
@@ -457,7 +485,7 @@ def _build_examples(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
         "  CRITICAL: For 'top N with breakdown', always do step 1 first, "
         "then filter by results in step 2.",
         '- "show me a time breakdown as a chart" -> FIRST run query_metric with '
-        "time_grain or group_by=[\"date\"] to get time series data, THEN generate_chart(). "
+        'time_grain or group_by=["date"] to get time series data, THEN generate_chart(). '
         "BSL auto-detects line chart for time series.",
     ]
     # If we have multiple metrics from the same model, show multi-metric example
@@ -479,6 +507,7 @@ def _build_examples(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
 # Welcome / first-message examples
 # ---------------------------------------------------------------------------
 
+
 def _build_welcome(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     """Build the welcome-message examples.
 
@@ -497,11 +526,15 @@ def _build_welcome(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     sample_dimension = None
     for _model_name, model in bsl_models.items():
         if not sample_metric:
-            measures = list(model.measures) if hasattr(model, "measures") else list(model.get("measures", {}).keys())
+            measures = (
+                list(model.measures)
+                if hasattr(model, "measures")
+                else list(model.get("measures", {}).keys())
+            )
             if measures:
                 sample_metric = measures[0]
         if not sample_dimension:
-            dims = [d for d in model.get_dimensions().keys() if d != "date"]
+            dims = [d for d in model.get_dimensions() if d != "date"]
             if dims:
                 sample_dimension = dims[0]
         if sample_metric and sample_dimension:
@@ -510,18 +543,21 @@ def _build_welcome(bsl_models: dict[str, Any], config: dict[str, Any]) -> str:
     m = sample_metric or "your_metric"
     d = sample_dimension or "dimension"
 
-    return "\n".join([
-        f'- "What was our total {m} last week?"',
-        f'- "Top 10 {d}s by {m} this month"',
-        f'- "Compare {m} this month vs last month"',
-        f'- "What % of {m} does each {d} have?"',
-        '- "What metrics are available?"',
-    ])
+    return "\n".join(
+        [
+            f'- "What was our total {m} last week?"',
+            f'- "Top 10 {d}s by {m} this month"',
+            f'- "Compare {m} this month vs last month"',
+            f'- "What % of {m} does each {d} have?"',
+            '- "What metrics are available?"',
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Extra rules / response rules from YAML
 # ---------------------------------------------------------------------------
+
 
 def _build_extra_list(items: list[str] | None) -> str:
     """Render a list of extra rules/guidelines from agent.yaml."""
@@ -533,6 +569,7 @@ def _build_extra_list(items: list[str] | None) -> str:
 # ---------------------------------------------------------------------------
 # Custom freeform sections from YAML
 # ---------------------------------------------------------------------------
+
 
 def _build_custom_sections(config: dict[str, Any]) -> str:
     """Render custom_sections from agent.yaml as prompt sections."""
@@ -552,6 +589,7 @@ def _build_custom_sections(config: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Knowledge files (business.md / gotchas.md)
 # ---------------------------------------------------------------------------
+
 
 def _load_knowledge_file(project_root: Path | None, rel_path: str) -> str:
     if not project_root:
@@ -573,7 +611,9 @@ def _load_knowledge_business(config: dict[str, Any], project_root: Path | None) 
     # Phase 1 supports startup loading only.
     if str(config.get("knowledge_load_mode") or "startup").lower() != "startup":
         return ""
-    content = _load_knowledge_file(project_root, str(config.get("knowledge_business_path") or "knowledge/business.md"))
+    content = _load_knowledge_file(
+        project_root, str(config.get("knowledge_business_path") or "knowledge/business.md")
+    )
     if not content:
         return ""
     return f"\n## Knowledge: Business\n{content}\n"
@@ -584,7 +624,9 @@ def _load_knowledge_gotchas(config: dict[str, Any], project_root: Path | None) -
         return ""
     if str(config.get("knowledge_load_mode") or "startup").lower() != "startup":
         return ""
-    content = _load_knowledge_file(project_root, str(config.get("knowledge_gotchas_path") or "knowledge/gotchas.md"))
+    content = _load_knowledge_file(
+        project_root, str(config.get("knowledge_gotchas_path") or "knowledge/gotchas.md")
+    )
     if not content:
         return ""
     return f"\n## Knowledge: Data Gotchas\n{content}\n"
@@ -593,6 +635,7 @@ def _load_knowledge_gotchas(config: dict[str, Any], project_root: Path | None) -
 # ---------------------------------------------------------------------------
 # Vocabulary (synonyms from semantic_models.yaml)
 # ---------------------------------------------------------------------------
+
 
 def _build_vocabulary(
     metric_synonyms: dict[str, list[str]] | None = None,
@@ -625,6 +668,7 @@ def _build_vocabulary(
 # ---------------------------------------------------------------------------
 # Gotchas / data quality notes (from semantic_models.yaml + agent.yaml)
 # ---------------------------------------------------------------------------
+
 
 def _build_gotchas(
     metric_gotchas: dict[str, str] | None = None,
@@ -666,6 +710,7 @@ def _build_gotchas(
 # Auto-generated business context from BSL models
 # ---------------------------------------------------------------------------
 
+
 def _build_business_context(
     bsl_models: dict[str, Any],
     model_descriptions: dict[str, str] | None = None,
@@ -698,7 +743,7 @@ def _build_business_context(
 
     for model_name, model in bsl_models.items():
         seen_in_model: set[str] = set()
-        for dim_name, dim in model.get_dimensions().items():
+        for dim_name, _dim in model.get_dimensions().items():
             if dim_name in seen_in_model:
                 continue
             seen_in_model.add(dim_name)
@@ -733,6 +778,7 @@ def _build_business_context(
 # Dimension glossary (disambiguation hints)
 # ---------------------------------------------------------------------------
 
+
 def _build_dimension_glossary(
     bsl_models: dict[str, Any],
     dimension_descriptions: dict[tuple[str, str], str] | None = None,
@@ -745,19 +791,19 @@ def _build_dimension_glossary(
     all_dims: list[tuple[str, str]] = []  # (display_name, desc_short)
 
     for model_name, model in bsl_models.items():
-        for dim_name, dim in model.get_dimensions().items():
+        for dim_name, _dim in model.get_dimensions().items():
             if dim_name in seen:
                 continue
             seen.add(dim_name)
-            
+
             # Use display_name if available, otherwise fall back to technical name
             display_name = dimension_display_names.get((model_name, dim_name), "") or dim_name
-            
+
             desc = dimension_descriptions.get((model_name, dim_name)) or ""
             desc = desc.replace("\r\n", " ").replace("\n", " ").strip()
             dot = desc.find(".")
             if dot > 0:
-                desc = desc[:dot + 1]
+                desc = desc[: dot + 1]
             all_dims.append((display_name, desc))
 
     CONCEPT_GROUPS = [
@@ -777,10 +823,7 @@ def _build_dimension_glossary(
 
     sections: list[str] = []
     for concept_label, keywords, default_hint in CONCEPT_GROUPS:
-        matching = [
-            (n, d) for n, d in all_dims
-            if any(kw in n.lower() for kw in keywords)
-        ]
+        matching = [(n, d) for n, d in all_dims if any(kw in n.lower() for kw in keywords)]
         if len(matching) < 2:
             continue
         lines = [f"### {concept_label}"]
@@ -798,6 +841,7 @@ def _build_dimension_glossary(
 # ---------------------------------------------------------------------------
 # Text helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_summary(description: str) -> str:
     """Extract a clean one-line summary from a model description."""
@@ -825,7 +869,7 @@ def _first_sentence(text: str) -> str:
     for end_char in [".", "!"]:
         idx = clean.find(end_char)
         if 10 < idx < 200:
-            return clean[:idx + 1]
+            return clean[: idx + 1]
     if len(clean) > 120:
         cut = clean[:120].rfind(" ")
         return clean[:cut] + "..." if cut > 60 else clean[:120] + "..."

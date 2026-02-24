@@ -4,6 +4,7 @@ Provides ``get_semantic_model_info`` which returns structured information about
 a semantic model or metric, including dimensions, time grains, and descriptions.
 Used by the ``describe_metric`` tool in ``pydantic_agent.py``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -54,7 +55,9 @@ def get_semantic_model_info(
 
     # Measure match — search all models
     for model_name, model in bsl_models.items():
-        measures = model.measures if hasattr(model, "measures") else list(model.get("measures", {}).keys())
+        measures = (
+            model.measures if hasattr(model, "measures") else list(model.get("measures", {}).keys())
+        )
         if name_l in [m.lower() for m in measures]:
             # Found the metric in this model
             info = _info_from_bsl_model(model, model_descriptions.get(model_name))
@@ -87,7 +90,11 @@ def _info_from_bsl_model(model: Any, description: str | None = None) -> Semantic
         if dim.is_time_dimension:
             time_grains.update({"day", "week", "month"})
 
-    metrics = list(model.measures) if hasattr(model, "measures") else list(model.get("measures", {}).keys())
+    metrics = (
+        list(model.measures)
+        if hasattr(model, "measures")
+        else list(model.get("measures", {}).keys())
+    )
 
     if not time_grains:
         time_grains = {"day", "week", "month"}

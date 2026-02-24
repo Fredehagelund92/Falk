@@ -3,6 +3,7 @@
 Records user feedback (thumbs up/down) from Slack interactions.
 Uses Logfire when configured; otherwise logs locally.
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,7 +62,9 @@ def record_feedback(
             )
             logger.info(
                 "Recorded %s feedback (trace=%s, user=%s)",
-                feedback, trace_id, user_id,
+                feedback,
+                trace_id,
+                user_id,
             )
             return
         except Exception as e:
@@ -69,5 +72,8 @@ def record_feedback(
 
     logger.info(
         "Feedback: %s | user=%s | query=%s | tools=%s",
-        feedback, user_id, user_query[:80], tools_used,
+        feedback,
+        user_id,
+        user_query[:80],
+        tools_used,
     )

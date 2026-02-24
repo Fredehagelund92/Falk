@@ -8,6 +8,7 @@ Three-way return from allowed_*:
   non-empty   → filter results to this set of names
   empty set   → user has roles, but none grant access to anything
 """
+
 from __future__ import annotations
 
 from falk.settings import AccessConfig

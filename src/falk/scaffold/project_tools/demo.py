@@ -1,4 +1,5 @@
 """Demo tool — example custom extension for falk projects."""
+
 from pydantic_ai import FunctionToolset, RunContext
 
 from falk.agent import DataAgent

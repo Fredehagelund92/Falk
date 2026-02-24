@@ -1,4 +1,5 @@
 """Shared query execution service used by LLM and MCP adapters."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -104,8 +105,12 @@ def execute_query_metric(
         prev_data = prev_result.data or []
         group_keys = dimensions or []
         if not group_keys and cur_data:
-            group_keys = [k for k in cur_data[0].keys() if k != metric and k != "date"]
-        deltas = compute_deltas(cur_data, prev_data, metric, group_keys) if (cur_data or prev_data) else []
+            group_keys = [k for k in cur_data[0] if k != metric and k != "date"]
+        deltas = (
+            compute_deltas(cur_data, prev_data, metric, group_keys)
+            if (cur_data or prev_data)
+            else []
+        )
         data = compute_shares(deltas, "current") if include_share else deltas
         return QueryServiceResult(
             ok=True,

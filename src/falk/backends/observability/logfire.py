@@ -3,10 +3,11 @@
 Provides tracing (via instrument_pydantic_ai) and feedback recording.
 If Logfire is not configured, all functions are no-ops.
 """
+
 from __future__ import annotations
 
-import os
 import logging
+import os
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -39,9 +40,7 @@ def configure() -> bool:
         _configured = True
         return True
     except ImportError:
-        logger.warning(
-            "Logfire env vars set but package not installed. Run: uv sync"
-        )
+        logger.warning("Logfire env vars set but package not installed. Run: uv sync")
         _configured = True
         return False
     except Exception as e:

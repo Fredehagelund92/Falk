@@ -1,4 +1,5 @@
 """Tests for long-term memory abstraction."""
+
 from __future__ import annotations
 
 from falk.llm.memory import (

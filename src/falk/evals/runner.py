@@ -7,6 +7,7 @@ Usage::
     cases = load_cases("evals/basic.yaml")
     results = run_evals(cases, verbose=True)
 """
+
 from __future__ import annotations
 
 import logging
@@ -98,17 +99,11 @@ def run_evals(
     s = load_settings()
     provider = (s.agent.provider or "openai").lower()
     if provider == "openai" and not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError(
-            "OPENAI_API_KEY not set. Add it to .env or export it."
-        )
+        raise RuntimeError("OPENAI_API_KEY not set. Add it to .env or export it.")
     if provider == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY not set. Add it to .env or export it."
-        )
+        raise RuntimeError("ANTHROPIC_API_KEY not set. Add it to .env or export it.")
     if provider in ("google", "google-genai") and not os.environ.get("GOOGLE_API_KEY"):
-        raise RuntimeError(
-            "GOOGLE_API_KEY not set. Add it to .env or export it."
-        )
+        raise RuntimeError("GOOGLE_API_KEY not set. Add it to .env or export it.")
 
     # Filter by tags if specified
     if tags:
@@ -126,11 +121,15 @@ def run_evals(
 
     for i, case in enumerate(cases, 1):
         if verbose:
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"[{i}/{len(cases)}] {case.name}")
             print(f"  Q: {case.question}")
         else:
-            print(f"[{i}/{len(cases)}] {case.question[:50]}{'...' if len(case.question) > 50 else ''}", end=" ", flush=True)
+            print(
+                f"[{i}/{len(cases)}] {case.question[:50]}{'...' if len(case.question) > 50 else ''}",
+                end=" ",
+                flush=True,
+            )
 
         result = _run_single(agent, case, deps)
 
@@ -232,46 +231,42 @@ def _run_single(agent: Any, case: EvalCase, deps: DataAgent) -> EvalResult:
             outside_ok = "outside my capabilities" in response_lower
             if not outside_ok:
                 failures.append(
-                    "Agent must call a tool to answer (or respond 'This request is outside my capabilities'). Saw 0 tool calls."
+                    "Agent must call a tool to answer (or respond 'This request is outside my "
+                    "capabilities'). Saw 0 tool calls."
                 )
 
         # Check response contains expected substrings
         for needle in case.expect_contains:
             if needle.lower() not in response_lower:
-                failures.append(
-                    f"Expected response to contain '{needle}'"
-                )
+                failures.append(f"Expected response to contain '{needle}'")
 
         # Check response does NOT contain forbidden substrings
         for needle in case.expect_not_contains:
             if needle.lower() in response_lower:
-                failures.append(
-                    f"Expected response NOT to contain '{needle}'"
-                )
+                failures.append(f"Expected response NOT to contain '{needle}'")
 
         # Check max tool calls (catch infinite loops)
         if len(tool_calls) > case.max_tool_calls:
-            failures.append(
-                f"Too many tool calls: {len(tool_calls)} > max {case.max_tool_calls}"
-            )
+            failures.append(f"Too many tool calls: {len(tool_calls)} > max {case.max_tool_calls}")
 
         # Check metric/group_by/filters in tool calls (unless skip_tool_checks)
         if not skip_tool_checks:
-            if case.expect_metric:
-                if not _tool_arg_matches(run_result, "query_metric", "metrics", case.expect_metric):
-                    failures.append(
-                        f"Expected query_metric to use metric '{case.expect_metric}' (in metrics list)"
-                    )
-            if case.expect_group_by:
-                if not _tool_arg_contains(run_result, "query_metric", "group_by", case.expect_group_by):
-                    failures.append(
-                        f"Expected query_metric to include group_by='{case.expect_group_by}'"
-                    )
-            if case.expect_filters:
-                if not _tool_arg_contains(run_result, "query_metric", "filters", case.expect_filters):
-                    failures.append(
-                        f"Expected query_metric to filter on '{case.expect_filters}'"
-                    )
+            if case.expect_metric and not _tool_arg_matches(
+                run_result, "query_metric", "metrics", case.expect_metric
+            ):
+                failures.append(
+                    f"Expected query_metric to use metric '{case.expect_metric}' (in metrics list)"
+                )
+            if case.expect_group_by and not _tool_arg_contains(
+                run_result, "query_metric", "group_by", case.expect_group_by
+            ):
+                failures.append(
+                    f"Expected query_metric to include group_by='{case.expect_group_by}'"
+                )
+            if case.expect_filters and not _tool_arg_contains(
+                run_result, "query_metric", "filters", case.expect_filters
+            ):
+                failures.append(f"Expected query_metric to filter on '{case.expect_filters}'")
 
         result.failures = failures
         result.passed = len(failures) == 0
@@ -287,7 +282,9 @@ def _run_single(agent: Any, case: EvalCase, deps: DataAgent) -> EvalResult:
 def _extract_tool_calls(run_result: Any) -> list[str]:
     """Extract tool names from a PydanticAI run result's message history."""
     tool_names: list[str] = []
-    get_msgs = getattr(run_result, "all_messages", None) or getattr(run_result, "new_messages", None)
+    get_msgs = getattr(run_result, "all_messages", None) or getattr(
+        run_result, "new_messages", None
+    )
     if get_msgs and callable(get_msgs):
         messages = get_msgs()
         for msg in messages:
@@ -309,7 +306,7 @@ def _get_tool_args(part: Any) -> dict[str, Any]:
     """Get tool call args as dict, handling JSON string or dict.
     Prefer args_as_dict() for ToolCallPart/BuiltinToolCallPart (handles both formats).
     """
-    if hasattr(part, "args_as_dict") and callable(getattr(part, "args_as_dict")):
+    if hasattr(part, "args_as_dict") and callable(part.args_as_dict):
         try:
             return part.args_as_dict() or {}
         except Exception:
@@ -329,7 +326,9 @@ def _get_tool_args(part: Any) -> dict[str, Any]:
 
 def _iter_tool_call_parts(run_result: Any):
     """Yield (tool_name, args) from parts that have tool_name and args (ToolCallPart, BuiltinToolCallPart)."""
-    get_msgs = getattr(run_result, "all_messages", None) or getattr(run_result, "new_messages", None)
+    get_msgs = getattr(run_result, "all_messages", None) or getattr(
+        run_result, "new_messages", None
+    )
     messages = get_msgs() if get_msgs and callable(get_msgs) else []
     for msg in messages:
         if not hasattr(msg, "parts"):
@@ -344,8 +343,10 @@ def _iter_tool_call_parts(run_result: Any):
         resp = run_result.response
         if hasattr(resp, "parts"):
             for part in resp.parts:
-                if hasattr(part, "tool_name") and part.tool_name and (
-                    hasattr(part, "args") or hasattr(part, "args_as_dict")
+                if (
+                    hasattr(part, "tool_name")
+                    and part.tool_name
+                    and (hasattr(part, "args") or hasattr(part, "args_as_dict"))
                 ):
                     yield part.tool_name, _get_tool_args(part)
 
@@ -388,5 +389,3 @@ def _tool_arg_contains(
         if val is not None and needle in str(val).lower():
             return True
     return False
-
-

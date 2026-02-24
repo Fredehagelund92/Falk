@@ -3,6 +3,7 @@
 Keeps Markdown -> Slack mrkdwn conversion and block construction isolated from
 Slack transport code so behavior is easier to test.
 """
+
 from __future__ import annotations
 
 import html
@@ -42,9 +43,9 @@ def _markdown_to_mrkdwn(text: str) -> str:
 
             bold_segments: list[str] = []
 
-            def _stash_bold(match: re.Match[str]) -> str:
-                bold_segments.append(match.group(1))
-                return _BOLD_PLACEHOLDER.format(len(bold_segments) - 1)
+            def _stash_bold(match: re.Match[str], _segments: list[str] = bold_segments) -> str:
+                _segments.append(match.group(1))
+                return _BOLD_PLACEHOLDER.format(len(_segments) - 1)
 
             # Protect bold while we convert single-star italic.
             line = re.sub(r"(?<!\*)\*\*([^\n]+?)\*\*(?!\*)", _stash_bold, line)
@@ -181,21 +182,23 @@ def _build_slack_blocks(text: str, max_chars: int = 2900) -> list[dict[str, Any]
         text_lines: list[str] = []
         list_lines: list[str] = []
 
-        def _flush_text() -> None:
-            if not text_lines:
+        def _flush_text(_lines: list[str] = text_lines) -> None:
+            if not _lines:
                 return
-            content = "\n".join(text_lines).strip()
+            content = "\n".join(_lines).strip()
             if content:
-                blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": content[:max_chars]}})
-            text_lines.clear()
+                blocks.append(
+                    {"type": "section", "text": {"type": "mrkdwn", "text": content[:max_chars]}}
+                )
+            _lines.clear()
 
-        def _flush_list() -> None:
-            if not list_lines:
+        def _flush_list(_lines: list[str] = list_lines) -> None:
+            if not _lines:
                 return
-            list_block = _build_list_block(list_lines)
+            list_block = _build_list_block(_lines)
             if list_block:
                 blocks.append(list_block)
-            list_lines.clear()
+            _lines.clear()
 
         for line in lines:
             if line.lstrip().startswith("• "):

@@ -15,5 +15,3 @@ from falk.evals.cases import EvalCase, load_cases
 from falk.evals.runner import run_evals
 
 __all__ = ["EvalCase", "load_cases", "run_evals"]
-
-

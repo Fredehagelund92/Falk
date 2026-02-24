@@ -1,7 +1,6 @@
 """Unit tests for falk.access — access control and metric/dimension filtering."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from falk.access import (
     allowed_dimensions,

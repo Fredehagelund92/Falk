@@ -3,6 +3,7 @@
 Runtime state is stored in SessionStore (postgres or memory). All session-critical
 data lives in the store for multi-worker correctness.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,7 +24,9 @@ class RuntimeState:
 
     last_query_data: list[dict[str, Any]] = field(default_factory=list)
     last_query_metric: list[str] | str | None = None
-    last_query_params: dict[str, Any] | None = None  # For chart re-run: metrics, group_by, filters, order, limit, time_grain
+    last_query_params: dict[str, Any] | None = (
+        None  # For chart re-run: metrics, group_by, filters, order, limit, time_grain
+    )
     pending_files: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -36,7 +39,7 @@ class RuntimeState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "RuntimeState":
+    def from_dict(cls, data: dict[str, Any] | None) -> RuntimeState:
         """Deserialize from SessionStore."""
         if not data:
             return cls()
@@ -99,7 +102,7 @@ def user_id(ctx: RunContext[DataAgent]) -> str | None:
     return ctx.metadata.get("user_id") if ctx.metadata else None
 
 
-def access_cfg(ctx: RunContext[DataAgent]) -> "AccessConfig":
+def access_cfg(ctx: RunContext[DataAgent]) -> AccessConfig:
     """Return the AccessConfig from the agent settings."""
     return ctx.deps._settings.access
 

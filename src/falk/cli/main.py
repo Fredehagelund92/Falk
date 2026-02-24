@@ -11,6 +11,7 @@ For data queries and agent interactions, use:
 - Web chat: `falk chat` (Pydantic AI built-in web UI)
 - Slack bot: `falk slack` (team collaboration)
 """
+
 from __future__ import annotations
 
 import os
@@ -163,7 +164,7 @@ def init(
             config_path = project_dir / "falk_project.yaml"
             config_text = config_path.read_text()
             # This is a simple replacement - for production you'd want to parse YAML properly
-            config_text = config_text.replace('type: duckdb', f'type: {warehouse}')
+            config_text = config_text.replace("type: duckdb", f"type: {warehouse}")
             config_path.write_text(config_text)
             typer.echo(f"[OK] Configured for {warehouse} warehouse")
 
@@ -181,14 +182,16 @@ def init(
         step += 1
         typer.echo(f"{step}. falk mcp  # Start MCP server for queries")
         typer.echo("   OR falk chat  # Start local web UI")
-        typer.echo("   Optional: uv run logfire auth && uv run logfire projects use <project-name>  # Enable observability")
+        typer.echo(
+            "   Optional: uv run logfire auth && uv run logfire projects use <project-name>  # Enable observability"
+        )
 
     except Exception as e:
         typer.echo(f"\n[FAIL] Failed to initialize project: {e}", err=True)
         # Clean up on failure only if we created a new directory (not init .)
         if not init_in_place and project_dir.exists():
             shutil.rmtree(project_dir)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -245,7 +248,9 @@ def config(
         typer.echo("[Session]")
         typer.echo(f"  Store: {settings.session.store}")
         if settings.session.store == "postgres":
-            typer.echo(f"  Postgres URL: {'Set' if settings.session.postgres_url else 'Not set (set POSTGRES_URL)'}")
+            typer.echo(
+                f"  Postgres URL: {'Set' if settings.session.postgres_url else 'Not set (set POSTGRES_URL)'}"
+            )
         typer.echo("")
 
         # Observability (Logfire)
@@ -254,9 +259,12 @@ def config(
             or (settings.project_root / ".logfire").exists()
         )
         typer.echo("[Observability]")
-        typer.echo(
-            f"  Logfire: {'Configured' if logfire_configured else 'Not configured (run: uv run logfire auth && uv run logfire projects use <name>)'}"
+        logfire_msg = (
+            "Configured"
+            if logfire_configured
+            else "Not configured (run: uv run logfire auth && uv run logfire projects use <name>)"
         )
+        typer.echo(f"  Logfire: {logfire_msg}")
         typer.echo("")
 
         # Slack
@@ -266,7 +274,7 @@ def config(
 
     except Exception as e:
         typer.echo(f"[FAIL] Failed to load configuration: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +340,7 @@ def validate(
         raise
     except Exception as e:
         print_status("FAIL", f"Validation failed: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -372,7 +380,9 @@ def test(
 
         case_files = sorted(evals_dir.glob(pattern))
         if not case_files:
-            print_status("FAIL", f"No eval files matched pattern '{pattern}' in {evals_dir}", err=True)
+            print_status(
+                "FAIL", f"No eval files matched pattern '{pattern}' in {evals_dir}", err=True
+            )
             raise typer.Exit(code=1)
 
         cases = []
@@ -403,7 +413,7 @@ def test(
         raise
     except Exception as e:
         print_status("FAIL", f"Eval run failed: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 # ---------------------------------------------------------------------------
@@ -490,7 +500,7 @@ def access_test(
         typer.echo(output or "No response")
     except Exception as e:
         print_status("FAIL", f"access-test failed: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -555,7 +565,7 @@ def mcp(
         typer.echo("\n[OK] MCP server stopped", err=True)
     except Exception as e:
         typer.echo(f"[FAIL] Failed to start MCP server: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -577,7 +587,16 @@ def chat() -> None:
 
     try:
         subprocess.run(
-            [sys.executable, "-m", "uvicorn", "app.web:app", "--host", "127.0.0.1", "--port", "8000"],
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "app.web:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000",
+            ],
             check=True,
         )
     except KeyboardInterrupt:
@@ -626,7 +645,7 @@ def slack() -> None:
         subprocess.run([sys.executable, "-m", "app.slack"], check=True)
     except subprocess.CalledProcessError as e:
         typer.echo(f"[FAIL] Failed to start Slack bot: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
     except KeyboardInterrupt:
         typer.echo("\n[OK] Slack bot stopped")
 

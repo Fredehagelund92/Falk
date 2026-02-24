@@ -128,9 +128,9 @@ def test_create_session_store_raises_when_postgres_url_unresolved(monkeypatch):
 
 
 def test_postgres_store_raises_when_url_empty():
-    from falk.backends.session.postgres import PostgresSessionStore
-
     import pytest
+
+    from falk.backends.session.postgres import PostgresSessionStore
 
     with pytest.raises(ValueError, match="POSTGRES_URL"):
         PostgresSessionStore(url="", schema="falk_session", ttl=3600)

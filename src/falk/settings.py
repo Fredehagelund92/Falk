@@ -5,6 +5,7 @@ Loads configuration from:
 2. semantic_models.yaml (BSL - metrics and dimensions)
 3. Environment variables (.env)
 """
+
 from __future__ import annotations
 
 import os
@@ -19,6 +20,7 @@ from dotenv import load_dotenv
 @dataclass(frozen=True)
 class ToolExtensionConfig:
     """Single custom tool extension (module path + optional enabled flag)."""
+
     module: str
     enabled: bool = True
 
@@ -26,6 +28,7 @@ class ToolExtensionConfig:
 @dataclass(frozen=True)
 class AgentConfig:
     """Agent behavior configuration."""
+
     provider: str = "openai"
     model: str = "gpt-5-mini"
     context: str = ""
@@ -45,6 +48,7 @@ class AgentConfig:
 @dataclass(frozen=True)
 class AdvancedConfig:
     """Technical settings (hidden from analyst-facing config)."""
+
     auto_run: bool = False
     max_tokens: int = 4096
     temperature: float = 0.1
@@ -57,7 +61,9 @@ class AdvancedConfig:
     max_retries: int = 3
     retry_delay_seconds: int = 1
     log_level: str = "INFO"
-    message_history_max_messages: int | None = None  # None = no limit. N = keep last N messages (reduces tokens in long threads).
+    message_history_max_messages: int | None = (
+        None  # None = no limit. N = keep last N messages (reduces tokens in long threads).
+    )
 
 
 @dataclass(frozen=True)
@@ -76,6 +82,7 @@ class MemoryConfig:
 @dataclass(frozen=True)
 class SessionConfig:
     """Session state storage configuration."""
+
     store: str = "memory"  # "memory" (default) or "postgres" (production)
     postgres_url: str = ""  # PostgreSQL URL (required for postgres store)
     schema: str = "falk_session"  # Schema for Falk-owned tables
@@ -101,6 +108,7 @@ class RolePolicy:
     metrics/dimensions of None means "all allowed".
     An empty list means "nothing allowed".
     """
+
     metrics: list[str] | None = None
     dimensions: list[str] | None = None
 
@@ -108,6 +116,7 @@ class RolePolicy:
 @dataclass(frozen=True)
 class UserMapping:
     """Maps a single user_id to one or more roles."""
+
     user_id: str
     roles: list[str]
 
@@ -120,6 +129,7 @@ class AccessConfig:
     default_role: role applied when a user has no explicit mapping.
     None = no default role = open access for unlisted users.
     """
+
     roles: dict[str, RolePolicy] = field(default_factory=dict)
     users: list[UserMapping] = field(default_factory=list)
     default_role: str | None = None
@@ -128,6 +138,7 @@ class AccessConfig:
 @dataclass(frozen=True)
 class Settings:
     """Complete falk configuration."""
+
     # Core paths
     project_root: Path
     bsl_models_path: Path
@@ -152,7 +163,7 @@ class Settings:
 def _find_project_root() -> Path:
     """Find project root by looking for falk config files or .env file."""
     current = Path.cwd().resolve()
-    
+
     # Check current directory and parents
     for path in [current] + list(current.parents):
         # Look for falk config files in project root
@@ -163,7 +174,7 @@ def _find_project_root() -> Path:
         # Look for .env file
         if (path / ".env").exists():
             return path
-    
+
     # Fallback to current directory
     return current
 
@@ -172,14 +183,14 @@ def _load_yaml_config(path: Path) -> dict[str, Any]:
     """Load and parse YAML config file."""
     if not path.exists():
         return {}
-    
+
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
 def load_settings() -> Settings:
     """Load falk configuration.
-    
+
     Process:
     1. Find project root
     2. Load .env file
@@ -189,16 +200,16 @@ def load_settings() -> Settings:
     """
     # 1. Find project root
     project_root = _find_project_root()
-    
+
     # 2. Load .env file
     env_file = project_root / ".env"
     if env_file.exists():
         load_dotenv(env_file)
-    
+
     # 3. Load falk_project.yaml
     config_file = project_root / "falk_project.yaml"
     config = _load_yaml_config(config_file)
-    
+
     def _string_list(value: Any) -> list[str]:
         if value is None:
             return []
@@ -250,9 +261,13 @@ def load_settings() -> Settings:
         welcome=agent_config.get("welcome", ""),
         custom_sections=custom_sections,
         knowledge_enabled=bool(knowledge_config.get("enabled", True)),
-        knowledge_business_path=str(knowledge_config.get("business_path") or "knowledge/business.md"),
+        knowledge_business_path=str(
+            knowledge_config.get("business_path") or "knowledge/business.md"
+        ),
         knowledge_gotchas_path=str(knowledge_config.get("gotchas_path") or "knowledge/gotchas.md"),
-        include_semantic_metadata_in_prompt=bool(agent_config.get("include_semantic_metadata_in_prompt", True)),
+        include_semantic_metadata_in_prompt=bool(
+            agent_config.get("include_semantic_metadata_in_prompt", True)
+        ),
         knowledge_load_mode=knowledge_load_mode,
         extensions_tools=extensions_tools,
     )
@@ -274,7 +289,7 @@ def load_settings() -> Settings:
         log_level=advanced_config.get("log_level", "INFO"),
         message_history_max_messages=advanced_config.get("message_history_max_messages"),
     )
-    
+
     # 5. Parse observability config
     observability = ObservabilityConfig()
 
@@ -287,11 +302,7 @@ def load_settings() -> Settings:
 
     # 6. Parse session config
     session_config = config.get("session") or {}
-    postgres_url = (
-        os.getenv("POSTGRES_URL")
-        or session_config.get("postgres_url")
-        or ""
-    )
+    postgres_url = os.getenv("POSTGRES_URL") or session_config.get("postgres_url") or ""
     session = SessionConfig(
         store=session_config.get("store", "memory"),
         postgres_url=postgres_url,
@@ -375,7 +386,7 @@ def load_settings() -> Settings:
     if not bsl_path.is_absolute():
         bsl_path = project_root / bsl_path
     bsl_path = bsl_path.resolve()
-    
+
     # Guardrails for production deployments.
     env_name = str(os.getenv("FALK_ENV", "")).strip().lower()
     if env_name in {"prod", "production"}:

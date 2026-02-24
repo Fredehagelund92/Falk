@@ -10,6 +10,7 @@ Note: Always use ``uv run`` to ensure the package is found. If you get
 ``ModuleNotFoundError: No module named 'falk'``, make sure you've run
 ``uv sync`` from the project root.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,6 +25,7 @@ for _p in _env_candidates:
         break
 else:
     load_dotenv(override=True)
+
 
 # Lazy import to avoid importing pydantic_ai at module level
 # Lazy import for better error messages
@@ -52,6 +54,6 @@ def _get_app():
 
     return build_web_app(core=core)
 
+
 # ASGI app — delegates to the library's PydanticAI agent.
 app = _get_app()
-

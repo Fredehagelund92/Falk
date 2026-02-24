@@ -8,6 +8,7 @@ Requires the hindsight package. Configure with:
 
 See https://hindsight.vectorize.io/ for API docs.
 """
+
 from __future__ import annotations
 
 from typing import Any

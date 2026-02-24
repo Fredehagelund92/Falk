@@ -3,6 +3,7 @@
 Each ``EvalCase`` represents a single question + expected behavior. Cases are
 loaded from YAML files so non-engineers can contribute them.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -71,6 +72,7 @@ def load_cases(path: str | Path) -> list[EvalCase]:
     Returns:
         List of ``EvalCase`` objects.
     """
+
     def _to_list(x: Any) -> list:
         if not x:
             return []
@@ -88,10 +90,11 @@ def load_cases(path: str | Path) -> list[EvalCase]:
     for item in cases_raw:
         if not isinstance(item, dict):
             continue
+
         # Support both expect_* and expected_* field names
-        def get(key: str, *alt_keys: str) -> Any:
+        def get(key: str, *alt_keys: str, _item: dict = item) -> Any:
             for k in (key,) + alt_keys:
-                v = item.get(k)
+                v = _item.get(k)
                 if v is not None:
                     return v
             return None
@@ -120,21 +123,23 @@ def load_cases(path: str | Path) -> list[EvalCase]:
         uid = get("user_id", "expected_user_id")
         user_id_val = str(uid).strip() if uid else None
 
-        out.append(EvalCase(
-            name=get("name") or "unnamed",
-            question=get("question") or "",
-            expect_tool=et,
-            expect_contains=ec,
-            expect_not_contains=enc,
-            expect_metric=get("expect_metric", "expected_metric"),
-            expect_group_by=egb,
-            expect_filters=get("expect_filters", "expected_filters"),
-            allow_tool_skip_if_contains=_to_list(get("allow_tool_skip_if_contains")),
-            allow_no_tool=bool(get("allow_no_tool")),
-            tags=tags,
-            max_tool_calls=get("max_tool_calls") or 8,
-            user_id=user_id_val,
-        ))
+        out.append(
+            EvalCase(
+                name=get("name") or "unnamed",
+                question=get("question") or "",
+                expect_tool=et,
+                expect_contains=ec,
+                expect_not_contains=enc,
+                expect_metric=get("expect_metric", "expected_metric"),
+                expect_group_by=egb,
+                expect_filters=get("expect_filters", "expected_filters"),
+                allow_tool_skip_if_contains=_to_list(get("allow_tool_skip_if_contains")),
+                allow_no_tool=bool(get("allow_no_tool")),
+                tags=tags,
+                max_tool_calls=get("max_tool_calls") or 8,
+                user_id=user_id_val,
+            )
+        )
 
     return out
 
@@ -153,5 +158,3 @@ def discover_cases(directory: str | Path = "evals") -> list[EvalCase]:
     for f in sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml")):
         all_cases.extend(load_cases(f))
     return all_cases
-
-

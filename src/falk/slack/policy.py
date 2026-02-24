@@ -1,4 +1,5 @@
 """Slack export-delivery policy helpers."""
+
 from __future__ import annotations
 
 from falk.settings import SlackPolicyConfig
@@ -15,6 +16,4 @@ def can_deliver_exports(channel: str | None, policy: SlackPolicyConfig) -> bool:
         return True
     if channel and channel in set(policy.export_channel_allowlist):
         return True
-    if policy.exports_dm_only:
-        return False
-    return True
+    return not policy.exports_dm_only

@@ -1,9 +1,10 @@
 """PostgreSQL-backed session store backend."""
+
 from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -43,8 +44,7 @@ class PostgresSessionStore:
         """)
         idx_name = f"ix_{self._schema.replace('.', '_')}_expires"
         create_index = text(
-            f"CREATE INDEX IF NOT EXISTS {idx_name} "
-            f"ON {self._schema}.session_state (expires_at)"
+            f"CREATE INDEX IF NOT EXISTS {idx_name} ON {self._schema}.session_state (expires_at)"
         )
         with self._engine.connect() as conn:
             conn.execute(create_schema)
@@ -53,7 +53,7 @@ class PostgresSessionStore:
             conn.commit()
 
     def get(self, session_id: str) -> dict[str, Any] | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with SASession(self._engine) as session:
             result = session.execute(
                 text(
@@ -76,7 +76,7 @@ class PostgresSessionStore:
             return dict(state_json) if state_json else None
 
     def set(self, session_id: str, state: dict[str, Any]) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = now + timedelta(seconds=self._ttl)
         # Ensure JSON-serializable; psycopg accepts dict for JSONB
         state_copy = json.loads(json.dumps(state))

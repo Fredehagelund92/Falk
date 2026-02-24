@@ -3,6 +3,7 @@
 Provides retain/recall/reflect operations. Default implementation is no-op.
 Enable via memory.enabled in falk_project.yaml and set memory.provider for a backend.
 """
+
 from __future__ import annotations
 
 import logging

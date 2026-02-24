@@ -16,6 +16,7 @@ Requires environment variables:
 
 See README.md for full setup instructions.
 """
+
 from __future__ import annotations
 
 import logging
@@ -137,11 +138,7 @@ def _resolve_user_email(client, slack_user_id: str) -> str | None:
         return _user_email_cache[slack_user_id]
     try:
         resp = client.users_info(user=slack_user_id)
-        email: str | None = (
-            (resp.get("user") or {})
-            .get("profile", {})
-            .get("email")
-        )
+        email: str | None = (resp.get("user") or {}).get("profile", {}).get("email")
         if email:
             _user_email_cache[slack_user_id] = email
             logger.debug("Resolved %s -> %s", slack_user_id, email)
@@ -187,6 +184,7 @@ def _store_history(thread_ts: str, messages: list):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _strip_mention(text: str) -> str:
     """Remove ``<@BOT_ID>`` from message text."""
     return re.sub(r"<@[A-Z0-9]+>", "", text).strip()
@@ -198,16 +196,19 @@ def _extract_tool_calls(messages: list) -> list[dict[str, Any]]:
     for msg in messages:
         for part in getattr(msg, "parts", []):
             if hasattr(part, "tool_name") and hasattr(part, "args"):
-                calls.append({
-                    "tool": part.tool_name,
-                    "args": part.args if isinstance(part.args, dict) else {},
-                })
+                calls.append(
+                    {
+                        "tool": part.tool_name,
+                        "args": part.args if isinstance(part.args, dict) else {},
+                    }
+                )
     return calls
 
 
 # ---------------------------------------------------------------------------
 # Agent handler
 # ---------------------------------------------------------------------------
+
 
 def _upload_pending_files(client, channel: str, thread_ts: str | None, session_id: str) -> str:
     """Upload any files the agent produced (CSV, Excel, charts) to Slack.
@@ -245,7 +246,9 @@ def _upload_pending_files(client, channel: str, thread_ts: str | None, session_i
 
 
 def _handle(
-    text: str, say, client,
+    text: str,
+    say,
+    client,
     thread_ts: str | None = None,
     user_id: str | None = None,
     channel: str | None = None,
@@ -316,9 +319,8 @@ def _handle(
             tool_calls = _extract_tool_calls(result.all_messages())
             if thread_ts:
                 _store_history(thread_ts, result.all_messages())
-            sid = (
-                thread_ts
-                or (f"{channel}:{identity}" if (channel and identity) else (identity or "default"))
+            sid = thread_ts or (
+                f"{channel}:{identity}" if (channel and identity) else (identity or "default")
             )
             retain_interaction_sync(
                 session_id=sid,
@@ -330,9 +332,7 @@ def _handle(
                 provider=APP_SETTINGS.memory.provider,
             )
     except UsageLimitExceeded:
-        reply = (
-            "That query used too many steps. Try a simpler or more focused question."
-        )
+        reply = "That query used too many steps. Try a simpler or more focused question."
     except Exception:
         logger.exception("Agent error")
         reply = "Something went wrong — please try again in a moment."
@@ -387,9 +387,8 @@ def _handle(
 
         # Upload any files the agent produced (CSV, Excel, charts)
         if channel:
-            session_id = (
-                thread_ts
-                or (f"{channel}:{identity}" if (channel and identity) else (identity or "default"))
+            session_id = thread_ts or (
+                f"{channel}:{identity}" if (channel and identity) else (identity or "default")
             )
             upload_state = _upload_pending_files(client, channel, thread_ts, session_id)
             if upload_state == "blocked":
@@ -420,6 +419,7 @@ def _handle(
 # ---------------------------------------------------------------------------
 # Event handlers
 # ---------------------------------------------------------------------------
+
 
 @bolt.event("app_mention")
 def handle_mention(event, say, client):
@@ -453,6 +453,7 @@ def handle_slash_command(ack, command, client):
     user_id = command.get("user_id")
     if not channel or not user_id:
         return
+
     # Use say that posts to channel; _handle needs client for chat_postMessage/update
     def _say(msg, thread_ts=None):
         client.chat_postMessage(channel=channel, text=msg, thread_ts=thread_ts)
@@ -468,12 +469,25 @@ def handle_slash_command(ack, command, client):
 # Negative reactions (👎) -> recorded in LangFuse as score=0.0
 # Data team reviews feedback in LangFuse dashboard and adds corrections there.
 
-_POSITIVE_REACTIONS = frozenset({
-    "thumbsup", "+1", "white_check_mark", "heart", "fire", "100",
-})
-_NEGATIVE_REACTIONS = frozenset({
-    "thumbsdown", "-1", "x", "disappointed", "confused",
-})
+_POSITIVE_REACTIONS = frozenset(
+    {
+        "thumbsup",
+        "+1",
+        "white_check_mark",
+        "heart",
+        "fire",
+        "100",
+    }
+)
+_NEGATIVE_REACTIONS = frozenset(
+    {
+        "thumbsdown",
+        "-1",
+        "x",
+        "disappointed",
+        "confused",
+    }
+)
 
 
 @bolt.event("reaction_added")

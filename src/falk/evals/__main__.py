@@ -1,4 +1,5 @@
 """CLI entry point: ``uv run python -m falk.evals``."""
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,8 @@ def main() -> None:
         help="Only run cases matching these tags",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Show detailed output for each case",
     )
@@ -55,5 +57,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

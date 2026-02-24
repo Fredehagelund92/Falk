@@ -10,6 +10,7 @@ Typical usage::
     core.list_metrics()
     core.list_dimensions()
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Metadata dataclass — everything BSL doesn't expose from the YAML
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SemanticMetadata:
@@ -53,6 +55,7 @@ class SemanticMetadata:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _discover_tables(con: Any) -> dict[str, Any]:
     """Build ``{table_name: ibis_table}`` from all schemas/databases."""
@@ -96,8 +99,7 @@ def _parse_yaml(path: Path) -> dict[str, dict[str, Any]]:
     """
     if not path.exists():
         raise FileNotFoundError(
-            f"Semantic models config not found: {path}\n"
-            "Run 'falk init' to scaffold a project."
+            f"Semantic models config not found: {path}\nRun 'falk init' to scaffold a project."
         )
 
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -230,7 +232,7 @@ def _load_bsl(
     Returns:
         ``(bsl_models, metadata, ibis_connection)``
     """
-    from boring_semantic_layer.profile import get_connection, ProfileError
+    from boring_semantic_layer.profile import ProfileError, get_connection
 
     try:
         con = get_connection(profile=connection)
@@ -269,6 +271,7 @@ def _load_bsl(
 # DataAgent
 # ---------------------------------------------------------------------------
 
+
 class DataAgent:
     """Core data agent — loads BSL models and provides metric/dimension discovery.
 
@@ -284,12 +287,11 @@ class DataAgent:
     ) -> None:
         self._settings = settings or load_settings()
         path = (
-            Path(bsl_models_path).resolve()
-            if bsl_models_path
-            else self._settings.bsl_models_path
+            Path(bsl_models_path).resolve() if bsl_models_path else self._settings.bsl_models_path
         )
         self._bsl_models, self._metadata, self._ibis_con = _load_bsl(
-            path, self._settings.connection,
+            path,
+            self._settings.connection,
         )
 
     # --- Core properties ------------------------------------------------------
@@ -360,20 +362,28 @@ class DataAgent:
                 metric_desc = m.get("description")
                 metric_display = m.get("display_name", name)
                 break
-        
+
         if not metric_desc:
             # Try to find which model contains this metric
             for model_name, model in self._bsl_models.items():
                 measures = model.measures if hasattr(model, "measures") else []
                 if name in measures:
-                    dims = [d.name for d in model.get_dimensions().values()] if hasattr(model, "get_dimensions") else []
+                    dims = (
+                        [d.name for d in model.get_dimensions().values()]
+                        if hasattr(model, "get_dimensions")
+                        else []
+                    )
                     dims_str = ", ".join(dims) if dims else "none"
-                    return f"**{metric_display}** — Metric from {model_name}. Dimensions: {dims_str}. Time grains: day, week, month."
-            
+                    return (
+                        f"**{metric_display}** — Metric from {model_name}. "
+                        f"Dimensions: {dims_str}. Time grains: day, week, month."
+                    )
+
             return f"Metric '{name}' not found. Use list_metrics to see available metrics."
-        
+
         # Get dimensions and time grains from the model
         from falk.tools.semantic import get_semantic_model_info
+
         info = get_semantic_model_info(self._bsl_models, name, self._metadata.model_descriptions)
         if info:
             dims = ", ".join(d.name for d in info.dimensions) if info.dimensions else "none"
@@ -381,7 +391,7 @@ class DataAgent:
         else:
             dims = "none"
             grains = "day, week, month"
-        
+
         return f"**{metric_display}** — {metric_desc}. Dimensions: {dims}. Time grains: {grains}."
 
     def describe_model(self, name: str) -> dict[str, Any] | str:
@@ -395,7 +405,10 @@ class DataAgent:
         return {
             "name": name,
             "description": info.description,
-            "dimensions": [{"name": d.name, "type": d.type, "description": d.description} for d in info.dimensions],
+            "dimensions": [
+                {"name": d.name, "type": d.type, "description": d.description}
+                for d in info.dimensions
+            ],
             "metrics": info.metrics,
             "time_grains": info.time_grains,
         }

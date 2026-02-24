@@ -7,12 +7,13 @@ dimensions, and generating charts.
 Usage:
     # Start with stdio transport (default for MCP)
     python -m app.mcp
-    
+
     # Or via CLI
     falk mcp
-    
+
     # Connect from Cursor, Claude Desktop, or other MCP clients
 """
+
 from __future__ import annotations
 
 import inspect
@@ -60,17 +61,19 @@ mcp = FastMCP("falk")
 _agent: DataAgent | None = None
 
 # Built-in MCP tool names (skip when registering extensions to avoid collisions)
-_BUILTIN_MCP_TOOLS = frozenset({
-    "list_catalog",
-    "suggest_date_range",
-    "describe_metric",
-    "describe_model",
-    "describe_dimension",
-    "lookup_dimension_values",
-    "disambiguate",
-    "query_metric",
-    "health_check",
-})
+_BUILTIN_MCP_TOOLS = frozenset(
+    {
+        "list_catalog",
+        "suggest_date_range",
+        "describe_metric",
+        "describe_model",
+        "describe_dimension",
+        "lookup_dimension_values",
+        "disambiguate",
+        "query_metric",
+        "health_check",
+    }
+)
 
 
 def get_agent() -> DataAgent:
@@ -91,10 +94,10 @@ def get_agent() -> DataAgent:
 @mcp.tool()
 def list_catalog(entity_type: str = "both") -> dict[str, Any]:
     """List metrics and/or dimensions.
-    
+
     Args:
         entity_type: 'metric' | 'dimension' | 'both' (default: both)
-        
+
     Returns {"metrics": [...], "dimensions": [...]} or subset.
     Use this to discover what metrics and dimensions are available before querying.
     """
@@ -117,11 +120,11 @@ def list_catalog(entity_type: str = "both") -> dict[str, Any]:
 @mcp.tool()
 def suggest_date_range(period: str) -> dict[str, Any]:
     """Get date range for common periods.
-    
+
     Args:
         period: One of: yesterday, today, last_7_days, last_30_days, this_week,
                 this_month, last_month, this_quarter.
-        
+
     Returns {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"} or {"error": "..."}.
     """
     try:
@@ -133,10 +136,10 @@ def suggest_date_range(period: str) -> dict[str, Any]:
 @mcp.tool()
 def describe_metric(name: str) -> str:
     """Get full description of a metric including dimensions and time grains.
-    
+
     Args:
         name: Metric name to describe
-        
+
     Returns formatted description with available dimensions and time grains.
     """
     return get_agent().describe_metric(name)
@@ -145,10 +148,10 @@ def describe_metric(name: str) -> str:
 @mcp.tool()
 def describe_model(name: str) -> dict[str, Any] | str:
     """Get full description of a semantic model (metrics, dimensions, time grains).
-    
+
     Args:
         name: Semantic model name to describe
-        
+
     Returns dict with model details or error string if not found.
     """
     return get_agent().describe_model(name)
@@ -157,10 +160,10 @@ def describe_model(name: str) -> dict[str, Any] | str:
 @mcp.tool()
 def describe_dimension(name: str) -> str:
     """Get full description of a dimension (type, description, domain).
-    
+
     Args:
         name: Dimension name to describe
-        
+
     Returns formatted description with type, domain, and usage info.
     """
     return get_agent().describe_dimension(name)
@@ -173,14 +176,14 @@ def lookup_dimension_values(
     search: str | None = None,
 ) -> dict[str, Any]:
     """Look up actual values for a dimension from the warehouse.
-    
+
     Useful for finding valid filter values or autocomplete suggestions.
-    
+
     Args:
         dimension: Dimension name to look up
         limit: Maximum number of values to return (default 100)
         search: Optional search string to filter values
-        
+
     Returns dict with dimension name and list of values.
     """
     return get_agent().lookup_dimension_values(dimension, search, limit)
@@ -195,23 +198,20 @@ def _mcp_matches_concept(item: dict, concept: str) -> bool:
     display = (item.get("display_name") or "").lower()
     if c in name or c in display:
         return True
-    for syn in (item.get("synonyms") or []):
-        if c in str(syn).lower():
-            return True
-    return False
+    return any(c in str(syn).lower() for syn in item.get("synonyms") or [])
 
 
 @mcp.tool()
 def disambiguate(entity_type: str, concept: str) -> dict[str, Any]:
     """Find metrics or dimensions matching a concept (name or synonym).
-    
+
     Use when the user's request is ambiguous — returns candidates so you can ask:
     'Which did you mean: A (description), B (description)?'
-    
+
     Args:
         entity_type: 'metric' or 'dimension'
         concept: Search term (matched against name, display_name, synonyms)
-        
+
     Returns dict with matches: [{name, display_name, description}, ...]
     """
     et = (entity_type or "").strip().lower()
@@ -224,12 +224,9 @@ def disambiguate(entity_type: str, concept: str) -> dict[str, Any]:
             "INVALID_ENTITY_TYPE",
         )
 
-    agent = get_agent()
+    get_agent()
     catalog = list_catalog(entity_type=et)
-    if et == "metric":
-        items = catalog.get("metrics", [])
-    else:
-        items = catalog.get("dimensions", [])
+    items = catalog.get("metrics", []) if et == "metric" else catalog.get("dimensions", [])
 
     matches = [
         {
@@ -262,19 +259,21 @@ def query_metric(
     include_share: bool = False,
 ) -> dict[str, Any]:
     """Query one or more metrics from the warehouse with optional grouping and filtering.
-    
+
     This is the primary tool for retrieving metric data.
-    
+
     Args:
         metrics: List of metric names to query (use list_catalog to discover)
         dimensions: Optional list of dimension names to group by
-        filters: Optional list of filters, e.g. [{"field": "date", "op": ">=", "value": "2024-01-01"}, {"field": "date", "op": "<=", "value": "2024-12-31"}]
+        filters: Optional list of filters, e.g.
+            [{"field": "date", "op": ">=", "value": "2024-01-01"},
+            {"field": "date", "op": "<=", "value": "2024-12-31"}]
         order_by: Optional ORDER BY direction ("asc" or "desc")
         limit: Optional row limit
         time_grain: Optional time grain (day, week, month, quarter, year)
         compare_period: Optional 'week'|'month'|'quarter' for period-over-period comparison
         include_share: If True, add share_pct column (percentage of total)
-        
+
     Returns dict with:
         - rows: Query results as list of dicts
         - row_count: Number of rows returned
@@ -338,6 +337,26 @@ def _make_mcp_ctx() -> SimpleNamespace:
     return ctx
 
 
+def _make_tool_wrapper(
+    tool_name: str,
+    tool_func: Any,
+    tool_sig: inspect.Signature,
+    tool_bound_params: list[inspect.Parameter],
+    tool_description: str | None,
+) -> Any:
+    """Create MCP-compatible wrapper for a custom tool that takes RunContext."""
+    def wrapper(**kwargs: Any) -> Any:
+        ctx = _make_mcp_ctx()
+        return tool_func(ctx, **kwargs)
+
+    wrapper.__name__ = tool_name
+    wrapper.__doc__ = tool_description or tool_func.__doc__
+    wrapper.__signature__ = tool_sig.replace(  # type: ignore[attr-defined]
+        parameters=tool_bound_params
+    )
+    return wrapper
+
+
 def _register_custom_tools() -> None:
     """Load and register custom tool extensions from falk_project.yaml."""
     settings = load_settings()
@@ -368,25 +387,13 @@ def _register_custom_tools() -> None:
                     )
                     continue
                 bound_params = list(params[1:])
-
-                def _make_wrapper(
-                    tool_name: str,
-                    tool_func: Any,
-                    tool_sig: inspect.Signature,
-                    tool_bound_params: list[inspect.Parameter],
-                ):
-                    def wrapper(**kwargs: Any) -> Any:
-                        ctx = _make_mcp_ctx()
-                        return tool_func(ctx, **kwargs)
-
-                    wrapper.__name__ = tool_name
-                    wrapper.__doc__ = getattr(tool, "description", None) or tool_func.__doc__
-                    wrapper.__signature__ = tool_sig.replace(  # type: ignore[attr-defined]
-                        parameters=tool_bound_params
-                    )
-                    return wrapper
-
-                wrapper = _make_wrapper(name, tool.function, sig, bound_params)
+                wrapper = _make_tool_wrapper(
+                    name,
+                    tool.function,
+                    sig,
+                    bound_params,
+                    getattr(tool, "description", None),
+                )
                 mcp.tool()(wrapper)
                 logger.info("Registered custom MCP tool: %s", name)
             except Exception as e:

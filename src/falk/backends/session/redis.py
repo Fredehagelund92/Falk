@@ -1,4 +1,5 @@
 """Redis-backed session store backend."""
+
 from __future__ import annotations
 
 import json
@@ -14,10 +15,10 @@ class RedisSessionStore:
     def __init__(self, url: str = "redis://localhost:6379", ttl: int = 3600):
         try:
             import redis
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "Redis session store requires redis package. Install with: uv add redis"
-            )
+            ) from err
         self._client = redis.from_url(url, decode_responses=True)
         self._ttl = ttl
 

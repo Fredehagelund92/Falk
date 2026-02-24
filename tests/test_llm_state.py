@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from falk.llm import state as state_mod
 from falk.llm.state import (
     RuntimeState,
     clear_pending_files_for_session,
     get_pending_files_for_session,
 )
-from falk.llm import state as state_mod
 from falk.session import MemorySessionStore
 
 

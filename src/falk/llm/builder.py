@@ -1,4 +1,5 @@
 """Agent/web app construction helpers."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,8 +7,8 @@ from pathlib import Path
 from pydantic_ai import Agent, ModelSettings
 
 from falk.agent import DataAgent
-from falk.observability import configure_observability
 from falk.llm.tools import data_tools, load_custom_toolsets, readiness_probe
+from falk.observability import configure_observability
 from falk.prompt import build_system_prompt
 
 

@@ -1,4 +1,5 @@
 """CLI formatting helpers — dbt-style layout, colors, and status display."""
+
 from __future__ import annotations
 
 import os

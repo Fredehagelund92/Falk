@@ -32,10 +32,12 @@ Example usage (inside your own Pydantic Evals script)::
     #     evaluators=[EqualsExpected(field=\"expected_contains\", ...)],
     # )
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict
-from typing import Any, Iterable
+from typing import Any
 
 from falk.evals.cases import EvalCase
 
@@ -107,6 +109,3 @@ def to_pydantic_evals_dataset(
         "name": name,
         "cases": [_case_to_record(c) for c in cases],
     }
-
-
-

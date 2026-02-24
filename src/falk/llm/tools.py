@@ -1,4 +1,5 @@
 """Toolset definitions used by the Pydantic AI agent."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -10,11 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import FunctionToolset, RunContext
-
-if TYPE_CHECKING:
-    from falk.settings import ToolExtensionConfig
-
-logger = logging.getLogger(__name__)
 
 from falk.access import (
     allowed_dimensions,
@@ -30,12 +26,15 @@ from falk.llm.state import (
     access_cfg,
     get_runtime_state,
     save_runtime_state,
-    session_id,
     user_id,
 )
 from falk.services.query_service import execute_query_metric
 from falk.tools.calculations import suggest_date_range as _suggest_date_range
-from falk.tools.semantic import get_semantic_model_info
+
+if TYPE_CHECKING:
+    from falk.settings import ToolExtensionConfig
+
+logger = logging.getLogger(__name__)
 
 data_tools = FunctionToolset()
 
@@ -84,7 +83,7 @@ def load_custom_toolsets(
                 toolset = obj
                 break
         if toolset is None:
-            for name, obj in vars(mod).items():
+            for _name, obj in vars(mod).items():
                 if isinstance(obj, FunctionToolset):
                     toolset = obj
                     break
@@ -248,10 +247,7 @@ def disambiguate(
     catalog = list_catalog(ctx, entity_type=et)
     if isinstance(catalog, dict) and catalog.get("ok") is False:
         return catalog
-    if et == "metric":
-        items = catalog.get("metrics", [])
-    else:
-        items = catalog.get("dimensions", [])
+    items = catalog.get("metrics", []) if et == "metric" else catalog.get("dimensions", [])
 
     matches = [
         {
@@ -289,13 +285,13 @@ def query_metric(
                 f"Metric '{m}' is not available. Use list_catalog to see available metrics.",
                 "METRIC_NOT_ALLOWED",
             )
-    for d in (group_by or []):
+    for d in group_by or []:
         if not is_dimension_allowed(d, allowed_d):
             return tool_error(
                 f"Dimension '{d}' is not available. Use list_catalog to see available dimensions.",
                 "DIMENSION_NOT_ALLOWED",
             )
-    for f in (filters or []):
+    for f in filters or []:
         field_name = f.get("field") or f.get("dimension")
         if field_name and not is_dimension_allowed(field_name, allowed_d):
             return tool_error(
@@ -397,8 +393,9 @@ def export(ctx: RunContext[DataAgent], format: str = "csv") -> str | dict[str, A
             return tool_error(f"Export failed: {e}", "EXPORT_FAILED")
     if fmt == "excel":
         try:
-            import pandas as pd
             from datetime import datetime
+
+            import pandas as pd
 
             export_dir = Path.cwd() / "exports"
             export_dir.mkdir(parents=True, exist_ok=True)
@@ -410,15 +407,20 @@ def export(ctx: RunContext[DataAgent], format: str = "csv") -> str | dict[str, A
             save_runtime_state(ctx, state)
             return f"Exported {len(state.last_query_data)} rows to {path}"
         except ImportError:
-            return tool_error("Excel export requires openpyxl. Install with: uv sync", "MISSING_DEPENDENCY")
+            return tool_error(
+                "Excel export requires openpyxl. Install with: uv sync", "MISSING_DEPENDENCY"
+            )
         except Exception as e:
             return tool_error(f"Export failed: {e}", "EXPORT_FAILED")
     if fmt == "sheets":
         return tool_error(
-            "Google Sheets export requires additional setup. Use export(format='csv') or export(format='excel') for now.",
+            "Google Sheets export requires additional setup. Use export(format='csv') or "
+            "export(format='excel') for now.",
             "NOT_IMPLEMENTED",
         )
-    return tool_error(f"Unknown format '{format}'. Use csv, excel, or sheets.", "INVALID_EXPORT_FORMAT")
+    return tool_error(
+        f"Unknown format '{format}'. Use csv, excel, or sheets.", "INVALID_EXPORT_FORMAT"
+    )
 
 
 @data_tools.tool(sequential=True)
@@ -428,7 +430,9 @@ def generate_chart(ctx: RunContext[DataAgent]) -> str | dict[str, Any]:
     if not state.last_query_data or not state.last_query_metric:
         return tool_error("No data to chart. Run query_metric first.", "NO_CHART_DATA")
     if not state.last_query_params:
-        return tool_error("No BSL aggregate available. Run query_metric with group_by first.", "NO_AGGREGATE")
+        return tool_error(
+            "No BSL aggregate available. Run query_metric with group_by first.", "NO_AGGREGATE"
+        )
     _cleanup_exports()
 
     params = state.last_query_params
@@ -442,14 +446,19 @@ def generate_chart(ctx: RunContext[DataAgent]) -> str | dict[str, Any]:
         time_grain=params.get("time_grain"),
     )
     if not result.ok or not result.aggregate:
-        return tool_error("No BSL aggregate available. Run query_metric with group_by first.", "NO_AGGREGATE")
+        return tool_error(
+            "No BSL aggregate available. Run query_metric with group_by first.", "NO_AGGREGATE"
+        )
 
     try:
         from datetime import datetime
 
         chart_bytes = result.aggregate.chart(backend="plotly", format="png")
         if not chart_bytes:
-            return tool_error("No dimension to chart. Run query_metric with group_by first.", "NO_DIMENSION_FOR_CHART")
+            return tool_error(
+                "No dimension to chart. Run query_metric with group_by first.",
+                "NO_DIMENSION_FOR_CHART",
+            )
 
         export_dir = Path.cwd() / "exports" / "charts"
         export_dir.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,7 @@ Usage:
     POSTGRES_URL=postgresql://user:pass@host:5432/db
     SESSION_TTL=3600
 """
+
 from __future__ import annotations
 
 import os
@@ -48,6 +49,7 @@ def _load_session_config() -> Any | None:
     """Best-effort settings loader for session config."""
     try:
         from falk.settings import load_settings
+
         settings = load_settings()
         return settings.session if hasattr(settings, "session") else None
     except Exception:
@@ -69,7 +71,11 @@ def create_session_store() -> SessionStore:
     """
     session_cfg = _load_session_config()
     store_type = (
-        (os.getenv("SESSION_STORE") or (getattr(session_cfg, "store", None) if session_cfg else None) or "memory")
+        (
+            os.getenv("SESSION_STORE")
+            or (getattr(session_cfg, "store", None) if session_cfg else None)
+            or "memory"
+        )
         .strip()
         .lower()
     )

@@ -1,10 +1,11 @@
 """Tests for custom tool extensions (agent.extensions.tools)."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from falk.settings import ToolExtensionConfig
 from falk.llm.tools import load_custom_toolsets
+from falk.settings import ToolExtensionConfig
 
 
 def test_load_custom_toolsets_empty_extensions(tmp_path: Path):
@@ -66,6 +67,7 @@ def echo_metric(ctx: RunContext[DataAgent], name: str) -> str:
 def test_build_agent_includes_custom_toolsets(monkeypatch, tmp_path: Path):
     """build_agent merges custom toolsets when configured."""
     import sys
+
     import yaml
 
     # Use unique module name to avoid sys.modules cache from other tests
