@@ -7,9 +7,13 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.coverage
+htmlcov/
 
 # Secrets
 .env
+.env.local
+.env.*.local
 .logfire/
 
 # Local data (user-specific, runtime)
@@ -27,6 +31,14 @@ site/
 
 # Frontend (removed — falk chat uses Pydantic AI CLI)
 frontend/
+
+# Docusaurus
+.docusaurus/
+dist-build/
+node_modules/
+
+# Logs
+*.log
 
 # OS
 .DS_Store

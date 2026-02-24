@@ -1,80 +1,71 @@
-# falk
+---
+slug: /
+sidebar_position: 1
+---
 
-> **Governed AI access to your data warehouse, powered by semantic layers.**
+# Falk
 
-Define metrics once in YAML. Query them naturally through Slack, CLI chat, or MCP.
-Same numbers everywhere. No SQL generation. No prompt engineering.
+**Governed AI access to your data warehouse, powered by semantic layers.**
 
-## The idea
+Define metrics once in YAML. Query them naturally through Slack, CLI chat, or MCP. Same numbers everywhere.
 
-Most AI data agents let models write raw SQL over your warehouse. That's powerful for exploration — but dangerous for production, where "revenue" needs to mean the same thing every time.
+## Why Falk
 
-**falk puts your semantic layer in charge.** The agent reads governed metric definitions instead of guessing from table schemas. Every query goes through the same calculations your BI tools use.
+Most AI SQL agents can answer fast but drift on metric definitions. Falk puts the semantic layer in charge, so AI uses approved metrics and dimensions only.
 
-```yaml
-# semantic_models.yaml — define once, query everywhere
-sales_metrics:
-  measures:
-    revenue:
-      expr: _.amount.sum()
-      description: "Total revenue (completed orders only)"
-      synonyms: ["sales", "income"]
-      related_metrics: [orders, average_order_value]
-```
+- One metric definition in YAML, reused everywhere
+- Governed access instead of free-form warehouse querying
+- Consistent numbers across Slack, CLI, web, and MCP
 
 ## What you get
 
 - **Governed access** — only approved metrics and dimensions, not raw tables
-- **MCP server** — standard protocol for AI tools (Cursor, Claude Desktop, any MCP client)
-- **Consistent numbers** — same calculation as your BI layer
+- **MCP server** — works with Cursor, Claude Desktop, and any MCP client
+- **Consistent numbers** — same as your BI layer
 - **Business context** — synonyms, gotchas, and rules built into the schema
-- **Automatic root cause** — ask "why did revenue increase?" and get a real answer
+- **"Why" questions** — ask "why did revenue increase?" and get a real answer
 - **Multi-interface** — MCP server, Slack, CLI chat — same data everywhere
 
 ## Quick start
 
+Get a working project in under 5 minutes:
+
 ```bash
 git clone https://github.com/Fredehagelund92/Falk.git
-cd falk && uv venv && uv sync
+cd Falk && uv venv && uv sync
 
 falk init my-project
 cd my-project
 
-# Configure environment
-cp .env.example .env  # edit: POSTGRES_URL and OPENAI_API_KEY
-
-# Validate configuration
+cp .env.example .env   # Add your OPENAI_API_KEY
 falk validate --fast
 
-# Start MCP server (connect from Cursor, Claude Desktop)
-falk mcp
-
-# OR start local web chat (Pydantic AI built-in UI)
-falk chat   # -> http://127.0.0.1:8000
-
-# OR start Slack bot
-falk slack
+# Start querying
+falk chat      # Web UI at http://127.0.0.1:8000
+# or
+falk mcp       # Connect from Cursor or Claude Desktop
+# or
+falk slack     # Deploy for your team
 ```
 
 ## Learn more
 
 | Topic | Description |
-|---|---|
-| [Why falk?](why-falk.md) | The philosophy behind semantic-layer AI |
-| [Quick Start](getting-started/quickstart.md) | Full setup walkthrough |
-| [Semantic Models](configuration/semantic-models.md) | Define your metrics |
-| [CLI Reference](cli-reference.md) | All commands |
+|-------|-------------|
+| [Quick Start](getting-started/quickstart) | Full setup walkthrough |
+| [State & Memory](concepts/memory) | What persists across requests and sessions |
+| [Learning & Feedback](concepts/learning) | How the agent improves over time |
+| [Semantic Models](configuration/semantic-models) | Define your metrics |
+| [CLI Reference](cli-reference) | All commands |
 
 ## Deployment note (0.1.0)
 
-- **Alpha / vibe coded** — not battle-tested for production yet. Use at your own risk.
-- Recommended model: one company/workspace per deployment (single-tenant).
+- **Alpha** — not battle-tested for production yet. Use at your own risk.
+- Recommended: one company/workspace per deployment (single-tenant).
 - In production (`FALK_ENV=production`), configure `access_policies` to avoid open access.
-- Session storage defaults to memory (works out of the box). For production, set `session.store: postgres` and `POSTGRES_URL` in `.env`.
-- Session config precedence is env vars > `falk_project.yaml` > defaults.
-- Chart generation uses ephemeral aggregate state; rerun the query if a restart/worker switch drops chart context.
-- Slack exports default to DM-only delivery; optionally allow specific channels via `slack.export_channel_allowlist`.
----
+- Session storage defaults to memory. For production, set `session.store: postgres` and `POSTGRES_URL` in `.env`. See [Memory](concepts/memory).
+- Chart generation uses session state; rerun the query if a restart drops chart context.
+- Slack exports default to DM-only; optionally allow channels via `slack.export_channel_allowlist`.
 
 ## Inspiration & Credits
 

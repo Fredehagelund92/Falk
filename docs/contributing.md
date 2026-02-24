@@ -20,33 +20,15 @@ src/falk/                         ← The library (pip-installable)
 ├── cli.py                        # Typer CLI
 ├── validation.py                 # Project validation and testing
 ├── observability/                # Tracing and feedback
-│   └── feedback.py               # Feedback recording
-├── backends/                     # Pluggable backends
-│   ├── memory/                   # Memory (hindsight)
-│   ├── observability/            # Logfire
-│   └── session/                  # Postgres + memory session stores
+├── backends/                     # Pluggable backends (memory, observability, session)
 ├── slack/                        # Slack formatting and policy
-│   ├── formatting.py
-│   └── policy.py
-├── tools/                        # Core functionality
-│   ├── warehouse.py              # Query execution via BSL
-│   ├── semantic.py               # Semantic model lookups
-│   ├── calculations.py           # Analytics helpers
-│   └── charts.py                 # Plotly chart generation
+├── tools/                        # Core functionality (warehouse, semantic, charts)
 ├── evals/                        # Test framework
-│   ├── cases.py
-│   ├── runner.py
-│   └── pydantic_adapter.py
 └── scaffold/                     # Templates for falk init
-    ├── RULES.md
-    ├── falk_project.yaml
-    ├── semantic_models.yaml
-    ├── seed_data.py
-    └── knowledge/
 
 app/                              ← Application interfaces (thin wrappers)
 ├── web.py                        # Web UI (uvicorn)
-├── slack.py                      # Slack bot (socket mode + markdown converter)
+├── slack.py                      # Slack bot (socket mode)
 └── mcp.py                        # MCP server (FastMCP)
 ```
 
@@ -66,7 +48,7 @@ app/                              ← Application interfaces (thin wrappers)
 falk chat
 
 # Docs
-mkdocs build  # or mkdocs serve for local preview
+npm run start
 
 # Tests
 pytest
@@ -77,6 +59,4 @@ ruff check .
 
 ## Deploying docs
 
-```bash
-uv run mkdocs gh-deploy
-```
+Docs are built and deployed via GitHub Actions when you push to `main`. See `.github/workflows/docs.yml`.

@@ -2,31 +2,31 @@
 
 falk uses layered context so teams can customize behavior without editing core code.
 
-## Core Principle
+## Core principle
 
 Put each type of information in one canonical place:
 
-- **Runtime config:** `falk_project.yaml`
-- **Behavior policy:** `RULES.md`
-- **Domain/company knowledge:** `knowledge/business.md`
-- **Data caveats:** `knowledge/gotchas.md`
-- **Metric/dimension definitions:** `semantic_models.yaml`
+| Source | Purpose |
+|--------|---------|
+| `falk_project.yaml` | Runtime config |
+| `RULES.md` | Behavior policy |
+| `knowledge/business.md` | Domain/company knowledge |
+| `knowledge/gotchas.md` | Data caveats |
+| `semantic_models.yaml` | Metric/dimension definitions |
 
-This keeps prompts deterministic and easier to maintain across many companies.
+This keeps prompts deterministic and easier to maintain.
 
-## Load Model (Phase 1)
+## Load model
 
 | Source | Loaded |
-|---|---|
+|--------|--------|
 | `falk_project.yaml` | Startup |
 | `semantic_models.yaml` | Startup |
 | `RULES.md` | Startup (included in prompt) |
 | `knowledge/business.md` | Startup when `agent.knowledge.enabled: true` |
 | `knowledge/gotchas.md` | Startup when `agent.knowledge.enabled: true` |
 
-`agent.knowledge.load_mode: on_demand` is reserved for future work.
-
-## Prompt Precedence
+## Prompt precedence
 
 When instructions conflict, precedence is:
 
@@ -36,55 +36,29 @@ When instructions conflict, precedence is:
 4. Knowledge files (`knowledge/*.md`)
 5. Semantic metadata (synonyms, descriptions, gotchas)
 
-## What Goes Where
+## What goes where
 
 ### `falk_project.yaml`
-Use for:
-- quick business summary (`agent.context`)
-- sample questions (`agent.examples`)
-- short project rules (`agent.rules`)
-- global caveats (`agent.gotchas`)
-- knowledge loading controls (`agent.knowledge`)
+
+Use for: quick business summary, sample questions, short project rules, global caveats, knowledge loading controls.
 
 ### `RULES.md`
-Use for:
-- response/process standards that apply broadly
-- formatting expectations
-- escalation and error style
 
-Keep it concise and universal.
+Use for: response/process standards, formatting expectations, escalation and error style. Keep it concise and universal.
 
 ### `knowledge/business.md`
-Use for:
-- glossary and domain definitions
-- business model and customer journey
-- interpretation context
+
+Use for: glossary and domain definitions, business model and customer journey, interpretation context.
 
 ### `knowledge/gotchas.md`
-Use for:
-- data freshness notes
-- known quality gaps
-- caveats users should hear when relevant
+
+Use for: data freshness notes, known quality gaps, caveats users should hear when relevant.
 
 ### `semantic_models.yaml`
-Use for:
-- metric formulas
-- dimensions and joins
-- semantic synonyms
-- model metadata
 
-## Why This Matters
-
-This separation improves:
-- consistency across companies/projects
-- maintenance and onboarding
-- prompt clarity and lower drift
-- reliable customization without code edits
-
-## Phase 2 Note
-
-Access policy / row-level governance is intentionally deferred to phase 2.
+Use for: metric formulas, dimensions and joins, semantic synonyms, model metadata.
 
 ## See also
 
-- [Tuning the agent](../configuration/tuning.md) — improving answer quality (context, evals, model choice).
+- [Memory](/concepts/memory) — how knowledge files fit into the persistence model
+- [Tuning the agent](/configuration/tuning) — improving answer quality (context, evals, model choice)

@@ -10,7 +10,7 @@ Repository guidance for coding agents working on `falk`.
   - `src/falk/llm/` for agent/tool behavior
   - `src/falk/backends/` for observability/session/memory backends
   - `app/mcp.py`, `app/web.py`, `app/slack.py` for runtime entrypoints
-  - `docs/` for MkDocs documentation
+  - `docs/` for documentation (Docusaurus in repo root)
 
 ## Local Dev Commands
 
@@ -20,7 +20,7 @@ Repository guidance for coding agents working on `falk`.
 - Run web UI: `falk chat`
 - Run MCP server: `falk mcp`
 - Run Slack bot: `falk slack`
-- Build docs: `mkdocs build` (or `mkdocs serve`)
+- Build docs: `npm run build` (or `npm run start` for dev server)
 
 ## Change Guidelines
 

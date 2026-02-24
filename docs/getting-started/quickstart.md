@@ -6,7 +6,7 @@ Get a working falk project in under 5 minutes.
 
 ```bash
 git clone https://github.com/Fredehagelund92/Falk.git
-cd falk
+cd Falk
 uv venv && uv sync
 ```
 
@@ -17,30 +17,21 @@ falk init my-analytics
 cd my-analytics
 ```
 
-This creates:
+This creates a project with:
 
-```text
-my-analytics/
-├── RULES.md                    # Agent behavior rules
-├── knowledge/                  # Business context + known caveats
-│   ├── business.md
-│   └── gotchas.md
-├── evals/                      # Starter eval cases
-│   ├── basic.yaml
-│   ├── access.yaml
-│   └── gotchas.yaml
-├── semantic_models.yaml       # Metrics & dimensions
-├── falk_project.yaml          # Agent config
-├── data/
-│   └── warehouse.duckdb       # Sample data (90 days)
-└── .env.example
-```
+- `RULES.md` — agent behavior rules
+- `knowledge/` — business context and known caveats
+- `evals/` — starter eval cases
+- `semantic_models.yaml` — metrics and dimensions
+- `falk_project.yaml` — agent config
+- `data/warehouse.duckdb` — sample data (90 days)
+- `.env.example` — environment template
 
 ## 3. Add your API key
 
 ```bash
 cp .env.example .env
-# Edit .env: OPENAI_API_KEY=sk-...
+# Edit .env and add: OPENAI_API_KEY=sk-...
 ```
 
 ## 4. Verify
@@ -49,19 +40,16 @@ cp .env.example .env
 falk validate --fast
 ```
 
-```text
-✅ Configuration valid!
-  ✓ Semantic models: 1 model, 6 metrics, 4 dimensions
-```
+You should see: `Configuration valid!`
 
 ## 5. Start querying
 
 ```bash
 # Option 1: Web UI
 falk chat
-# → http://localhost:8000
+# Opens at http://localhost:8000
 
-# Option 2: MCP server (connect from Cursor / Claude Desktop)
+# Option 2: MCP server (connect from Cursor or Claude Desktop)
 falk mcp
 ```
 
@@ -75,32 +63,11 @@ Try asking:
 
 ### Define your metrics
 
-Edit `semantic_models.yaml`:
-
-```yaml
-my_model:
-  table: my_table
-  database: [my_schema]
-  description: "What this model represents"
-  dimensions:
-    date:
-      expr: _.date
-      is_time_dimension: true
-    region:
-      expr: _.region
-      description: "Sales region"
-      synonyms: ["territory", "area"]
-  measures:
-    revenue:
-      expr: _.revenue.sum()
-      description: "Total revenue (completed orders)"
-      synonyms: ["sales", "income"]
-      related_metrics: [orders, average_order_value]
-```
+Edit `semantic_models.yaml` to add your tables, dimensions, and measures. See [Semantic Models](/configuration/semantic-models) for the full reference.
 
 ### Add business context
 
-Edit `RULES.md` and fill in `knowledge/` files with your domain knowledge. See [Context Engineering](../concepts/context-engineering.md).
+Edit `RULES.md` and fill in `knowledge/` files with your domain knowledge. See [Context Engineering](/concepts/context-engineering).
 
 ### Deploy to Slack
 
@@ -111,7 +78,7 @@ falk slack
 
 ## Next steps
 
-- [Semantic Models](../configuration/semantic-models.md) — full configuration reference
-- [Context Engineering](../concepts/context-engineering.md) — teach the agent about your business
-- [CLI Reference](../cli-reference.md) — all commands
-- [Slack Bot](../deployment/slack.md) — deploy for your team
+- [Semantic Models](/configuration/semantic-models) — full configuration reference
+- [Context Engineering](/concepts/context-engineering) — teach the agent about your business
+- [CLI Reference](/cli-reference) — all commands
+- [Slack Bot](/deployment/slack) — deploy for your team

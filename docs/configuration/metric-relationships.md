@@ -1,8 +1,9 @@
 # Metric Relationships
 
-> Help the agent answer "why" questions by defining how metrics relate.
+Help the agent answer "why" questions by defining how metrics relate.
 
 When users ask "Why did revenue increase?", they want to understand:
+
 - **WHERE** the change happened (dimensions → use `query_metric` with `group_by`)
 - **HOW** the change happened (underlying metrics → handled by relationships)
 
@@ -57,28 +58,6 @@ net_new_mrr:
   formula: "new_mrr - churned_mrr + expansion_mrr"
 ```
 
-### Multi-model business
-
-For businesses where drivers vary by dimension (e.g., subscription vs advertising), use descriptions:
-
-```yaml
-revenue:
-  description: |
-    Revenue drivers vary by site:
-    - Site A (subscription): subscribers × price
-    - Site B (advertising): impressions × cpm
-    - Site C (ecommerce): transactions × aov
-  related_metrics:
-    - active_subscribers
-    - subscription_price
-    - total_impressions
-    - cpm
-    - transactions
-    - average_order_value
-```
-
-The agent reads the description and adapts its analysis to the relevant segment.
-
 ## How the agent uses it
 
 When a user asks "Why did revenue increase?":
@@ -91,11 +70,11 @@ No additional prompting needed — just define the relationships in your semanti
 
 ## Best practices
 
-- **Start simple** — begin with the obvious relationships (revenue = orders × AOV)
-- **Keep lists short** — 2–4 related metrics per parent; too many makes output noisy
-- **Add formulas** — optional but helpful for the agent and for documentation
+- **Start simple** — begin with obvious relationships (revenue = orders × AOV)
+- **Keep lists short** — 2–4 related metrics per parent
+- **Add formulas** — optional but helpful for the agent and documentation
 - **Don't overthink it** — focus on metrics users frequently ask "why" about
 
-## Related
+## See also
 
-- [Semantic Models](./semantic-models.md) — full configuration guide
+- [Semantic Models](/configuration/semantic-models) — full configuration guide

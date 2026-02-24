@@ -110,7 +110,7 @@ sales_metrics:
 
 When someone asks "what was our revenue yesterday?", the agent will mention the delay. When someone queries LATAM data before June 2025, it'll flag the availability gap.
 
-For global data quality notes, document them in `knowledge/gotchas.md` or `RULES.md`. See [Context Engineering](../concepts/context-engineering.md).
+For global data quality notes, document them in `knowledge/gotchas.md` or `RULES.md`. See [Context Engineering](/concepts/context-engineering).
 
 ## What gets auto-generated
 
@@ -123,17 +123,22 @@ From this YAML, the agent automatically creates:
 
 ## Tips
 
-!!! tip "Descriptions matter"
-    Write clear, concise descriptions. They appear in the system prompt and help the LLM understand your data. First sentence should explain the concept; examples help a lot.
+:::tip Descriptions matter
+Write clear, concise descriptions. They appear in the system prompt and help the LLM understand your data. First sentence should explain the concept; examples help a lot.
+:::
 
-!!! tip "Use `synonyms`"
-    Add synonyms for any metric or dimension where your team uses different terminology than the data model. This is the easiest way to improve the agent's understanding.
+:::tip Use `synonyms`
+Add synonyms for any metric or dimension where your team uses different terminology than the data model. This is the easiest way to improve the agent's understanding.
+:::
 
-!!! tip "Use `gotchas`"
-    Add gotchas for data quirks your team keeps running into — delays, coverage gaps, known issues. The agent will warn users proactively instead of returning confusing results.
+:::tip Use `gotchas`
+Add gotchas for data quirks your team keeps running into — delays, coverage gaps, known issues. The agent will warn users proactively instead of returning confusing results.
+:::
 
-!!! tip "Use `data_domain`"
-    Adding `data_domain: "sales"` to dimensions helps the agent group related concepts and can be used to filter `list_dimensions(domain="sales")`.
+:::tip Use `data_domain`
+Adding `data_domain: "sales"` to dimensions helps the agent group related concepts and can be used to filter `list_dimensions(domain="sales")`.
+:::
 
-!!! tip "Mark time dimensions"
-    Always set `is_time_dimension: true` on date columns — this enables time-grain queries ("by day", "by month") and period comparisons.
+:::tip Mark time dimensions
+Always set `is_time_dimension: true` on date columns — this enables time-grain queries ("by day", "by month") and period comparisons.
+:::

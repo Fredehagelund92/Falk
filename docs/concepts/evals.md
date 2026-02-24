@@ -1,19 +1,19 @@
 # Testing & Validation
 
-Validate your project configuration, semantic models, and test that your agent gives correct answers.
+Validate your project configuration and test that your agent gives correct answers.
 
 ## `falk validate` vs `falk test`
 
-`falk validate` runs project/runtime checks:
+**`falk validate`** runs project/runtime checks:
 
-1. **Configuration validation** - Checks `falk_project.yaml` structure and required fields
-2. **Semantic layer validation** - Validates BSL models for errors, duplicates, missing fields
-3. **Connection test** - Verifies warehouse connectivity (optional with `--no-connection`)
-4. **Agent initialization** - Ensures agent can be built with current config
+1. Configuration validation — checks `falk_project.yaml` structure
+2. Semantic layer validation — validates BSL models for errors, duplicates, missing fields
+3. Connection test — verifies warehouse connectivity (optional with `--no-connection`)
+4. Agent initialization — ensures agent can be built with current config
 
-`falk test` runs behavior eval cases from `evals/`.
+**`falk test`** runs behavior eval cases from `evals/`.
 
-Every time you update `semantic_models.yaml`, `RULES.md`, or context files, run `falk validate` first, then `falk test` for behavior checks.
+Run `falk validate` first, then `falk test` whenever you update `semantic_models.yaml`, `RULES.md`, or context files.
 
 ## Test cases (YAML)
 
@@ -37,6 +37,7 @@ Define test cases in `evals/`:
 ```
 
 Each test case specifies:
+
 - **question** — what the user asks
 - **expected_tools** — which tools should be called
 - **expected_contains** — strings that should appear in the response
@@ -46,22 +47,11 @@ Each test case specifies:
 ## Running evals
 
 ```bash
-# Validate project/runtime
 falk validate
-
-# Quick validation only (no connection test, no agent init)
-falk validate --fast
-
-# Run all evals
+falk validate --fast   # Quick validation only
 falk test
-
-# Filter eval files
 falk test --pattern "*.yaml"
-
-# Verbose output
 falk test --verbose
-
-# Filter by tags
 falk test --tags access,gotchas
 ```
 
@@ -72,7 +62,6 @@ falk test --tags access,gotchas
 The best test cases come from actual user questions (especially ones that went wrong):
 
 ```yaml
-# This failed before we added the "sales" synonym
 - question: "What are our total sales?"
   expected_tools:
     - query_metric
@@ -86,7 +75,7 @@ The best test cases come from actual user questions (especially ones that went w
 # Gotcha awareness
 - question: "What was revenue yesterday?"
   expected_contains:
-    - "delay"  # Should mention the 48-hour delay
+    - "delay"
 
 # Entity resolution
 - question: "Revenue for acme"
@@ -97,21 +86,7 @@ The best test cases come from actual user questions (especially ones that went w
 
 ### Keep it focused
 
-Each test case should test ONE thing. Don't write tests that check everything at once.
-
-## Pydantic Evals integration
-
-For more advanced testing, falk includes a bridge to [Pydantic Evals](https://ai.pydantic.dev/evals/):
-
-```python
-from falk.evals.pydantic_adapter import to_pydantic_evals_dataset
-from falk.evals.cases import load_cases
-
-cases = load_cases("evals/basic.yaml")
-dataset = to_pydantic_evals_dataset(cases)
-```
-
-This lets you use Pydantic Evals' richer assertion system alongside the YAML-based cases.
+Each test case should test ONE thing.
 
 ## CI integration
 
@@ -136,11 +111,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-## LangFuse for production evaluation
+## See also
 
-For production, use LangFuse's LLM-as-a-judge evaluations:
-
-- Evals (YAML) → local testing, CI, regression catching
-- LangFuse → production monitoring, feedback analysis, prompt evaluation
-
-See [Logfire Observability](../deployment/logfire.md) for setup.
+- [Logfire Observability](/deployment/logfire) — production monitoring and feedback

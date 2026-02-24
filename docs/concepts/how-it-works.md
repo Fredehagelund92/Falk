@@ -8,13 +8,13 @@ User (Slack / Web UI / CLI)
      ▼
 Pydantic AI Agent
      │
-     ├── System Prompt (auto-generated from RULES.md + semantic models)
+     ├── System prompt (auto-generated from RULES.md + semantic models)
      ├── Tools (query, export, chart, metadata)
      │     │
      │     ▼
      │   BSL Semantic Layer → Database
      │
-     └── Feedback → LangFuse (optional)
+     └── Feedback → Logfire (optional)
 ```
 
 ## Flow
@@ -26,8 +26,8 @@ Pydantic AI Agent
 5. **BSL generates the query** — from semantic model definitions
 6. **Database executes** — returns data
 7. **Agent checks gotchas** — e.g., "Revenue has a 48-hour delay"
-8. **Agent formats response** — Slack-optimised (bullets, bold, no tables)
-9. **User reacts** — feedback sent to LangFuse
+8. **Agent formats response** — Slack-optimized (bullets, bold, no tables)
+9. **User reacts** — feedback sent to Logfire
 
 ## The knowledge layer
 
@@ -72,3 +72,7 @@ Large results don't get dumped:
 - **>10 rows** → preview + "Want top 10? Export to CSV? Chart?"
 
 The agent asks how you want to consume the data.
+
+## State and memory
+
+Request state (tool inputs/outputs) is ephemeral. Session state (last query, pending files) persists across turns — see [State](/concepts/state) and [Memory](/concepts/memory) for what persists and how to configure it.

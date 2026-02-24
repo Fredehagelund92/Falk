@@ -83,11 +83,6 @@ Issues = "https://github.com/Fredehagelund92/Falk/issues"
 Changelog = "https://github.com/Fredehagelund92/Falk/releases"
 
 [project.optional-dependencies]
-# Optional: Documentation site (only needed for building docs)
-docs = [
-  "mkdocs-material>=9.5.0",
-  "mkdocs-minify-plugin>=0.7.0",
-]
 # Optional: Development tools
 dev = [
   "pytest>=8.0.0",
