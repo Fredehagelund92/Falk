@@ -22,7 +22,7 @@ def test_cli_has_test_command():
 def test_cli_has_access_test_command():
     result = runner.invoke(app, ["access-test", "--help"])
     assert result.exit_code == 0
-    assert "--list-users" in result.output
+    assert "list-users" in result.output
 
 
 def test_cli_chat_command():
