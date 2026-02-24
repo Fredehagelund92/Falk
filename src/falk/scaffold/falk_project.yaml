@@ -23,7 +23,7 @@ agent:
   provider: openai  # openai, anthropic, gemini, mistral
   model: gpt-5-mini  # or gpt-5-nano, claude-sonnet-4, gemini-pro, etc.
   
-  # Business Context - This is your company's data story
+  # Business Context - 2-3 sentence summary (use knowledge/business.md for deep domain knowledge)
   context: |
     We're a SaaS company selling analytics software.
     The funnel is: trials -> signups -> paid customers -> revenue.
@@ -36,13 +36,13 @@ agent:
     - "Compare this week to last week"
     - "Daily breakdown of conversions"
   
-  # Rules - Important constraints the agent should follow
+  # Rules - Project-specific constraints (use RULES.md for universal behavior standards)
   rules:
     - "Revenue data has a 24-hour processing delay"
     - "Always mention the date range when showing results"
     - "Use 'MRR' not 'monthly recurring revenue'"
   
-  # Global gotchas (optional) - caveats not tied to one metric/dimension
+  # Global gotchas (optional) - one-line reminders (use knowledge/gotchas.md for detailed notes)
   gotchas:
     - "Data from the current day may be incomplete until the daily pipeline finishes"
   

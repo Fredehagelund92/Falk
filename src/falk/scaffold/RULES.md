@@ -3,6 +3,8 @@
 These are baseline behavior rules for production-style data assistants.
 Keep this file concise and universal. Put company-specific definitions in
 `knowledge/business.md` and known caveats in `knowledge/gotchas.md`.
+For project-specific rules (e.g., "Always mention date range"), use
+`falk_project.yaml` `agent.rules` instead.
 
 ## Core Behavior
 

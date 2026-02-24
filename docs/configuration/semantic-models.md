@@ -110,7 +110,7 @@ sales_metrics:
 
 When someone asks "what was our revenue yesterday?", the agent will mention the delay. When someone queries LATAM data before June 2025, it'll flag the availability gap.
 
-For global data quality notes, document them in `knowledge/gotchas.md` or `RULES.md`. See [Context Engineering](/concepts/context-engineering).
+For global data quality notes, document them in `knowledge/gotchas.md` (detailed) or `falk_project.yaml` `agent.gotchas` (one-line reminders). See [Context Engineering](/concepts/context-engineering).
 
 ## What gets auto-generated
 

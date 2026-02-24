@@ -8,7 +8,7 @@ falk uses **files, not databases**. All configuration is version-controlled and 
 |------|---------|-------------|-----------|
 | `falk_project.yaml` | LLM settings, session config, quick context | Startup | Platform team |
 | `semantic_models.yaml` | Metrics, dimensions, data structure | Startup | Data engineers |
-| `RULES.md` | Agent behavior, tone, formatting | Every message | Anyone |
+| `RULES.md` | Agent behavior, tone, formatting | Startup (included in system prompt) | Anyone |
 | `knowledge/business.md` | Business terms, glossary, company context | Startup (if enabled) | Domain experts |
 | `knowledge/gotchas.md` | Data quality issues, caveats | Startup (if enabled) | Data stewards |
 | `.env` | API keys, secrets | Startup | DevOps |
