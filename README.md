@@ -28,7 +28,7 @@ falk is a data agent that queries your warehouse using **governed metrics** from
 
 ```bash
 # Install
-pip install falk
+pip install falk-ai
 
 # Or install from source
 git clone https://github.com/Fredehagelund92/Falk.git

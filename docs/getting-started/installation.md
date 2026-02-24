@@ -25,7 +25,7 @@ pip install -e .
 ## Install from PyPI
 
 ```bash
-pip install falk
+pip install falk-ai
 ```
 
 ## Verify installation

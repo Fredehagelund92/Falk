@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24.2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "falk"
+name = "falk-ai"
 version = "0.1.0"
 description = "Turn your data warehouse into an AI teammate with natural language queries powered by semantic layers"
 readme = "README.md"
