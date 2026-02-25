@@ -26,7 +26,7 @@ falk uses **files, not databases**. All configuration is version-controlled and 
 | Example questions | `falk_project.yaml` |
 | Custom project tools | `falk_project.yaml` + Python modules |
 
-See [Context Engineering](/concepts/context-engineering) for detailed guidance.
+See [Context](/concepts/context) for detailed guidance.
 
 ## How it fits together
 

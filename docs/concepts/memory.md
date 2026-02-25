@@ -45,7 +45,7 @@ Loaded at startup from version-controlled files. The agent does not learn from c
 - `RULES.md` — behavior, tone, formatting
 - `knowledge/business.md`, `knowledge/gotchas.md` — when `agent.knowledge.enabled: true`
 
-See [Context Engineering](/concepts/context-engineering) for what goes where.
+See [Context](/concepts/context) for what goes where.
 
 ## Feedback traces
 

@@ -1,4 +1,4 @@
-# Context Engineering
+# Context
 
 falk uses layered context so teams can customize behavior without editing core code.
 

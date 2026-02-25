@@ -114,7 +114,7 @@ See [Contributing Guide](https://fredehagelund92.github.io/Falk/contributing/) f
 falk was inspired by:
 
 - [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/) — grounded metric querying
-- [nao](https://github.com/getnao/nao) — context engineering and agent reliability
+- [nao](https://github.com/getnao/nao) — context and agent reliability
 - [dash](https://github.com/agno-agi/dash) — self-learning from feedback
 
 ---

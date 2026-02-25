@@ -67,7 +67,7 @@ Edit `semantic_models.yaml` to add your tables, dimensions, and measures. See [S
 
 ### Add business context
 
-Edit `RULES.md` and fill in `knowledge/` files with your domain knowledge. See [Context Engineering](/concepts/context-engineering).
+Edit `RULES.md` and fill in `knowledge/` files with your domain knowledge. See [Context](/concepts/context).
 
 ### Deploy to Slack
 
@@ -79,6 +79,6 @@ falk slack
 ## Next steps
 
 - [Semantic Models](/configuration/semantic-models) — full configuration reference
-- [Context Engineering](/concepts/context-engineering) — teach the agent about your business
+- [Context](/concepts/context) — teach the agent about your business
 - [CLI Reference](/cli-reference) — all commands
 - [Slack Bot](/deployment/slack) — deploy for your team

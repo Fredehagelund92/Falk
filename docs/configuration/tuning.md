@@ -49,6 +49,6 @@ If the agent seems to get stuck repeatedly calling tools instead of answering, l
 
 ## See also
 
-- [Context engineering](/concepts/context-engineering) — where to put context
+- [Context](/concepts/context) — where to put context
 - [Project Config](/configuration/agent) — `falk_project.yaml` and related files
 - [Evals](/concepts/evals) — how to define and run evaluation cases

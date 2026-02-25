@@ -30,5 +30,5 @@ All agent knowledge lives in version-controlled files. No database. No migration
 
 ## See also
 
-- [Context Engineering](/concepts/context-engineering) — where vocabulary, gotchas, and domain knowledge live
+- [Context](/concepts/context) — where vocabulary, gotchas, and domain knowledge live
 - [Memory](/concepts/memory) — what persists (knowledge vs session vs feedback)
