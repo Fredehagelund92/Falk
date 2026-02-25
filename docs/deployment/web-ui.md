@@ -25,3 +25,8 @@ uv run uvicorn app.web:app --reload
 ```
 
 The `falk chat` command uses this same app. All logic lives in the `falk` library — the same code powers the CLI chat, Slack bot, and MCP server.
+
+## Docker
+
+New projects include a `Dockerfile` and `docker-compose.yml`. See [Docker Deployment](/deployment/docker) for single-container and full-stack (MCP + Slack + Postgres) options.
+

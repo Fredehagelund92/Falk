@@ -47,6 +47,7 @@ const sidebars = {
       type: 'category',
       label: 'Deployment',
       items: [
+        'deployment/docker',
         'deployment/slack',
         'deployment/web-ui',
         'deployment/logfire',

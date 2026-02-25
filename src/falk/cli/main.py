@@ -80,6 +80,7 @@ def init(
     - RULES.md (agent behavior rules)
     - knowledge/ (business context)
     - .env.example (environment variables template)
+    - Dockerfile and docker-compose.yml (container deployment)
     - Optional sample data (DuckDB)
 
     Example:
@@ -114,6 +115,8 @@ def init(
         _copy_scaffold(scaffold_path / "semantic_models.yaml", project_dir / "semantic_models.yaml")
         _copy_scaffold(scaffold_path / "RULES.md", project_dir / "RULES.md")
         _copy_scaffold(scaffold_path / ".env.example", project_dir / ".env.example")
+        _copy_scaffold(scaffold_path / "Dockerfile", project_dir / "Dockerfile")
+        _copy_scaffold(scaffold_path / "docker-compose.yml", project_dir / "docker-compose.yml")
 
         # Knowledge directory (business context and gotchas)
         knowledge_src = scaffold_path / "knowledge"

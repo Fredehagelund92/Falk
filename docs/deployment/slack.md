@@ -66,6 +66,7 @@ falk slack
 - **Tokens** — Set via environment variables (never hardcode).
 - **Session state** — Set `POSTGRES_URL` in `.env` for persistent session state across restarts.
 - **Single process** — Socket Mode is intended for a single active bot process.
+- **Docker** — Use the scaffolded `docker-compose.yml` for Slack + Postgres. See [Docker Deployment](/deployment/docker).
 
 ## Features
 

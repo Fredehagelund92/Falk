@@ -1,0 +1,62 @@
+# falk project — MCP, Slack, and Postgres session store
+#
+# Usage:
+#   cp .env.example .env   # Add SLACK_BOT_TOKEN, SLACK_APP_TOKEN, OPENAI_API_KEY, etc.
+#   Set session.store: postgres in falk_project.yaml (session section)
+#   docker compose up --build
+#
+# Services:
+#   - postgres: Session state (thread memory, pending files)
+#   - mcp:      HTTP MCP server at http://localhost:8000/mcp
+#   - slack:    Slack bot (slash command, DMs, @mentions)
+#
+# Run only MCP (no Slack):
+#   docker compose up --build mcp
+#
+# Run only Slack (no MCP):
+#   docker compose up --build slack
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: falk-postgres
+    environment:
+      POSTGRES_DB: falk
+      POSTGRES_USER: falk
+      POSTGRES_PASSWORD: falk
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U falk -d falk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mcp:
+    build: .
+    container_name: falk-mcp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: postgresql://falk:falk@postgres:5432/falk
+    command: ["falk", "mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+
+  slack:
+    build: .
+    container_name: falk-slack
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: postgresql://falk:falk@postgres:5432/falk
+    command: ["falk", "slack"]
+
+volumes:
+  postgres_data:

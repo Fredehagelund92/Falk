@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 from pydantic_ai import Agent, ModelSettings
 
@@ -35,6 +36,17 @@ def _make_history_processor(max_messages: int):
     return keep_recent
 
 
+def _temperature_for_model(provider: str, model: str, configured_temperature: float) -> float | None:
+    """Return temperature unless the model ignores sampling params."""
+    provider_name = (provider or "").strip().lower()
+    model_name = (model or "").strip().lower()
+    if provider_name == "openai" and (
+        model_name.startswith("gpt-5") or re.match(r"^o\d", model_name)
+    ):
+        return None
+    return configured_temperature
+
+
 def build_agent() -> Agent[DataAgent, str]:
     """Build the Pydantic AI agent with DataAgent as deps."""
     from falk.settings import load_settings
@@ -59,7 +71,11 @@ def build_agent() -> Agent[DataAgent, str]:
         output_type=str,
         model_settings=ModelSettings(
             max_tokens=s.advanced.max_tokens,
-            temperature=s.advanced.temperature,
+            temperature=_temperature_for_model(
+                provider=s.agent.provider,
+                model=s.agent.model,
+                configured_temperature=s.advanced.temperature,
+            ),
             timeout=float(s.advanced.model_timeout_seconds),
         ),
         retries=max(1, int(s.advanced.max_retries)),

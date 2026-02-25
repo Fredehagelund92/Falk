@@ -1,5 +1,5 @@
 # falk - Governed data agent powered by semantic layers
-# Supports: falk slack, falk chat, falk mcp
+# Supports: falk slack, falk mcp
 # Base: bookworm (not Alpine) for Kaleido chart export compatibility
 FROM python:3.11-slim-bookworm AS builder
 
@@ -48,6 +48,5 @@ ENV PATH="/home/falk/.venv/bin:$PATH"
 EXPOSE 8000
 
 # Default: Slack bot. Override for web chat or MCP:
-#   docker run ... falk falk chat
 #   docker run ... falk falk mcp
 CMD ["falk", "slack"]
