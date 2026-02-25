@@ -531,7 +531,10 @@ def mcp(
         typer.Option(
             "--project-root",
             "-C",
-            help="Project directory (overrides cwd). Use when MCP client ignores cwd (e.g. 'semantic_models.yaml not found' in home dir).",
+            help=(
+                "Project directory (overrides cwd). Use when MCP client ignores cwd "
+                "(e.g. 'semantic_models.yaml not found' in home dir)."
+            ),
             path_type=Path,
         ),
     ] = None,

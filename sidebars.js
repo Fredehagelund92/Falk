@@ -36,7 +36,6 @@ const sidebars = {
       items: [
         'configuration/index',
         'configuration/semantic-models',
-        'configuration/metric-relationships',
         'configuration/agent',
         'configuration/llm-providers',
         'configuration/tuning',

@@ -23,7 +23,6 @@ Most AI SQL agents can answer fast but drift on metric definitions. Falk puts th
 - **MCP server** — works with Cursor, Claude Desktop, and any MCP client
 - **Consistent numbers** — same as your BI layer
 - **Business context** — synonyms, gotchas, and rules built into the schema
-- **"Why" questions** — ask "why did revenue increase?" and get a real answer
 - **Multi-interface** — MCP server, Slack, CLI chat — same data everywhere
 
 ## Quick start
