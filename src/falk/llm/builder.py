@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 from pydantic_ai import Agent, ModelSettings
 
@@ -63,21 +63,26 @@ def build_agent() -> Agent[DataAgent, str]:
     max_msgs = s.advanced.message_history_max_messages
     history_processors = [_make_history_processor(max_msgs)] if (max_msgs and max_msgs > 0) else []
     custom_toolsets = load_custom_toolsets(s.project_root, s.agent.extensions_tools)
+    resolved_temperature = _temperature_for_model(
+        provider=s.agent.provider,
+        model=s.agent.model,
+        configured_temperature=s.advanced.temperature,
+    )
+    model_settings_kwargs = {
+        "max_tokens": s.advanced.max_tokens,
+        "timeout": float(s.advanced.model_timeout_seconds),
+    }
+    # Avoid passing an explicit temperature for reasoning models that ignore sampling params.
+    if resolved_temperature is not None:
+        model_settings_kwargs["temperature"] = resolved_temperature
+
     return Agent(
         model=_get_model(),
         deps_type=DataAgent,
         toolsets=[data_tools, *custom_toolsets],
         system_prompt=system_prompt,
         output_type=str,
-        model_settings=ModelSettings(
-            max_tokens=s.advanced.max_tokens,
-            temperature=_temperature_for_model(
-                provider=s.agent.provider,
-                model=s.agent.model,
-                configured_temperature=s.advanced.temperature,
-            ),
-            timeout=float(s.advanced.model_timeout_seconds),
-        ),
+        model_settings=ModelSettings(**model_settings_kwargs),
         retries=max(1, int(s.advanced.max_retries)),
         tool_timeout=float(s.advanced.query_timeout_seconds),
         history_processors=history_processors,

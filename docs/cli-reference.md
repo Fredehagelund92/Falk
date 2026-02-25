@@ -54,9 +54,10 @@ Start the MCP server.
 
 ```bash
 falk mcp
+falk mcp --project-root /path/to/falk-project   # Use when MCP client ignores cwd
 ```
 
-Exposes tools via Model Context Protocol for use with Cursor, Claude Desktop, or any MCP-compatible client. See [MCP Guide](/getting-started/mcp) for setup instructions.
+Exposes tools via Model Context Protocol for use with Cursor, Claude Desktop, or any MCP-compatible client. Use `--project-root` if the client spawns with the wrong working directory (e.g. you get "semantic_models.yaml not found" in your home dir despite correct `cwd`). See [MCP Guide](/getting-started/mcp) for setup instructions.
 
 ## `falk chat`
 

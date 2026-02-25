@@ -3,6 +3,7 @@
 # Run with: falk evals evals/gotchas.yaml
 
 - question: "What was our revenue yesterday?"
+  name: "revenue yesterday handles delay gotcha"
   expected_tool: query_metric
   expected_metric: revenue
   expected_mentions:
@@ -10,6 +11,7 @@
   allow_tool_skip_if_contains: ["delay"]  # Pass if agent explains delay instead of querying
 
 - question: "Show me sales by region"
+  name: "sales synonym resolves to revenue"
   expected_tool: query_metric
   expected_metric: revenue  # "sales" is a synonym for "revenue"
 

@@ -39,7 +39,7 @@ agent:
   # Rules - Project-specific constraints (use RULES.md for universal behavior standards)
   rules:
     - "Revenue data has a 24-hour processing delay"
-    - "Always mention the date range when showing results"
+    - "If you used a date filter, mention the date range in your answer"
     - "Use 'MRR' not 'monthly recurring revenue'"
   
   # Global gotchas (optional) - one-line reminders (use knowledge/gotchas.md for detailed notes)
@@ -109,44 +109,43 @@ advanced:
   slack_run_timeout_seconds: 120  # Whole Slack run (model + tools)
   tool_calls_limit: 8   # Max tool calls per run (prevent tool loops)
   request_limit: 6      # Max LLM requests per run
-  max_retries: 3
+  max_retries: 1
   retry_delay_seconds: 1
   log_level: INFO  # DEBUG, INFO, WARNING, ERROR
   # message_history_max_messages: null   # null = no limit. 12 = keep last 12 messages (reduces tokens in long threads).
 
-# Access Control (optional — uncomment and configure to restrict metric access per user)
-# When absent, all users can see and query all metrics and dimensions (open by default).
-#
-# access_policies:
-#   # Role applied to users not listed below. null = open access for unlisted users.
-#   default_role: null
-#
-#   roles:
-#     admin:
-#       metrics: null       # null = all metrics allowed
-#       dimensions: null
-#     analyst:
-#       metrics:
-#         - revenue
-#         - orders
-#         - average_order_value
-#       dimensions:
-#         - date
-#         - region
-#         - product_category
-#     viewer:
-#       metrics:
-#         - revenue
-#       dimensions:
-#         - date
-#         - region
-#
-#   users:
-#     - user_id: alice@company.com   # team member email (easiest to find)
-#       roles: [admin]
-#     - user_id: bob@company.com
-#       roles: [analyst]
-#     - user_id: carol@company.com
-#       roles: [viewer]
-#     # Tip: find emails in Slack → click a profile → "View full profile"
+# Access Control defaults (enabled so scaffold evals pass out-of-the-box)
+# Update users/roles for your team, or remove this section for open access.
+access_policies:
+  # Role applied to users not listed below. null = open access for unlisted users.
+  default_role: null
+
+  roles:
+    admin:
+      metrics: null       # null = all metrics allowed
+      dimensions: null
+    analyst:
+      metrics:
+        - revenue
+        - orders
+        - average_order_value
+      dimensions:
+        - date
+        - region
+        - product_category
+    viewer:
+      metrics:
+        - revenue
+      dimensions:
+        - date
+        - region
+
+  users:
+    - user_id: alice@company.com   # team member email (easiest to find)
+      roles: [admin]
+    - user_id: bob@company.com
+      roles: [analyst]
+    - user_id: carol@company.com
+      roles: [viewer]
+    # Tip: find emails in Slack -> click a profile -> "View full profile"
 

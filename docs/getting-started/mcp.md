@@ -61,6 +61,22 @@ The server loads your project config, connects to your semantic models, and expo
 `cwd` must point at your falk project root (where `falk_project.yaml` and `.env` live).
 :::
 
+Some MCP clients (e.g. Cursor) may spawn the server with a different working directory than the configured `cwd`, so falk can fail to find your project and report errors like `semantic_models.yaml not found at C:\Users\<you>\semantic_models.yaml`. If you see that despite a correct `cwd`, use `--project-root` to force the project path:
+
+```json
+{
+  "mcpServers": {
+    "falk": {
+      "command": "falk",
+      "args": ["mcp", "--project-root", "C:\\path\\to\\your\\falk-project"],
+      "cwd": "C:\\path\\to\\your\\falk-project"
+    }
+  }
+}
+```
+
+Or set `FALK_PROJECT_ROOT` in your environment.
+
 2. Query naturally in Cursor: "Show me revenue by region", "Compare revenue this month vs last"
 
 ## Connect from Claude Desktop

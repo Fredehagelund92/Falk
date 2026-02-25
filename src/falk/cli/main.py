@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -525,6 +526,15 @@ def mcp(
         "-p",
         help="Bind port for HTTP transport (ignored for stdio)",
     ),
+    project_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--project-root",
+            "-C",
+            help="Project directory (overrides cwd). Use when MCP client ignores cwd (e.g. 'semantic_models.yaml not found' in home dir).",
+            path_type=Path,
+        ),
+    ] = None,
 ) -> None:
     """Start the MCP (Model Context Protocol) server.
 
@@ -536,6 +546,7 @@ def mcp(
 
     Example:
         falk mcp
+        falk mcp --project-root /path/to/falk-project
         falk mcp --transport http --host 0.0.0.0 --port 8000
 
     To connect from Cursor (stdio), add to your MCP config:
@@ -543,13 +554,16 @@ def mcp(
           "mcpServers": {
             "falk": {
               "command": "falk",
-              "args": ["mcp"],
-              "cwd": "/path/to/your/falk-project"
+              "args": ["mcp", "--project-root", "C:\\\\path\\\\to\\\\falk-project"],
+              "cwd": "C:\\\\path\\\\to\\\\falk-project"
             }
           }
         }
     """
     from falk.settings import load_settings
+
+    if project_root is not None:
+        os.environ["FALK_PROJECT_ROOT"] = str(project_root.resolve())
 
     load_settings()  # Load .env from project root
 

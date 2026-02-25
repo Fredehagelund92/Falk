@@ -160,23 +160,29 @@ class Settings:
     slack_app_token: str | None = None
 
 
+class ProjectRootNotFoundError(RuntimeError):
+    """Raised when no falk project root can be discovered."""
+
+
 def _find_project_root() -> Path:
-    """Find project root by looking for falk config files or .env file."""
+    """Find project root by looking for falk_project.yaml or semantic_models.yaml.
+
+    Does NOT use .env as a project-root sentinel (avoids wrong roots when
+    cwd is unrelated). Raises ProjectRootNotFoundError if no project found.
+    """
     current = Path.cwd().resolve()
 
-    # Check current directory and parents
     for path in [current] + list(current.parents):
-        # Look for falk config files in project root
         if (path / "falk_project.yaml").exists():
             return path
         if (path / "semantic_models.yaml").exists():
             return path
-        # Look for .env file
-        if (path / ".env").exists():
-            return path
 
-    # Fallback to current directory
-    return current
+    raise ProjectRootNotFoundError(
+        f"No falk project found from cwd {current}. "
+        "Looked for falk_project.yaml or semantic_models.yaml in current directory and parents. "
+        "Run 'falk init' to scaffold a project, or set FALK_PROJECT_ROOT to the project path."
+    )
 
 
 def _load_yaml_config(path: Path) -> dict[str, Any]:
@@ -192,14 +198,25 @@ def load_settings() -> Settings:
     """Load falk configuration.
 
     Process:
-    1. Find project root
+    1. Find project root (FALK_PROJECT_ROOT env, or discover from cwd)
     2. Load .env file
     3. Load falk_project.yaml (if exists)
     4. Resolve all paths
     5. Build Settings object
     """
     # 1. Find project root
-    project_root = _find_project_root()
+    env_root = os.getenv("FALK_PROJECT_ROOT")
+    if env_root:
+        project_root = Path(env_root).resolve()
+        if not (project_root / "falk_project.yaml").exists() and not (
+            project_root / "semantic_models.yaml"
+        ).exists():
+            raise ProjectRootNotFoundError(
+                f"FALK_PROJECT_ROOT={project_root} does not contain "
+                "falk_project.yaml or semantic_models.yaml."
+            )
+    else:
+        project_root = _find_project_root()
 
     # 2. Load .env file
     env_file = project_root / ".env"

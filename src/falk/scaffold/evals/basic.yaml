@@ -3,21 +3,25 @@
 # Run with: falk evals evals/basic.yaml
 
 - question: "What is our total revenue?"
+  name: "total revenue uses query_metric"
   expected_tool: query_metric
   expected_metric: revenue
 
 - question: "Show me revenue by region"
+  name: "revenue by region groups by region"
   expected_tool: query_metric
   expected_metric: revenue
   expected_group_by: [region]
 
 - question: "Top 5 customers by revenue"
+  name: "top 5 customers sorted by revenue"
   expected_tool: query_metric
   expected_metric: revenue
   expected_order: desc
   expected_limit: 5
 
 - question: "What metrics are available?"
+  name: "list available metrics calls catalog"
   expected_tool: list_catalog
 
 # Capability / meta questions — agent answers directly, no tool call

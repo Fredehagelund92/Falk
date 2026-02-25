@@ -22,6 +22,19 @@ You can connect falk as an MCP server to access governed data queries.
      }
    }
    ```
+   If Cursor spawns falk with the wrong cwd (e.g. you see "semantic_models.yaml not found" in your home dir), use `--project-root` to force the project path:
+   ```json
+   {
+     "mcpServers": {
+       "falk": {
+         "command": "falk",
+         "args": ["mcp", "--project-root", "C:\\path\\to\\your\\falk-project"],
+         "cwd": "C:\\path\\to\\your\\falk-project"
+       }
+     }
+   }
+   ```
+   Or set `FALK_PROJECT_ROOT` in your environment.
 
 3. Restart Cursor to load the MCP server
 

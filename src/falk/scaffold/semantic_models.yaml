@@ -34,6 +34,13 @@ semantic_models:
         expr: _.customer_segment
         description: "Customer segment (Enterprise, SMB, Consumer)"
         synonyms: ["segment", "customer type"]
+
+      - name: customer_id
+        display_name: "Customer"
+        type: categorical
+        expr: _.customer_id
+        description: "Unique customer identifier"
+        synonyms: ["customer", "account", "client"]
     
     measures:
       - name: revenue

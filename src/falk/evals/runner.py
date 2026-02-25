@@ -223,7 +223,7 @@ def _run_single(agent: Any, case: EvalCase, deps: DataAgent) -> EvalResult:
                 if expected_tool not in tool_calls:
                     failures.append(
                         f"Expected tool '{expected_tool}' to be called, "
-                        f"but only saw: {tool_calls or ['(none)']}"
+                        f"but only saw: {tool_calls or ['no tool calls']}"
                     )
 
         # Agent must call a tool unless it correctly says "outside my capabilities" or case allows no tool
